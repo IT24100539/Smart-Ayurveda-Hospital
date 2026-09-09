@@ -1,0 +1,38 @@
+# Binaries
+**/bin/
+**/obj/
+**/TestResults/
+
+# Python
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/*.pyc
+
+# Node
+**/node_modules/
+**/dist/
+**/.vite/
+
+# Flutter
+mobile-patient/.dart_tool/
+mobile-patient/build/
+mobile-patient/.flutter-plugins
+mobile-patient/.flutter-plugins-dependencies
+mobile-patient/.idea/
+
+# IDE / OS
+.vs/
+.idea/
+*.user
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.pfx
+appsettings.*.local.json
+
+# Coverage
+coverage/
+lcov.info

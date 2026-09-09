@@ -1,0 +1,24 @@
+# Smart Ayurveda Hospital
+
+## Architecture (do not violate)
+
+- `backend/` is the **only** public API. Staff portal and patient app talk to `Hospital.Api` only.
+- `agent-service/` is **internal**. Bind to `127.0.0.1`. Never expose it in docker-compose ports to the internet, never call it from the browser or Flutter app.
+- The API reaches agents via `IAgentClient` (HTTP + `X-Internal-Secret`).
+- Keep Clean Architecture: Domain has no project references; Application depends on Domain; Infrastructure implements Application abstractions; Api wires both.
+- New hospital capabilities (consultations, prescriptions, invoices) land as Domain entities first, then Application services/DTOs/validators, then Infrastructure persistence, then Api controllers.
+- Do not add a second public backend (no extra Nest/Express/Django API).
+- Prefer small, typed DTOs and FluentValidation on every write endpoint.
+- Never commit secrets. Dev JWT key and agent secret in `appsettings.json` are local placeholders only.
+
+## Product language
+
+This is an Ayurveda hospital: prakriti/vikriti, panchakarma, nadi pariksha, herbal medicines. Use that vocabulary in UI copy and domain names. Do not model it as a generic Western EMR unless asked.
+
+## Code style
+
+- C#: nullable enabled, file-scoped namespaces, primary constructors only when they stay readable.
+- Python: type hints on public functions; agents stay in `app/agents/` (one file per agent).
+- React: function components, no new UI libraries unless asked.
+- Flutter: Material 3, keep screens under `lib/`.
+- Do not add README/docs files unless the user asked, except Architecture Decision Records in `docs/adr/`.

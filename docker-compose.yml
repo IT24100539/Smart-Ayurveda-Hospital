@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sah-postgres
+    environment:
+      POSTGRES_USER: ayurveda
+      POSTGRES_PASSWORD: ayurveda
+      POSTGRES_DB: smart_ayurveda
+    ports:
+      - "5432:5432"
+    volumes:
+      - sah_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ayurveda -d smart_ayurveda"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sah-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - sah_ollama:/root/.ollama
+
+volumes:
+  sah_pgdata:
+  sah_ollama:
