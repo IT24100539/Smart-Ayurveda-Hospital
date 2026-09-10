@@ -46,6 +46,22 @@ public sealed class PatientRepository : IPatientRepository
         await _db.Patients.AddAsync(patient, cancellationToken);
 }
 
+public sealed class UserRepository : IUserRepository
+{
+    private readonly HospitalDbContext _db;
+
+    public UserRepository(HospitalDbContext db) => _db = db;
+
+    public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        _db.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
+        _db.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+
+    public async Task AddAsync(User user, CancellationToken cancellationToken) =>
+        await _db.Users.AddAsync(user, cancellationToken);
+}
+
 public sealed class StaffUserRepository : IStaffUserRepository
 {
     private readonly HospitalDbContext _db;

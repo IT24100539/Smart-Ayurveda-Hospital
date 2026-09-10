@@ -1,11 +1,10 @@
 using Hospital.Application.Abstractions;
-using Hospital.Domain.Entities;
 using Hospital.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hospital.Infrastructure.Identity;
 
-public sealed class BcryptPasswordHasher : IPasswordHasher
+public sealed class PasswordHasher : IPasswordHasher
 {
     public string Hash(string password) => BCrypt.Net.BCrypt.HashPassword(password);
 

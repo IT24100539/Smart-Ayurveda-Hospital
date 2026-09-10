@@ -4,4 +4,9 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Allows cleartext HTTP to the emulator's host aliases so the app can
+         reach Hospital.Api locally. Debug source set only. -->
+    <application
+        android:networkSecurityConfig="@xml/network_security_config" />
 </manifest>

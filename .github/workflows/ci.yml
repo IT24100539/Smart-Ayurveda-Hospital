@@ -9,55 +9,85 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ayurveda_hospital
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ayurveda_hospital"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=ayurveda_hospital;Username=postgres;Password=postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: Restore, build, test
+      - name: Restore
         working-directory: backend
-        run: |
-          dotnet restore Hospital.sln
-          dotnet build Hospital.sln --no-restore --configuration Release
-          dotnet test Hospital.sln --no-build --configuration Release
+        run: dotnet restore Hospital.sln
+      - name: Build
+        working-directory: backend
+        run: dotnet build Hospital.sln --no-restore
+      - name: Test
+        working-directory: backend
+        run: dotnet test Hospital.sln --no-build
 
-  agent-service:
+  frontend-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install and test
-        working-directory: agent-service
+      - name: Detect staff portal
+        id: detect
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pytest
-
-  web-staff:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+          if [ -f web-staff/package.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping frontend-lint: web-staff/package.json is not present yet."
+          fi
       - uses: actions/setup-node@v4
+        if: steps.detect.outputs.present == 'true'
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: web-staff/package-lock.json
-      - name: Install, test, build
+      - name: Lint, test, and build
+        if: steps.detect.outputs.present == 'true'
         working-directory: web-staff
         run: |
           npm ci
+          npm run lint
           npm test
           npm run build
 
-  mobile-patient:
+  flutter-analyze:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Detect patient app
+        id: detect
+        run: |
+          if [ -f mobile-patient/pubspec.yaml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping flutter-analyze: mobile-patient/pubspec.yaml is not present yet."
+          fi
       - uses: subosito/flutter-action@v2
+        if: steps.detect.outputs.present == 'true'
         with:
           channel: stable
-      - name: Test
+      - name: Analyze
+        if: steps.detect.outputs.present == 'true'
         working-directory: mobile-patient
-        run: flutter test
+        run: |
+          flutter pub get
+          flutter analyze

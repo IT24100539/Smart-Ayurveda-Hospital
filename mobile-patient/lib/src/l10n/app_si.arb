@@ -1,0 +1,59 @@
+{
+  "@@locale": "si",
+
+  "appTitle": "ස්මාර්ට් ආයුර්වේද",
+
+  "splashTagline": "ඔබේ ප්‍රකෘතියට අනුව ආයුර්වේද ප්‍රතිකාර",
+  "chooseLanguage": "ඔබේ භාෂාව තෝරන්න",
+  "languageSinhala": "සිංහල",
+  "languageEnglish": "English",
+  "continueLabel": "ඉදිරියට",
+
+  "signIn": "පිවිසෙන්න",
+  "register": "ලියාපදිංචි වන්න",
+  "signInSubtitle": "ඔබේ ප්‍රතිකාර සැලසුම බැලීමට පිවිසෙන්න",
+  "registerSubtitle": "පළමු උපදේශනය වෙන් කරවා ගැනීමට ගිණුමක් සාදන්න",
+  "needAccount": "නව රෝගියෙක්ද? ලියාපදිංචි වන්න",
+  "haveAccount": "දැනටමත් ලියාපදිංචිද? පිවිසෙන්න",
+
+  "fullNameLabel": "සම්පූර්ණ නම",
+  "emailLabel": "විද්‍යුත් තැපෑල",
+  "phoneNumberLabel": "දුරකථන අංකය",
+  "passwordLabel": "රහස් පදය",
+
+  "fullNameRequired": "ඔබේ සම්පූර්ණ නම ඇතුළත් කරන්න",
+  "emailRequired": "ඔබේ විද්‍යුත් තැපැල් ලිපිනය ඇතුළත් කරන්න",
+  "emailInvalid": "වලංගු විද්‍යුත් තැපැල් ලිපිනයක් ඇතුළත් කරන්න",
+  "phoneNumberRequired": "ඔබේ දුරකථන අංකය ඇතුළත් කරන්න",
+  "passwordRequired": "ඔබේ රහස් පදය ඇතුළත් කරන්න",
+  "passwordTooShort": "රහස් පදය අවම වශයෙන් අක්ෂර {minLength}ක් විය යුතුය",
+
+  "passwordTooLong": "රහස් පදය උපරිම වශයෙන් අක්ෂර {maxLength}ක් විය යුතුය",
+
+  "invalidCredentialsMessage": "විද්‍යුත් තැපෑල හෝ රහස් පදය වැරදිය.",
+  "emailAlreadyRegisteredMessage": "මෙම විද්‍යුත් තැපෑල සඳහා ගිණුමක් දැනටමත් තිබේ.",
+  "genericErrorMessage": "දෝෂයක් සිදු විය. නැවත උත්සාහ කරන්න.",
+  "networkErrorMessage": "රෝහල් සේවාදායකයට සම්බන්ධ විය නොහැක. ඔබේ සම්බන්ධතාවය පරීක්ෂා කරන්න.",
+  "sessionExpiredMessage": "ඔබේ සැසිය කල් ඉකුත් වී ඇත. නැවත පිවිසෙන්න.",
+
+  "navHome": "මුල් පිටුව",
+  "navTreatments": "ප්‍රතිකාර",
+  "navAppointments": "වෙන්කිරීම්",
+  "navBilling": "බිල්පත්",
+  "navProfile": "පැතිකඩ",
+
+  "homeGreeting": "ආයුබෝවන්, {name}",
+  "homeGreetingGeneric": "ආයුබෝවන්",
+  "homeSubtitle": "උපදේශන වෙන් කරවා ගන්න, ඔබේ පංචකර්ම සැලසුම අනුගමනය කරන්න, සහ ඔබේ ඔසු පිළිබඳ තොරතුරු බලන්න.",
+
+  "comingSoonTitle": "ඉක්මනින් පැමිණේ",
+  "comingSoonBody": "ඔබේ ප්‍රතිකාර වාර්තාවේ මෙම කොටස තවමත් සකස් වෙමින් පවතී.",
+
+  "treatmentsPlaceholder": "ඔබේ පංචකර්ම සහ ප්‍රතිකාර ඉතිහාසය මෙහි දැක්වේ.",
+  "appointmentsPlaceholder": "ඔබේ නාඩි පරීක්ෂා සහ උපදේශන වෙන්කිරීම් මෙහි දැක්වේ.",
+  "billingPlaceholder": "ඔබේ බිල්පත් සහ ප්‍රතිකාර පිළිබඳ ප්‍රතිචාර මෙහි දැක්වේ.",
+  "profilePlaceholder": "ඔබේ ප්‍රකෘති තොරතුරු සහ ගිණුම් සැකසුම් මෙහි දැක්වේ.",
+
+  "languageSectionTitle": "භාෂාව",
+  "signOut": "ඉවත් වන්න"
+}

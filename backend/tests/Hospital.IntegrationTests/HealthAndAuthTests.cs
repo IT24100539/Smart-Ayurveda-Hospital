@@ -14,7 +14,7 @@ public sealed class HealthAndAuthTests : IClassFixture<HospitalApiFactory>
     public async Task Health_ReturnsOk()
     {
         var client = _factory.CreateClient();
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync("/api/health");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -39,8 +39,8 @@ public sealed class HealthAndAuthTests : IClassFixture<HospitalApiFactory>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var payload = await response.Content.ReadFromJsonAsync<LoginPayload>();
         payload.Should().NotBeNull();
-        payload!.AccessToken.Should().NotBeNullOrWhiteSpace();
+        payload!.Token.Should().NotBeNullOrWhiteSpace();
     }
 
-    private sealed record LoginPayload(string AccessToken);
+    private sealed record LoginPayload(string Token);
 }

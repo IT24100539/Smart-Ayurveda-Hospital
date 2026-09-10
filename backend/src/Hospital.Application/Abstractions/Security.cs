@@ -1,6 +1,4 @@
-using Hospital.Application.Auth.Dtos;
 using Hospital.Domain.Entities;
-using Hospital.Domain.Enums;
 
 namespace Hospital.Application.Abstractions;
 
@@ -10,9 +8,9 @@ public interface IPasswordHasher
     bool Verify(string password, string hash);
 }
 
-public interface IJwtTokenGenerator
+public interface IJwtTokenService
 {
-    (string Token, DateTimeOffset ExpiresAt) Create(StaffUser user);
+    (string Token, DateTimeOffset ExpiresAt) Create(User user);
 }
 
 public interface IUhidGenerator

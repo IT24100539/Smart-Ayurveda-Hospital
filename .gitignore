@@ -1,7 +1,13 @@
-# Binaries
+# .NET
+bin/
+obj/
 **/bin/
 **/obj/
 **/TestResults/
+*.user
+*.suo
+*.userosscache
+*.userprefs
 
 # Python
 **/.venv/
@@ -24,13 +30,15 @@ mobile-patient/.idea/
 # IDE / OS
 .vs/
 .idea/
-*.user
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Secrets
+# Secrets — Development overrides use env vars / user-secrets
 .env
 *.pfx
+**/appsettings.Development.json
 appsettings.*.local.json
 
 # Coverage
