@@ -4,6 +4,24 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Hospital.Infrastructure.Persistence.Configurations;
 
+public sealed class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("users");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.FullName).HasMaxLength(160).IsRequired();
+        builder.Property(x => x.Email).HasMaxLength(256).IsRequired();
+        builder.HasIndex(x => x.Email).IsUnique();
+        builder.Property(x => x.PhoneNumber).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.PasswordHash).HasMaxLength(256).IsRequired();
+        builder.Property(x => x.Role).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.IsActive).IsRequired();
+        builder.Property(x => x.CreatedAt).IsRequired();
+        builder.Property(x => x.UpdatedAt).IsRequired();
+    }
+}
+
 public sealed class StaffUserConfiguration : IEntityTypeConfiguration<StaffUser>
 {
     public void Configure(EntityTypeBuilder<StaffUser> builder)

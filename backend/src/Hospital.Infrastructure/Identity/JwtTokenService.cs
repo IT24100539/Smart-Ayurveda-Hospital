@@ -14,30 +14,34 @@ public sealed class JwtOptions
     public string Issuer { get; set; } = "smart-ayurveda-hospital";
     public string Audience { get; set; } = "smart-ayurveda-staff";
     public string SigningKey { get; set; } = string.Empty;
-    public int ExpiryMinutes { get; set; } = 480;
+    public int ExpiryMinutes { get; set; } = 120;
 }
 
-public sealed class JwtTokenGenerator : IJwtTokenGenerator
+public sealed class JwtTokenService : IJwtTokenService
 {
     private readonly JwtOptions _options;
     private readonly IClock _clock;
 
-    public JwtTokenGenerator(IOptions<JwtOptions> options, IClock clock)
+    public JwtTokenService(IOptions<JwtOptions> options, IClock clock)
     {
         _options = options.Value;
         _clock = clock;
     }
 
-    public (string Token, DateTimeOffset ExpiresAt) Create(StaffUser user)
+    public (string Token, DateTimeOffset ExpiresAt) Create(User user)
     {
-        var expiresAt = _clock.UtcNow.AddMinutes(_options.ExpiryMinutes);
+        var lifetime = _options.ExpiryMinutes > 0 ? _options.ExpiryMinutes : 120;
+        var expiresAt = _clock.UtcNow.AddMinutes(lifetime);
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
         {
+            new Claim("UserId", user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(ClaimTypes.Role, user.Role.ToString())
         };

@@ -1,85 +1,101 @@
-export type StaffRole = "Admin" | "Doctor" | "Therapist" | "Receptionist" | "Pharmacist" | "Nurse";
+import { hasValidJwt, useAuthStore } from "../store/authStore";
+import type { AuthUser } from "../auth/roles";
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api").replace(
+  /\/$/,
+  ""
+);
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly fields: Record<string, string[]>;
+
+  constructor(message: string, status: number, fields: Record<string, string[]> = {}) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.fields = fields;
+  }
+}
 
 export type AuthResponse = {
-  accessToken: string;
+  token: string;
   expiresAt: string;
-  userId: string;
-  fullName: string;
-  email: string;
-  role: StaffRole;
+  user: AuthUser;
 };
 
-export type Patient = {
-  id: string;
-  uhid: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  prakriti: string | number;
-  vikriti: string | number;
+type ProblemBody = {
+  title?: string;
+  detail?: string;
+  error?: string;
+  errors?: Record<string, string[]>;
 };
 
-export type Appointment = {
-  id: string;
-  patientName: string;
-  patientUhid: string;
-  doctorName: string;
-  scheduledAt: string;
-  status: string | number;
-  reason: string;
-};
-
-export type Paged<T> = {
-  items: T[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-};
-
-const TOKEN_KEY = "sah_staff_token";
-
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+function joinUrl(path: string): string {
+  return `${API_BASE_URL}/${path.replace(/^\//, "")}`;
 }
 
-export function setSession(auth: AuthResponse): void {
-  localStorage.setItem(TOKEN_KEY, auth.accessToken);
-  localStorage.setItem("sah_staff_name", auth.fullName);
-  localStorage.setItem("sah_staff_role", auth.role);
+function isLoginPath(path: string): boolean {
+  return path.replace(/^\//, "").toLowerCase() === "auth/login";
 }
 
-export function clearSession(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem("sah_staff_name");
-  localStorage.removeItem("sah_staff_role");
+async function readProblem(response: Response): Promise<{ message: string; fields: Record<string, string[]> }> {
+  const body = (await response.json().catch(() => null)) as ProblemBody | null;
+  const fields = body?.errors ?? {};
+  const fieldMessages = Object.values(fields).flat();
+  const message =
+    fieldMessages[0] ??
+    body?.detail ??
+    body?.error ??
+    body?.title ??
+    response.statusText ??
+    "Request failed";
+  return { message, fields };
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  headers.set("Content-Type", "application/json");
-  const token = getToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (!headers.has("Content-Type") && init.body) {
+    headers.set("Content-Type", "application/json");
+  }
 
-  const response = await fetch(path, { ...init, headers });
-  if (response.status === 401) {
-    clearSession();
-    throw new Error("Please sign in again.");
+  const token = useAuthStore.getState().token;
+  if (token && hasValidJwt(token)) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
+
+  let response: Response;
+  try {
+    response = await fetch(joinUrl(path), { ...init, headers });
+  } catch {
+    throw new ApiError("Unable to reach the hospital API.", 0);
+  }
+
+  if (response.status === 401 && !isLoginPath(path)) {
+    useAuthStore.getState().logout();
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
+    throw new ApiError("Please sign in again.", 401);
+  }
+
   if (!response.ok) {
-    const body = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(body.error ?? "Request failed");
+    const problem = await readProblem(response);
+    throw new ApiError(problem.message, response.status, problem.fields);
   }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 
 export const api = {
+  request,
   login: (email: string, password: string) =>
-    request<AuthResponse>("/api/auth/login", {
+    request<AuthResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password })
-    }),
-  patients: (q = "") => request<Paged<Patient>>(`/api/patients?q=${encodeURIComponent(q)}`),
-  createPatient: (payload: Record<string, unknown>) =>
-    request<Patient>("/api/patients", { method: "POST", body: JSON.stringify(payload) }),
-  appointments: () => request<Paged<Appointment>>("/api/appointments")
+    })
 };

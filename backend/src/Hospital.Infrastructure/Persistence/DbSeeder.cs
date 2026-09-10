@@ -26,6 +26,27 @@ public static class DbSeeder
             await db.Database.EnsureCreatedAsync(cancellationToken);
         }
 
+        if (!await db.Users.AnyAsync(cancellationToken))
+        {
+            db.Users.AddRange(
+                new User
+                {
+                    Email = "admin@smartayurveda.local",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Admin1"),
+                    FullName = "Hospital Administrator",
+                    PhoneNumber = "0000000000",
+                    Role = UserRole.Admin
+                },
+                new User
+                {
+                    Email = "doctor@smartayurveda.local",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Doctor1"),
+                    FullName = "Dr. Ananya Sharma",
+                    PhoneNumber = "0000000001",
+                    Role = UserRole.Doctor
+                });
+        }
+
         if (!await db.StaffUsers.AnyAsync(cancellationToken))
         {
             db.StaffUsers.AddRange(

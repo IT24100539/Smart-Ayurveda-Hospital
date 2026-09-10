@@ -1,0 +1,157 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Smart Ayurveda",
+  "@appTitle": {
+    "description": "Application name shown on the splash screen and app bars"
+  },
+
+  "splashTagline": "Ayurvedic care, guided by your prakriti",
+  "@splashTagline": {
+    "description": "Short subtitle under the app name on the splash screen"
+  },
+  "chooseLanguage": "Choose your language",
+  "@chooseLanguage": {
+    "description": "Label above the language switcher on the splash screen"
+  },
+  "languageSinhala": "සිංහල",
+  "@languageSinhala": {
+    "description": "Name of the Sinhala language, always written in Sinhala"
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "Name of the English language, always written in English"
+  },
+  "continueLabel": "Continue",
+  "@continueLabel": {
+    "description": "Button that leaves the splash screen"
+  },
+
+  "signIn": "Sign in",
+  "@signIn": {
+    "description": "Title and submit button of the login form"
+  },
+  "register": "Register",
+  "@register": {
+    "description": "Title and submit button of the registration form"
+  },
+  "signInSubtitle": "Sign in to follow your treatment plan",
+  "@signInSubtitle": {},
+  "registerSubtitle": "Create an account to book your first consultation",
+  "@registerSubtitle": {},
+  "needAccount": "New patient? Register",
+  "@needAccount": {
+    "description": "Link that switches the auth form from login to registration"
+  },
+  "haveAccount": "Already registered? Sign in",
+  "@haveAccount": {
+    "description": "Link that switches the auth form from registration to login"
+  },
+
+  "fullNameLabel": "Full name",
+  "@fullNameLabel": {},
+  "emailLabel": "Email",
+  "@emailLabel": {},
+  "phoneNumberLabel": "Phone number",
+  "@phoneNumberLabel": {},
+  "passwordLabel": "Password",
+  "@passwordLabel": {},
+
+  "fullNameRequired": "Please enter your full name",
+  "@fullNameRequired": {},
+  "emailRequired": "Please enter your email",
+  "@emailRequired": {},
+  "emailInvalid": "Please enter a valid email address",
+  "@emailInvalid": {},
+  "phoneNumberRequired": "Please enter your phone number",
+  "@phoneNumberRequired": {},
+  "passwordRequired": "Please enter your password",
+  "@passwordRequired": {},
+  "passwordTooShort": "Password must be at least {minLength} characters",
+  "@passwordTooShort": {
+    "description": "Mirrors the backend rule that passwords are 8-128 characters",
+    "placeholders": {
+      "minLength": {
+        "type": "int",
+        "example": "8"
+      }
+    }
+  },
+
+  "passwordTooLong": "Password must be at most {maxLength} characters",
+  "@passwordTooLong": {
+    "description": "Mirrors the backend rule that passwords are 8-128 characters",
+    "placeholders": {
+      "maxLength": {
+        "type": "int",
+        "example": "128"
+      }
+    }
+  },
+
+  "invalidCredentialsMessage": "Incorrect email or password.",
+  "@invalidCredentialsMessage": {
+    "description": "Shown when login returns 401"
+  },
+  "emailAlreadyRegisteredMessage": "An account already exists for this email.",
+  "@emailAlreadyRegisteredMessage": {
+    "description": "Shown when register returns 409"
+  },
+  "genericErrorMessage": "Something went wrong. Please try again.",
+  "@genericErrorMessage": {
+    "description": "Fallback message when the API returns no readable error detail"
+  },
+  "networkErrorMessage": "Cannot reach the hospital server. Check your connection.",
+  "@networkErrorMessage": {},
+  "sessionExpiredMessage": "Your session has expired. Please sign in again.",
+  "@sessionExpiredMessage": {},
+
+  "navHome": "Home",
+  "@navHome": {},
+  "navTreatments": "Treatments",
+  "@navTreatments": {},
+  "navAppointments": "Appointments",
+  "@navAppointments": {},
+  "navBilling": "Invoices",
+  "@navBilling": {
+    "description": "Placeholder label for the combined invoices and feedback tab"
+  },
+  "navProfile": "Profile",
+  "@navProfile": {},
+
+  "homeGreeting": "Ayubowan, {name}",
+  "@homeGreeting": {
+    "description": "Greeting on the home tab using the patient's first name",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Nimal"
+      }
+    }
+  },
+  "homeGreetingGeneric": "Ayubowan",
+  "@homeGreetingGeneric": {
+    "description": "Greeting used when the patient's name is not known yet"
+  },
+  "homeSubtitle": "Book consultations, follow your panchakarma plan, and track your herbal medicines.",
+  "@homeSubtitle": {},
+
+  "comingSoonTitle": "Coming soon",
+  "@comingSoonTitle": {},
+  "comingSoonBody": "This part of your care record is still being prepared.",
+  "@comingSoonBody": {},
+
+  "treatmentsPlaceholder": "Your panchakarma and therapy history will appear here.",
+  "@treatmentsPlaceholder": {},
+  "appointmentsPlaceholder": "Your nadi pariksha and consultation bookings will appear here.",
+  "@appointmentsPlaceholder": {},
+  "billingPlaceholder": "Your invoices and treatment feedback will appear here.",
+  "@billingPlaceholder": {},
+  "profilePlaceholder": "Your prakriti profile and account settings will appear here.",
+  "@profilePlaceholder": {},
+
+  "languageSectionTitle": "Language",
+  "@languageSectionTitle": {},
+  "signOut": "Sign out",
+  "@signOut": {}
+}

@@ -1,5 +1,7 @@
 # Smart Ayurveda Hospital
 
+[![ci](https://github.com/IT24100539/Smart-Ayurveda-Hospital/actions/workflows/ci.yml/badge.svg)](https://github.com/IT24100539/Smart-Ayurveda-Hospital/actions/workflows/ci.yml)
+
 Hospital operations platform: public **ASP.NET Core** API, internal **LangGraph** agents, **React** staff portal, and **Flutter** patient app.
 
 ## Layout
@@ -64,7 +66,7 @@ npm install
 npm run dev
 ```
 
-Vite proxies `/api` to `http://localhost:5080`.
+Copy `web-staff/.env.example` to `web-staff/.env`. The portal calls `Hospital.Api` at `VITE_API_BASE_URL` (default `http://localhost:5000/api`).
 
 ### Patient app
 

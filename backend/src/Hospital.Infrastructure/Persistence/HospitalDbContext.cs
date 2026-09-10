@@ -10,6 +10,7 @@ public sealed class HospitalDbContext : DbContext
     {
     }
 
+    public DbSet<User> Users => Set<User>();
     public DbSet<StaffUser> StaffUsers => Set<StaffUser>();
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
