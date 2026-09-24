@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
 
+from app.agents.treatment_info_agent import run_treatment_info_agent
 from app.graph.coordinator import invoke_graph
+from app.schemas import TreatmentInfoAgentRequest, TreatmentInfoAgentResponse
 from app.settings import settings
 
 app = FastAPI(
@@ -33,3 +35,13 @@ async def invoke(
 
     result = await invoke_graph(agent=agent, prompt=prompt, context=context)
     return JSONResponse(result)
+
+
+@app.post("/internal/agents/treatment-info")
+async def treatment_info(
+    request: TreatmentInfoAgentRequest,
+    x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
+) -> TreatmentInfoAgentResponse:
+    if x_internal_secret != settings.shared_secret:
+        raise HTTPException(status_code=401, detail="Invalid internal secret.")
+    return await run_treatment_info_agent(request)
