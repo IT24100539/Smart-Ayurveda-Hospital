@@ -1,3 +1,4 @@
+from pydantic import AnyHttpUrl, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +11,8 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.1"
     environment: str = "development"
+    backend_base_url: AnyHttpUrl = "http://127.0.0.1:5000"
+    internal_service_key: SecretStr = SecretStr("")
 
     @property
     def is_production(self) -> bool:

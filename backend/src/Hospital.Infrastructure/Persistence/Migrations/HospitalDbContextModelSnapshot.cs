@@ -22,56 +22,148 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Hospital.Domain.Entities.AdmissionRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BedId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("PreferredDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("RequestedByAgent")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("WardId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BedId");
+
+                    b.HasIndex("DecidedBy");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("WardId");
+
+                    b.ToTable("admission_requests", (string)null);
+                });
+
             modelBuilder.Entity("Hospital.Domain.Entities.Appointment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("CancellationReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("DoctorId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("DurationMinutes")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("EndsAt")
+                    b.Property<DateTimeOffset?>("DecidedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Reason")
+                    b.Property<DateOnly>("RequestedDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("RequestedTimeSlot")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
-                    b.Property<DateTimeOffset>("ScheduledAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<Guid?>("ScheduleId")
+                        .HasColumnType("uuid");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("TreatmentId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("DecidedBy");
 
-                    b.HasIndex("DoctorId", "ScheduledAt");
+                    b.HasIndex("ScheduleId");
+
+                    b.HasIndex("TreatmentId", "RequestedDate")
+                        .HasDatabaseName("ix_appointments_treatment_requested_date");
+
+                    b.HasIndex("PatientId", "TreatmentId", "RequestedDate", "RequestedTimeSlot")
+                        .IsUnique()
+                        .HasDatabaseName("ux_appointments_patient_treatment_slot_active")
+                        .HasFilter("\"Status\" <> 'Cancelled'");
 
                     b.ToTable("appointments", (string)null);
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Bed", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BedLabel")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsOccupied")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WardId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WardId", "BedLabel")
+                        .IsUnique();
+
+                    b.ToTable("beds", (string)null);
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Consultation", b =>
@@ -498,6 +590,42 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.ToTable("treatments", (string)null);
                 });
 
+            modelBuilder.Entity("Hospital.Domain.Entities.TreatmentSchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxPatients")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TimeSlot")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("TreatmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TreatmentId", "DayOfWeek", "TimeSlot");
+
+                    b.ToTable("treatment_schedules", (string)null);
+                });
+
             modelBuilder.Entity("Hospital.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -546,13 +674,79 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("Hospital.Domain.Entities.Appointment", b =>
+            modelBuilder.Entity("Hospital.Domain.Entities.Ward", b =>
                 {
-                    b.HasOne("Hospital.Domain.Entities.StaffUser", "Doctor")
-                        .WithMany("Appointments")
-                        .HasForeignKey("DoctorId")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Gender")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NameSinhala")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("TotalCapacity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("wards", (string)null);
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.AdmissionRequest", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Bed", "Bed")
+                        .WithMany("AdmissionRequests")
+                        .HasForeignKey("BedId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hospital.Domain.Entities.User", "DecidedByUser")
+                        .WithMany()
+                        .HasForeignKey("DecidedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
+                        .WithMany("AdmissionRequests")
+                        .HasForeignKey("PatientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.Ward", "Ward")
+                        .WithMany("AdmissionRequests")
+                        .HasForeignKey("WardId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Bed");
+
+                    b.Navigation("DecidedByUser");
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("Ward");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Appointment", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.User", "DecidedByUser")
+                        .WithMany()
+                        .HasForeignKey("DecidedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
                         .WithMany("Appointments")
@@ -560,9 +754,35 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Doctor");
+                    b.HasOne("Hospital.Domain.Entities.TreatmentSchedule", "Schedule")
+                        .WithMany("Appointments")
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Hospital.Domain.Entities.Treatment", "Treatment")
+                        .WithMany("Appointments")
+                        .HasForeignKey("TreatmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DecidedByUser");
 
                     b.Navigation("Patient");
+
+                    b.Navigation("Schedule");
+
+                    b.Navigation("Treatment");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Bed", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Ward", "Ward")
+                        .WithMany("Beds")
+                        .HasForeignKey("WardId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Ward");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Consultation", b =>
@@ -628,9 +848,25 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Navigation("Prescription");
                 });
 
+            modelBuilder.Entity("Hospital.Domain.Entities.TreatmentSchedule", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Treatment", "Treatment")
+                        .WithMany("Schedules")
+                        .HasForeignKey("TreatmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Treatment");
+                });
+
             modelBuilder.Entity("Hospital.Domain.Entities.Appointment", b =>
                 {
                     b.Navigation("Consultation");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Bed", b =>
+                {
+                    b.Navigation("AdmissionRequests");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Consultation", b =>
@@ -645,6 +881,8 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Hospital.Domain.Entities.Patient", b =>
                 {
+                    b.Navigation("AdmissionRequests");
+
                     b.Navigation("Appointments");
 
                     b.Navigation("Invoices");
@@ -655,9 +893,23 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Navigation("Items");
                 });
 
-            modelBuilder.Entity("Hospital.Domain.Entities.StaffUser", b =>
+            modelBuilder.Entity("Hospital.Domain.Entities.Treatment", b =>
                 {
                     b.Navigation("Appointments");
+
+                    b.Navigation("Schedules");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.TreatmentSchedule", b =>
+                {
+                    b.Navigation("Appointments");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Ward", b =>
+                {
+                    b.Navigation("AdmissionRequests");
+
+                    b.Navigation("Beds");
                 });
 #pragma warning restore 612, 618
         }

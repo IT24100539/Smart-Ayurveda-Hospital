@@ -30,11 +30,11 @@ public sealed class AppointmentsController : ControllerBase
     public async Task<ActionResult<PagedResult<AppointmentDto>>> List(
         [FromQuery] DateOnly? date,
         [FromQuery] Guid? patientId,
-        [FromQuery] Guid? doctorId,
+        [FromQuery] Guid? treatmentId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default) =>
-        Ok(await _appointments.ListAsync(date, patientId, doctorId, page, pageSize, cancellationToken));
+        Ok(await _appointments.ListAsync(date, patientId, treatmentId, page, pageSize, cancellationToken));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AppointmentDto>> Get(Guid id, CancellationToken cancellationToken) =>

@@ -4,6 +4,7 @@ using FluentAssertions;
 
 namespace Hospital.IntegrationTests;
 
+[Collection(IntegrationTestCollection.Name)]
 public sealed class HealthAndAuthTests : IClassFixture<HospitalApiFactory>
 {
     private readonly HospitalApiFactory _factory;

@@ -26,7 +26,9 @@ public static class DependencyInjection
         services.AddScoped<IPatientRepository, PatientRepository>();
         services.AddScoped<IStaffUserRepository, StaffUserRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ITreatmentRepository, TreatmentRepository>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+        services.AddScoped<IWardRepository, WardRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();

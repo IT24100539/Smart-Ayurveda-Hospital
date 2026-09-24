@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using Hospital.Api.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Hospital.Api.Middleware;
 using Hospital.Application;
 using Hospital.Infrastructure;
@@ -10,20 +12,27 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .CreateBootstrapLogger();
+var builder = WebApplication.CreateBuilder(args);
+var serilogEnabled = !builder.Environment.IsEnvironment("Testing");
+
+if (serilogEnabled)
+{
+    Log.Logger = new LoggerConfiguration()
+        .WriteTo.Console()
+        .CreateBootstrapLogger();
+}
 
 try
 {
-    var builder = WebApplication.CreateBuilder(args);
-
-    builder.Host.UseSerilog((context, services, configuration) =>
-        configuration
-            .ReadFrom.Configuration(context.Configuration)
-            .ReadFrom.Services(services)
-            .Enrich.FromLogContext()
-            .WriteTo.Console());
+    if (serilogEnabled)
+    {
+        builder.Host.UseSerilog((context, services, configuration) =>
+            configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .ReadFrom.Services(services)
+                .Enrich.FromLogContext()
+                .WriteTo.Console());
+    }
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
@@ -58,23 +67,34 @@ try
                 RoleClaimType = ClaimTypes.Role,
                 NameClaimType = ClaimTypes.Name
             };
-        });
-    builder.Services.AddAuthorization();
+        })
+        .AddScheme<AuthenticationSchemeOptions, InternalServiceAuthenticationHandler>(
+            InternalServiceAuthenticationHandler.SchemeName, _ => { });
+    builder.Services.AddAuthorization(options =>
+        options.AddPolicy(InternalServiceAuthenticationHandler.PolicyName, policy =>
+            policy.AddAuthenticationSchemes(InternalServiceAuthenticationHandler.SchemeName)
+                .RequireAuthenticatedUser()));
 
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("StaffPortal", policy =>
         {
-            var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                ?? builder.Configuration.GetSection("Cors:StaffOrigins").Get<string[]>()
-                ?? new[] { "http://localhost:5173" };
+            // Restrict local development to Flutter; deployed origins remain configurable.
+            var origins = builder.Environment.IsDevelopment()
+                ? new[] { "http://localhost:5500" }
+                : builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                    ?? builder.Configuration.GetSection("Cors:StaffOrigins").Get<string[]>()
+                    ?? new[] { "http://localhost:5173" };
             policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
         });
     });
 
     var app = builder.Build();
 
-    app.UseSerilogRequestLogging();
+    if (serilogEnabled)
+    {
+        app.UseSerilogRequestLogging();
+    }
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 
     if (app.Environment.IsDevelopment())
@@ -83,15 +103,23 @@ try
         app.UseSwaggerUI();
     }
 
-    app.UseHttpsRedirection();
+    // The local staff portal calls the HTTP development endpoint. Redirecting that
+    // request to HTTPS makes browser requests fail when the ASP.NET development
+    // certificate has not been trusted. Keep HTTPS enforcement for non-development
+    // environments, where a trusted certificate is expected.
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
     app.UseCors("StaffPortal");
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
     app.MapHealthChecks("/health");
 
-    using (var scope = app.Services.CreateScope())
+    if (!app.Environment.IsEnvironment("Testing"))
     {
+        using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
         await DbSeeder.SeedAsync(db, logger);
@@ -101,12 +129,19 @@ try
 }
 catch (Exception ex) when (ex is not HostAbortedException)
 {
-    Log.Fatal(ex, "Hospital API terminated unexpectedly");
+    if (serilogEnabled)
+    {
+        Log.Fatal(ex, "Hospital API terminated unexpectedly");
+    }
+
     throw;
 }
 finally
 {
-    await Log.CloseAndFlushAsync();
+    if (serilogEnabled)
+    {
+        await Log.CloseAndFlushAsync();
+    }
 }
 
 public partial class Program;

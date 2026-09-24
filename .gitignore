@@ -44,3 +44,6 @@ appsettings.*.local.json
 # Coverage
 coverage/
 lcov.info
+
+# Local Flutter tool/cache data
+mobile-patient/.tool-data/

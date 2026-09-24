@@ -69,6 +69,10 @@ class AppLocalizationsSi extends AppLocalizations {
   String get phoneNumberRequired => 'ඔබේ දුරකථන අංකය ඇතුළත් කරන්න';
 
   @override
+  String get phoneNumberInvalid =>
+      'වලංගු ශ්‍රී ලාංකික ජංගම දුරකථන අංකයක් ඇතුළත් කරන්න (07XXXXXXXX හෝ +947XXXXXXXX)';
+
+  @override
   String get passwordRequired => 'ඔබේ රහස් පදය ඇතුළත් කරන්න';
 
   @override

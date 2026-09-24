@@ -218,6 +218,12 @@ abstract class AppLocalizations {
   /// **'Please enter your phone number'**
   String get phoneNumberRequired;
 
+  /// No description provided for @phoneNumberInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid Sri Lankan mobile number (07XXXXXXXX or +947XXXXXXXX)'**
+  String get phoneNumberInvalid;
+
   /// No description provided for @passwordRequired.
   ///
   /// In en, this message translates to:

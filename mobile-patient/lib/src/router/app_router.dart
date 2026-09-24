@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/appointments/presentation/appointments_screen.dart';
+import '../features/appointments/presentation/book_appointment_flow.dart';
+import '../features/appointments/domain/appointment_models.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
@@ -11,6 +13,7 @@ import '../features/home/presentation/home_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/shell/presentation/home_shell.dart';
 import '../features/treatments/presentation/treatments_screen.dart';
+import '../features/wards/presentation/ward_availability_screen.dart';
 import 'app_routes.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -55,6 +58,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.bookAppointment,
+        builder: (context, state) {
+          final extra = state.extra;
+          final treatment = extra is TreatmentBooking
+              ? extra
+              : extra is Map
+              ? TreatmentBooking.fromRouteMap(extra)
+              : TreatmentBooking(
+                  id: state.pathParameters['treatmentId']!,
+                  name: state.uri.queryParameters['name'] ?? 'Treatment',
+                );
+          return BookAppointmentFlow(treatment: treatment);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.wards,
+        builder: (context, state) => const WardAvailabilityScreen(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             HomeShell(navigationShell: navigationShell),
@@ -79,7 +101,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.appointments,
-                builder: (context, state) => const AppointmentsScreen(),
+                builder: (context, state) => const MyAppointmentsScreen(),
               ),
             ],
           ),

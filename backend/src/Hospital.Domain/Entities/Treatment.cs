@@ -11,4 +11,7 @@ public class Treatment : BaseEntity
     public int DurationMinutes { get; set; }
     public decimal UnitPrice { get; set; }
     public bool IsActive { get; set; } = true;
+
+    public ICollection<TreatmentSchedule> Schedules { get; set; } = new List<TreatmentSchedule>();
+    public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
 }

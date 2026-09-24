@@ -27,5 +27,6 @@ public class Patient : BaseEntity
     public bool IsActive { get; set; } = true;
 
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+    public ICollection<AdmissionRequest> AdmissionRequests { get; set; } = new List<AdmissionRequest>();
     public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
 }

@@ -28,3 +28,10 @@ public class UnauthorizedException : DomainException
     {
     }
 }
+
+public class WardFullException : DomainException
+{
+    public WardFullException(string message) : base(message)
+    {
+    }
+}

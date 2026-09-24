@@ -25,6 +25,7 @@
   "emailRequired": "ඔබේ විද්‍යුත් තැපැල් ලිපිනය ඇතුළත් කරන්න",
   "emailInvalid": "වලංගු විද්‍යුත් තැපැල් ලිපිනයක් ඇතුළත් කරන්න",
   "phoneNumberRequired": "ඔබේ දුරකථන අංකය ඇතුළත් කරන්න",
+  "phoneNumberInvalid": "වලංගු ශ්‍රී ලාංකික ජංගම දුරකථන අංකයක් ඇතුළත් කරන්න (07XXXXXXXX හෝ +947XXXXXXXX)",
   "passwordRequired": "ඔබේ රහස් පදය ඇතුළත් කරන්න",
   "passwordTooShort": "රහස් පදය අවම වශයෙන් අක්ෂර {minLength}ක් විය යුතුය",
 

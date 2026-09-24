@@ -25,15 +25,17 @@ Future<void> _pumpApp(WidgetTester tester, {String? storedToken}) async {
 }
 
 void main() {
-  testWidgets('cold start lands on the splash screen with a language switcher',
-      (tester) async {
-    await _pumpApp(tester);
-    final si = await _si();
+  testWidgets(
+    'cold start lands on the splash screen with a language switcher',
+    (tester) async {
+      await _pumpApp(tester);
+      final si = await _si();
 
-    expect(find.text(si.appTitle), findsOneWidget);
-    expect(find.text(si.chooseLanguage), findsOneWidget);
-    expect(find.byType(SegmentedButton<String>), findsOneWidget);
-  });
+      expect(find.text(si.appTitle), findsOneWidget);
+      expect(find.text(si.chooseLanguage), findsOneWidget);
+      expect(find.byType(SegmentedButton<String>), findsOneWidget);
+    },
+  );
 
   testWidgets('language switcher swaps the UI to English', (tester) async {
     await _pumpApp(tester);
@@ -46,8 +48,9 @@ void main() {
     expect(find.text(si.chooseLanguage), findsNothing);
   });
 
-  testWidgets('without a stored token, continuing goes to the login screen',
-      (tester) async {
+  testWidgets('without a stored token, continuing goes to the login screen', (
+    tester,
+  ) async {
     await _pumpApp(tester);
     final si = await _si();
 
@@ -59,8 +62,9 @@ void main() {
     expect(find.byKey(LoginScreenKeys.submit), findsOneWidget);
   });
 
-  testWidgets('with a stored token, continuing goes to the five-tab shell',
-      (tester) async {
+  testWidgets('with a stored token, continuing goes to the five-tab shell', (
+    tester,
+  ) async {
     await _pumpApp(tester, storedToken: 'stored.jwt.value');
     final si = await _si();
 

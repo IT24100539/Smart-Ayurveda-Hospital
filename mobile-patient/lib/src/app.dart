@@ -13,7 +13,8 @@ import 'theme/app_theme.dart';
 /// Kept as an override rather than a direct dependency so `api_client.dart`
 /// stays free of any reference to the auth feature.
 final unauthorizedOverride = onUnauthorizedProvider.overrideWith(
-  (ref) => () => ref.read(authControllerProvider.notifier).handleUnauthorized(),
+  (ref) =>
+      () => ref.read(authControllerProvider.notifier).handleUnauthorized(),
 );
 
 class PatientApp extends ConsumerWidget {
