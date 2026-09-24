@@ -47,6 +47,18 @@ public static class DbSeeder
                 });
         }
 
+        if (!await db.Users.AnyAsync(u => u.Email == "therapist@smartayurveda.local", cancellationToken))
+        {
+            db.Users.Add(new User
+            {
+                Email = "therapist@smartayurveda.local",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Therapist1"),
+                FullName = "Nimali Perera",
+                PhoneNumber = "0000000002",
+                Role = UserRole.Therapist
+            });
+        }
+
         if (!await db.StaffUsers.AnyAsync(cancellationToken))
         {
             db.StaffUsers.AddRange(
@@ -69,14 +81,9 @@ public static class DbSeeder
                 });
         }
 
-        if (!await db.Treatments.AnyAsync(cancellationToken))
-        {
-            db.Treatments.AddRange(
-                new Treatment { Name = "Initial Consultation", Category = TreatmentCategory.Consultation, Description = "Nadi pariksha and prakriti assessment.", DurationMinutes = 30, UnitPrice = 500 },
-                new Treatment { Name = "Abhyanga", Category = TreatmentCategory.Abhyanga, Description = "Full-body herbal oil massage.", DurationMinutes = 60, UnitPrice = 1800 },
-                new Treatment { Name = "Shirodhara", Category = TreatmentCategory.Shirodhara, Description = "Continuous stream of warm oil on the forehead.", DurationMinutes = 45, UnitPrice = 2200 },
-                new Treatment { Name = "Panchakarma Package (7 day)", Category = TreatmentCategory.Panchakarma, Description = "Supervised detoxification programme.", DurationMinutes = 0, UnitPrice = 28000 });
-        }
+        await db.SaveChangesAsync(cancellationToken);
+
+        await SeedTreatmentsInformationAsync(db, cancellationToken);
 
         if (!await db.Medicines.AnyAsync(cancellationToken))
         {
@@ -89,4 +96,133 @@ public static class DbSeeder
         await db.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Database schema ready and seed data applied.");
     }
+
+    private static async Task SeedTreatmentsInformationAsync(HospitalDbContext db, CancellationToken cancellationToken)
+    {
+        if (await db.Treatments.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var panchakarma = NewTreatment(
+            "Panchakarma",
+            "පංචකර්ම",
+            "Supervised five-fold shodhana programme (vamana, virechana, basti, nasya, raktamokshana as indicated) to clear ama and restore dosha balance.",
+            "වෛද්‍ය අධීක්ෂණය යටතේ සිදු කරන පංචකර්ම ශෝධන වැඩසටහන. ආම දුරු කර දෝෂ සමබරතාව යථා තත්ත්වයට පත් කිරීමට උපකාරී වේ.",
+            TreatmentCategory.Panchakarma,
+            durationMinutes: 90,
+            unitPrice: 4500);
+
+        var shirodhara = NewTreatment(
+            "Shirodhara",
+            "ශිරෝධාරා",
+            "Continuous stream of warm medicated oil on the forehead; indicated for vata-related restlessness and sleep disturbance.",
+            "නළල මත උණුසුම් ඖෂධ තෙල් ධාරාවක් යෙදෙන ශිරෝධාරා චිකිත්සාව. වාත අශාන්තිය සහ නින්ද ආබාධ සඳහා යොදා ගනී.",
+            TreatmentCategory.Shirodhara,
+            durationMinutes: 45,
+            unitPrice: 2200);
+
+        var herbalSteam = NewTreatment(
+            "Herbal Steam Therapy",
+            "ඖෂධීය වාෂ්ප චිකිත්සාව",
+            "Swedana with herbal steam to loosen ama, open srotas, and prepare the body for panchakarma.",
+            "ආම ලිහිල් කර ශ්‍රෝතස් විවෘත කිරීමට සහ පංචකර්ම සඳහා ශරීරය සූදානම් කිරීමට යොදන ඖෂධීය වාෂ්ප (ස්වේදන) චිකිත්සාව.",
+            TreatmentCategory.HerbalSteam,
+            durationMinutes: 30,
+            unitPrice: 1500);
+
+        var nasya = NewTreatment(
+            "Nasya Treatment",
+            "නස්‍ය",
+            "Nasal administration of medicated oils for shiro-roga and kapha accumulated in the head and sinuses.",
+            "හිස සහ නාසයේ රැඳී ඇති කඵ දෝෂයට සහ ශිරෝ රෝග සඳහා ඖෂධීය තෙල් නාසයට යෙදෙන නස්‍ය චිකිත්සාව.",
+            TreatmentCategory.Nasya,
+            durationMinutes: 30,
+            unitPrice: 1200);
+
+        var general = NewTreatment(
+            "General Consultation",
+            "සාමාන්‍ය උපදේශනය",
+            "Nadi pariksha with prakriti and vikriti assessment, followed by a personalised chikitsa plan.",
+            "නාඩි පරීක්ෂාව, ප්‍රකෘති සහ විකෘති තක්සේරුව, සහ පුද්ගලික චිකිත්සා සැලැස්මක් ඇතුළත් සාමාන්‍ය උපදේශනය.",
+            TreatmentCategory.General,
+            durationMinutes: 30,
+            unitPrice: 500);
+
+        db.Treatments.AddRange(panchakarma, shirodhara, herbalSteam, nasya, general);
+
+        var therapistUser = await db.Users.FirstOrDefaultAsync(
+            u => u.Email == "therapist@smartayurveda.local",
+            cancellationToken);
+
+        var nimali = new Therapist
+        {
+            UserId = therapistUser?.Id,
+            FullName = "Nimali Perera",
+            Specialization = "Panchakarma and Shirodhara"
+        };
+        var sunil = new Therapist
+        {
+            UserId = null,
+            FullName = "Sunil Jayawardena",
+            Specialization = "Nasya and Swedana"
+        };
+        db.Therapists.AddRange(nimali, sunil);
+
+        // ILLUSTRATIVE EXAMPLE DATA — weekly availability below is placeholder pending
+        // verification with the real hospital (proposal verification note). Do not treat
+        // Mon/Wed/Fri and Tue/Thu day tags as confirmed clinical roster.
+        db.TreatmentSchedules.AddRange(
+            Slot(panchakarma, nimali, Weekday.Monday, "08:00", "12:00", 6),
+            Slot(panchakarma, nimali, Weekday.Wednesday, "08:00", "12:00", 6),
+            Slot(panchakarma, nimali, Weekday.Friday, "08:00", "12:00", 6),
+            Slot(shirodhara, nimali, Weekday.Tuesday, "09:00", "13:00", 6),
+            Slot(shirodhara, nimali, Weekday.Thursday, "09:00", "13:00", 6),
+            Slot(herbalSteam, sunil, Weekday.Monday, "13:00", "17:00", 8),
+            Slot(herbalSteam, sunil, Weekday.Wednesday, "13:00", "17:00", 8),
+            Slot(herbalSteam, sunil, Weekday.Friday, "13:00", "17:00", 8),
+            Slot(nasya, sunil, Weekday.Tuesday, "14:00", "16:00", 8),
+            Slot(nasya, sunil, Weekday.Thursday, "14:00", "16:00", 8),
+            Slot(general, nimali, Weekday.Monday, "14:00", "16:00", 10),
+            Slot(general, nimali, Weekday.Wednesday, "14:00", "16:00", 10),
+            Slot(general, nimali, Weekday.Friday, "14:00", "16:00", 10));
+    }
+
+    private static Treatment NewTreatment(
+        string name,
+        string nameSinhala,
+        string description,
+        string descriptionSinhala,
+        TreatmentCategory category,
+        int durationMinutes,
+        decimal unitPrice) =>
+        new()
+        {
+            Name = name,
+            NameSinhala = nameSinhala,
+            Description = description,
+            DescriptionSinhala = descriptionSinhala,
+            Category = category,
+            DurationMinutes = durationMinutes,
+            UnitPrice = unitPrice,
+            IsActive = true
+        };
+
+    private static TreatmentSchedule Slot(
+        Treatment treatment,
+        Therapist therapist,
+        Weekday day,
+        string start,
+        string end,
+        int maxSlots) =>
+        new()
+        {
+            Treatment = treatment,
+            Therapist = therapist,
+            DayOfWeek = day,
+            StartTime = TimeOnly.Parse(start),
+            EndTime = TimeOnly.Parse(end),
+            MaxSlotsPerDay = maxSlots,
+            IsActive = true
+        };
 }

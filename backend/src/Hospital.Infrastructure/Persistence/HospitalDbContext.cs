@@ -16,6 +16,8 @@ public sealed class HospitalDbContext : DbContext
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Consultation> Consultations => Set<Consultation>();
     public DbSet<Treatment> Treatments => Set<Treatment>();
+    public DbSet<Therapist> Therapists => Set<Therapist>();
+    public DbSet<TreatmentSchedule> TreatmentSchedules => Set<TreatmentSchedule>();
     public DbSet<Medicine> Medicines => Set<Medicine>();
     public DbSet<Prescription> Prescriptions => Set<Prescription>();
     public DbSet<PrescriptionItem> PrescriptionItems => Set<PrescriptionItem>();
