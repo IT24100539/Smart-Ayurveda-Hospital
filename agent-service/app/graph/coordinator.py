@@ -10,6 +10,8 @@ from app.agents.intake_agent import run_intake_agent
 from app.agents.treatment_agent import run_treatment_agent
 from app.graph.state import AgentState
 
+# Feedback replies are not drafted here. That workflow is
+# POST /internal/agents/feedback-support (feedback_support_agent).
 KNOWN_AGENTS = {"intake", "appointment", "treatment", "coordinator"}
 
 

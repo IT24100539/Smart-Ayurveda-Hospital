@@ -290,11 +290,11 @@ abstract class AppLocalizations {
   /// **'Appointments'**
   String get navAppointments;
 
-  /// Placeholder label for the combined invoices and feedback tab
+  /// Bottom navigation label for the patient feedback tab
   ///
   /// In en, this message translates to:
-  /// **'Invoices'**
-  String get navBilling;
+  /// **'Feedback'**
+  String get navFeedback;
 
   /// No description provided for @navProfile.
   ///
@@ -344,12 +344,6 @@ abstract class AppLocalizations {
   /// **'Your nadi pariksha and consultation bookings will appear here.'**
   String get appointmentsPlaceholder;
 
-  /// No description provided for @billingPlaceholder.
-  ///
-  /// In en, this message translates to:
-  /// **'Your invoices and treatment feedback will appear here.'**
-  String get billingPlaceholder;
-
   /// No description provided for @profilePlaceholder.
   ///
   /// In en, this message translates to:
@@ -367,6 +361,402 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign out'**
   String get signOut;
+
+  /// No description provided for @leaveFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave feedback'**
+  String get leaveFeedback;
+
+  /// No description provided for @submitFeedbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your experience'**
+  String get submitFeedbackTitle;
+
+  /// No description provided for @ratingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'How was this visit?'**
+  String get ratingLabel;
+
+  /// No description provided for @commentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment'**
+  String get commentLabel;
+
+  /// No description provided for @commentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should the care team know about this visit?'**
+  String get commentHint;
+
+  /// No description provided for @commentRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please share a short comment'**
+  String get commentRequired;
+
+  /// No description provided for @ratingRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a star rating'**
+  String get ratingRequired;
+
+  /// No description provided for @anonymousLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Post anonymously'**
+  String get anonymousLabel;
+
+  /// No description provided for @anonymousHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name stays off the public board.'**
+  String get anonymousHelp;
+
+  /// No description provided for @postedAsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Posted as'**
+  String get postedAsLabel;
+
+  /// No description provided for @yourName.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get yourName;
+
+  /// No description provided for @submitFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get submitFeedback;
+
+  /// No description provided for @feedbackSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you. Your note will appear after the care team reviews it.'**
+  String get feedbackSent;
+
+  /// No description provided for @linkedVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked to this completed visit'**
+  String get linkedVisit;
+
+  /// No description provided for @feedbackNeedsLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open this from a completed appointment so the visit can be attached.'**
+  String get feedbackNeedsLink;
+
+  /// No description provided for @publicFeedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient feedback'**
+  String get publicFeedTitle;
+
+  /// No description provided for @publicFeedEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No approved notes yet. They will appear here after review.'**
+  String get publicFeedEmpty;
+
+  /// No description provided for @anonymousPatient.
+  ///
+  /// In en, this message translates to:
+  /// **'Anonymous patient'**
+  String get anonymousPatient;
+
+  /// No description provided for @helpful.
+  ///
+  /// In en, this message translates to:
+  /// **'Helpful'**
+  String get helpful;
+
+  /// No description provided for @notHelpful.
+  ///
+  /// In en, this message translates to:
+  /// **'Not helpful'**
+  String get notHelpful;
+
+  /// No description provided for @repliesHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Replies'**
+  String get repliesHeading;
+
+  /// No description provided for @noReplies.
+  ///
+  /// In en, this message translates to:
+  /// **'No replies yet.'**
+  String get noReplies;
+
+  /// No description provided for @careTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Care team'**
+  String get careTeam;
+
+  /// No description provided for @patientRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient'**
+  String get patientRole;
+
+  /// No description provided for @reactionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save your reaction.'**
+  String get reactionFailed;
+
+  /// No description provided for @complaintsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My complaints'**
+  String get complaintsTitle;
+
+  /// No description provided for @submitComplaintTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise a concern'**
+  String get submitComplaintTitle;
+
+  /// No description provided for @newComplaint.
+  ///
+  /// In en, this message translates to:
+  /// **'New complaint'**
+  String get newComplaint;
+
+  /// No description provided for @subjectLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get subjectLabel;
+
+  /// No description provided for @descriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get descriptionLabel;
+
+  /// No description provided for @subjectRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a subject'**
+  String get subjectRequired;
+
+  /// No description provided for @descriptionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please describe what happened'**
+  String get descriptionRequired;
+
+  /// No description provided for @priorityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get priorityLabel;
+
+  /// No description provided for @priorityNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get priorityNormal;
+
+  /// No description provided for @priorityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get priorityHigh;
+
+  /// No description provided for @complaintSent.
+  ///
+  /// In en, this message translates to:
+  /// **'We have received your concern.'**
+  String get complaintSent;
+
+  /// No description provided for @complaintsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You have not raised a concern yet.'**
+  String get complaintsEmpty;
+
+  /// No description provided for @statusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get statusOpen;
+
+  /// No description provided for @statusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get statusInProgress;
+
+  /// No description provided for @statusEscalated.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalated'**
+  String get statusEscalated;
+
+  /// No description provided for @statusResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved'**
+  String get statusResolved;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// No description provided for @unreadLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread'**
+  String get unreadLabel;
+
+  /// No description provided for @notificationsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You are up to date.'**
+  String get notificationsEmpty;
+
+  /// No description provided for @notificationReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get notificationReply;
+
+  /// No description provided for @notificationStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status update'**
+  String get notificationStatus;
+
+  /// No description provided for @notificationEscalated.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalated'**
+  String get notificationEscalated;
+
+  /// No description provided for @notificationGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'Notice'**
+  String get notificationGeneral;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get retry;
+
+  /// No description provided for @myFeedbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My feedback'**
+  String get myFeedbackTitle;
+
+  /// No description provided for @myFeedbackEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You have not shared feedback yet.'**
+  String get myFeedbackEmpty;
+
+  /// No description provided for @editFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editFeedback;
+
+  /// No description provided for @withdrawFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get withdrawFeedback;
+
+  /// No description provided for @withdrawConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw this feedback? It will be hidden from the public board.'**
+  String get withdrawConfirm;
+
+  /// No description provided for @feedbackUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Your feedback was updated.'**
+  String get feedbackUpdated;
+
+  /// No description provided for @feedbackWithdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Your feedback was withdrawn.'**
+  String get feedbackWithdrawn;
+
+  /// No description provided for @canStillEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'You can edit this for 24 hours after it was sent.'**
+  String get canStillEdit;
+
+  /// No description provided for @editingClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'The 24-hour editing window has closed.'**
+  String get editingClosed;
+
+  /// No description provided for @replyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to this note'**
+  String get replyHint;
+
+  /// No description provided for @sendReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reply'**
+  String get sendReply;
+
+  /// No description provided for @replySent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your reply was posted.'**
+  String get replySent;
+
+  /// No description provided for @markAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get markAllRead;
+
+  /// No description provided for @chooseCompletedVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed visit'**
+  String get chooseCompletedVisit;
+
+  /// No description provided for @noCompletedVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'No completed visit is available for feedback yet.'**
+  String get noCompletedVisit;
+
+  /// No description provided for @escalatedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalated'**
+  String get escalatedOn;
+
+  /// No description provided for @saveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get saveChanges;
 }
 
 class _AppLocalizationsDelegate

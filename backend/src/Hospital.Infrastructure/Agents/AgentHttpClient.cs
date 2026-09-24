@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Hospital.Application.Agents;
 using Hospital.Application.Agents.Dtos;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,11 @@ public sealed class AgentServiceOptions
 
 public sealed class AgentHttpClient : IAgentClient
 {
+    private static readonly JsonSerializerOptions Json = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly HttpClient _http;
     private readonly AgentServiceOptions _options;
     private readonly ILogger<AgentHttpClient> _logger;
@@ -26,23 +32,37 @@ public sealed class AgentHttpClient : IAgentClient
         _logger = logger;
     }
 
-    public async Task<AgentInvokeResponse> InvokeAsync(AgentInvokeRequest request, CancellationToken cancellationToken)
+    public Task<AgentInvokeResponse> InvokeAsync(AgentInvokeRequest request, CancellationToken cancellationToken) =>
+        PostAsync<AgentInvokeRequest, AgentInvokeResponse>("/v1/invoke", request, cancellationToken);
+
+    public Task<FeedbackSupportAgentResponse> DraftFeedbackSupportAsync(
+        FeedbackSupportAgentRequest request,
+        CancellationToken cancellationToken) =>
+        PostAsync<FeedbackSupportAgentRequest, FeedbackSupportAgentResponse>(
+            "/internal/agents/feedback-support",
+            request,
+            cancellationToken);
+
+    private async Task<TResponse> PostAsync<TRequest, TResponse>(
+        string path,
+        TRequest body,
+        CancellationToken cancellationToken)
     {
-        using var message = new HttpRequestMessage(HttpMethod.Post, "/v1/invoke")
+        using var message = new HttpRequestMessage(HttpMethod.Post, path)
         {
-            Content = JsonContent.Create(request)
+            Content = JsonContent.Create(body, options: Json)
         };
         message.Headers.Add("X-Internal-Secret", _options.SharedSecret);
 
         var response = await _http.SendAsync(message, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogWarning("Agent service returned {Status}: {Body}", (int)response.StatusCode, body);
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogWarning("Agent service returned {Status}: {Body}", (int)response.StatusCode, errorBody);
             response.EnsureSuccessStatusCode();
         }
 
-        var payload = await response.Content.ReadFromJsonAsync<AgentInvokeResponse>(cancellationToken)
+        var payload = await response.Content.ReadFromJsonAsync<TResponse>(Json, cancellationToken)
             ?? throw new InvalidOperationException("Agent service returned an empty payload.");
         return payload;
     }

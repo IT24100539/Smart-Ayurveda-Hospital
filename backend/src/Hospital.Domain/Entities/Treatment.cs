@@ -14,4 +14,5 @@ public class Treatment : BaseEntity
 
     public ICollection<TreatmentSchedule> Schedules { get; set; } = new List<TreatmentSchedule>();
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+    public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }

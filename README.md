@@ -66,7 +66,7 @@ npm install
 npm run dev
 ```
 
-Copy `web-staff/.env.example` to `web-staff/.env`. The portal calls `Hospital.Api` at `VITE_API_BASE_URL` (default `http://localhost:5000/api`).
+Copy `web-staff/.env.example` to `web-staff/.env`. The portal calls `Hospital.Api` at `VITE_API_BASE_URL` (default `http://localhost:5080/api`).
 
 ### Patient app
 

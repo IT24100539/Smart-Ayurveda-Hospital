@@ -8,7 +8,12 @@ import '../features/appointments/domain/appointment_models.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
-import '../features/billing/presentation/billing_screen.dart';
+import '../features/feedback/presentation/my_complaints_screen.dart';
+import '../features/feedback/presentation/my_feedback_screen.dart';
+import '../features/feedback/presentation/notifications_screen.dart';
+import '../features/feedback/presentation/public_feedback_feed_screen.dart';
+import '../features/feedback/presentation/submit_complaint_screen.dart';
+import '../features/feedback/presentation/submit_feedback_screen.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/shell/presentation/home_shell.dart';
@@ -108,8 +113,36 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.billing,
-                builder: (context, state) => const BillingScreen(),
+                path: AppRoutes.feedback,
+                builder: (context, state) => const PublicFeedbackFeedScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'mine',
+                    builder: (context, state) => const MyFeedbackScreen(),
+                  ),
+                  GoRoute(
+                    path: 'submit',
+                    builder: (context, state) => SubmitFeedbackScreen(
+                      appointmentId: state.uri.queryParameters['appointmentId'],
+                      treatmentId: state.uri.queryParameters['treatmentId'],
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'complaints',
+                    builder: (context, state) => const MyComplaintsScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'new',
+                        builder: (context, state) =>
+                            const SubmitComplaintScreen(),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'notifications',
+                    builder: (context, state) => const NotificationsScreen(),
+                  ),
+                ],
               ),
             ],
           ),

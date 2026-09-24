@@ -58,6 +58,11 @@ public sealed class ExceptionHandlingMiddleware
                 body = Problem("https://tools.ietf.org/html/rfc9110#section-15.5.2", "Unauthorized", status, exception.Message);
                 _logger.LogWarning(exception, "Request failed with {Status}", status);
                 break;
+            case ForbiddenException:
+                status = HttpStatusCode.Forbidden;
+                body = Problem("https://tools.ietf.org/html/rfc9110#section-15.5.4", "Forbidden", status, exception.Message);
+                _logger.LogWarning(exception, "Request failed with {Status}", status);
+                break;
             case NotFoundException:
                 status = HttpStatusCode.NotFound;
                 body = Problem("https://tools.ietf.org/html/rfc9110#section-15.5.5", "Not Found", status, exception.Message);

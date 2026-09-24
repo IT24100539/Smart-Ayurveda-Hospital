@@ -23,4 +23,5 @@ public class Appointment : BaseEntity
     public DateTimeOffset? DecidedAt { get; set; }
 
     public Consultation? Consultation { get; set; }
+    public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }

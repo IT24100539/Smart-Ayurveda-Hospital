@@ -1,4 +1,5 @@
 using FluentValidation;
+using Hospital.Application.Abstractions;
 using Hospital.Application.Appointments;
 using Hospital.Application.Appointments.Dtos;
 using Hospital.Application.Common;
@@ -13,17 +14,28 @@ namespace Hospital.Api.Controllers;
 public sealed class AppointmentsController : ControllerBase
 {
     private readonly IAppointmentService _appointments;
+    private readonly IActorContext _actors;
     private readonly IValidator<CreateAppointmentRequest> _createValidator;
     private readonly IValidator<UpdateAppointmentStatusRequest> _statusValidator;
 
     public AppointmentsController(
         IAppointmentService appointments,
+        IActorContext actors,
         IValidator<CreateAppointmentRequest> createValidator,
         IValidator<UpdateAppointmentStatusRequest> statusValidator)
     {
         _appointments = appointments;
+        _actors = actors;
         _createValidator = createValidator;
         _statusValidator = statusValidator;
+    }
+
+    [HttpGet("mine")]
+    [Authorize(Roles = "Patient")]
+    public async Task<ActionResult<PagedResult<AppointmentDto>>> Mine(CancellationToken cancellationToken)
+    {
+        var patient = await _actors.RequirePatientAsync(cancellationToken);
+        return Ok(await _appointments.ListAsync(null, patient.Id, null, 1, 50, cancellationToken));
     }
 
     [HttpGet]

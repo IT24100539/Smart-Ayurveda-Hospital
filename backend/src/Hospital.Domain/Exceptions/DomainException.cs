@@ -35,3 +35,10 @@ public class WardFullException : DomainException
     {
     }
 }
+
+public class ForbiddenException : DomainException
+{
+    public ForbiddenException(string message) : base(message)
+    {
+    }
+}
