@@ -29,6 +29,14 @@ public sealed class HealthAndAuthTests
     }
 
     [Fact]
+    public async Task Treatments_WithoutToken_ReturnsOk()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync("/api/treatments");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Login_WithSeedAdmin_ReturnsToken()
     {
         var client = _factory.CreateClient();

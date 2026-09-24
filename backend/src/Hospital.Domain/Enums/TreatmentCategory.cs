@@ -1,14 +1,13 @@
 namespace Hospital.Domain.Enums;
 
+/// <summary>
+/// Catalog grouping for therapies. Add members as the hospital introduces new modalities.
+/// </summary>
 public enum TreatmentCategory
 {
-    Consultation = 1,
-    Panchakarma = 2,
-    Abhyanga = 3,
-    Shirodhara = 4,
-    Nasya = 5,
-    Basti = 6,
-    Kizhi = 7,
-    Yoga = 8,
-    Other = 9
+    Panchakarma = 1,
+    Shirodhara = 2,
+    HerbalSteam = 3,
+    Nasya = 4,
+    General = 5
 }

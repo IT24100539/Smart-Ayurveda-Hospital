@@ -68,6 +68,25 @@ public interface IAppointmentRepository
     Task AddAsync(Appointment appointment, CancellationToken cancellationToken);
 }
 
+public interface ITreatmentRepository
+{
+    Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<Treatment?> GetByIdWithScheduleAsync(Guid id, CancellationToken cancellationToken);
+    Task<(IReadOnlyList<Treatment> Items, int Total)> SearchAsync(
+        string? name,
+        TreatmentCategory? category,
+        bool? activeOnly,
+        int page,
+        int pageSize,
+        string? sort,
+        CancellationToken cancellationToken);
+    Task AddAsync(Treatment treatment, CancellationToken cancellationToken);
+    Task<TreatmentSchedule?> GetScheduleEntryAsync(Guid treatmentId, Guid entryId, CancellationToken cancellationToken);
+    Task AddScheduleAsync(TreatmentSchedule entry, CancellationToken cancellationToken);
+    void RemoveSchedule(TreatmentSchedule entry);
+    Task<Therapist?> GetTherapistByIdAsync(Guid id, CancellationToken cancellationToken);
+}
+
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

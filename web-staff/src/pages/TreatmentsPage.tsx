@@ -1,3 +1,5 @@
+import { TreatmentsView } from '../components/treatments/TreatmentsView';
+
 export function TreatmentsPage() {
-  return <h1>Treatments</h1>;
+  return <TreatmentsView />;
 }
