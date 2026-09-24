@@ -40,6 +40,22 @@ jobs:
         working-directory: backend
         run: dotnet test Hospital.sln --no-build
 
+  agent-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: agent-service/requirements.txt
+      - name: Install dependencies
+        working-directory: agent-service
+        run: pip install -r requirements.txt
+      - name: Test
+        working-directory: agent-service
+        run: pytest
+
   frontend-lint:
     runs-on: ubuntu-latest
     steps:
