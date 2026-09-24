@@ -20,4 +20,5 @@ public class Appointment : BaseEntity
     public string? CancellationReason { get; set; }
 
     public Consultation? Consultation { get; set; }
+    public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }
