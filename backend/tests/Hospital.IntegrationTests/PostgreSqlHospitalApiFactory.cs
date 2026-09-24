@@ -41,37 +41,21 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
             await using var scope = Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
 
-            await using var connection = (NpgsqlConnection)db.Database.GetDbConnection();
-            await connection.OpenAsync();
+            await db.Database.OpenConnectionAsync();
 
-            await using (var lockCommand = new NpgsqlCommand(
-                "SELECT pg_advisory_lock(@key);",
-                connection))
-            {
-                lockCommand.Parameters.AddWithValue("key", DatabaseResetAdvisoryLockKey);
-                await lockCommand.ExecuteNonQueryAsync();
-            }
+            await using var transaction = await db.Database.BeginTransactionAsync();
 
-            try
-            {
-                // Drop and recreate the schema instead of the whole database.
-                // This avoids the "database does not exist" window that occurs when
-                // EnsureDeletedAsync drops the database while other connections are still open.
-                await db.Database.ExecuteSqlRawAsync("""
-                    DROP SCHEMA IF EXISTS public CASCADE;
-                    CREATE SCHEMA public;
-                    """);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock({DatabaseResetAdvisoryLockKey});");
 
-                await db.Database.MigrateAsync();
-            }
-            finally
-            {
-                await using var unlockCommand = new NpgsqlCommand(
-                    "SELECT pg_advisory_unlock(@key);",
-                    connection);
-                unlockCommand.Parameters.AddWithValue("key", DatabaseResetAdvisoryLockKey);
-                await unlockCommand.ExecuteNonQueryAsync();
-            }
+            await db.Database.ExecuteSqlRawAsync("""
+                DROP SCHEMA IF EXISTS public CASCADE;
+                CREATE SCHEMA public;
+                """);
+
+            await db.Database.MigrateAsync();
+
+            await transaction.CommitAsync();
         }
         finally
         {

@@ -14,7 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Hospital.IntegrationTests;
 
-[Collection(IntegrationTestCollection.Name)]
+[Collection(PostgreSqlIntegrationTestCollection.Name)]
 public sealed class AppointmentAndWardIntegrationTests
 {
     private static readonly DateOnly ValidMonday = new(2026, 9, 21);

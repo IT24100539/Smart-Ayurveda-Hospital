@@ -15,7 +15,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Hospital.IntegrationTests;
 
-[Collection(IntegrationTestCollection.Name)]
+[Collection(PostgreSqlIntegrationTestCollection.Name)]
 public sealed class InternalSchedulingTests
 {
     [Theory]
