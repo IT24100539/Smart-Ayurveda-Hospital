@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Mirrors `Hospital.Domain/Enums/UserRole.cs`, which is serialized as a
 /// PascalCase string by `JsonStringEnumConverter`.
 enum UserRole {
@@ -58,6 +60,53 @@ class AuthUser {
     'phoneNumber': phoneNumber,
     'role': role.wireName,
   };
+
+  /// Rebuilds the lightweight signed-in user after a browser/app restart.
+  /// Signature validation remains the API's responsibility on the next call;
+  /// this only reads claims from the already persisted token for UI state.
+  static AuthUser? fromJwt(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload =
+          jsonDecode(
+                utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+              )
+              as Map<String, dynamic>;
+      String? claim(String shortName, String schemaName) =>
+          (payload[shortName] ?? payload[schemaName])?.toString();
+
+      final id = claim(
+        'sub',
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier',
+      );
+      if (id == null || id.isEmpty) return null;
+      return AuthUser(
+        id: id,
+        fullName:
+            claim(
+              'name',
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name',
+            ) ??
+            '',
+        email:
+            claim(
+              'email',
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+            ) ??
+            '',
+        phoneNumber: '',
+        role: UserRole.fromWire(
+          claim(
+            'role',
+            'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
+          ),
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 /// Mirrors the `AuthResponse` record from `POST /api/auth/login|register`.

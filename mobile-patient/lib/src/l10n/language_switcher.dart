@@ -15,14 +15,8 @@ class LanguageSwitcher extends ConsumerWidget {
 
     return SegmentedButton<String>(
       segments: [
-        ButtonSegment(
-          value: 'si',
-          label: Text(l10n.languageSinhala),
-        ),
-        ButtonSegment(
-          value: 'en',
-          label: Text(l10n.languageEnglish),
-        ),
+        ButtonSegment(value: 'si', label: Text(l10n.languageSinhala)),
+        ButtonSegment(value: 'en', label: Text(l10n.languageEnglish)),
       ],
       selected: {current.languageCode},
       showSelectedIcon: false,

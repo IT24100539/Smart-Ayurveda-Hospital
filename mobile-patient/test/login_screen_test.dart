@@ -33,6 +33,17 @@ Future<void> pumpLoginScreen(
 }
 
 void main() {
+  test(
+    'Sri Lankan mobile number validation accepts only supported formats',
+    () {
+      expect(isValidSriLankanMobileNumber('0771234567'), isTrue);
+      expect(isValidSriLankanMobileNumber('+94 77 123 4567'), isTrue);
+      expect(isValidSriLankanMobileNumber('12345'), isFalse);
+      expect(isValidSriLankanMobileNumber('071123456'), isFalse);
+      expect(isValidSriLankanMobileNumber('+94791234567'), isFalse);
+    },
+  );
+
   testWidgets('login screen renders email, password and submit button', (
     tester,
   ) async {

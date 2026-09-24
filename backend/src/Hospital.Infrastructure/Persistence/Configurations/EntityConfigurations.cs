@@ -63,13 +63,70 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
     {
         builder.ToTable("appointments");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Reason).HasMaxLength(500).IsRequired();
-        builder.Property(x => x.Notes).HasMaxLength(2000);
-        builder.Property(x => x.CancellationReason).HasMaxLength(500);
-        builder.HasIndex(x => new { x.DoctorId, x.ScheduledAt });
+        builder.Property(x => x.RequestedTimeSlot).HasMaxLength(32).IsRequired();
+        builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.HasIndex(x => new { x.TreatmentId, x.RequestedDate })
+            .HasDatabaseName("ix_appointments_treatment_requested_date");
+        builder.HasIndex(x => new { x.PatientId, x.TreatmentId, x.RequestedDate, x.RequestedTimeSlot })
+            .IsUnique()
+            .HasFilter("\"Status\" <> 'Cancelled'")
+            .HasDatabaseName("ux_appointments_patient_treatment_slot_active");
         builder.HasOne(x => x.Patient).WithMany(x => x.Appointments).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(x => x.Doctor).WithMany(x => x.Appointments).HasForeignKey(x => x.DoctorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Treatment).WithMany(x => x.Appointments).HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Schedule).WithMany(x => x.Appointments).HasForeignKey(x => x.ScheduleId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.DecidedByUser).WithMany().HasForeignKey(x => x.DecidedBy).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Consultation).WithOne(x => x.Appointment).HasForeignKey<Consultation>(x => x.AppointmentId);
+    }
+}
+
+public sealed class TreatmentScheduleConfiguration : IEntityTypeConfiguration<TreatmentSchedule>
+{
+    public void Configure(EntityTypeBuilder<TreatmentSchedule> builder)
+    {
+        builder.ToTable("treatment_schedules");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.TimeSlot).HasMaxLength(32).IsRequired();
+        builder.HasOne(x => x.Treatment).WithMany(x => x.Schedules).HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => new { x.TreatmentId, x.DayOfWeek, x.TimeSlot });
+    }
+}
+
+public sealed class WardConfiguration : IEntityTypeConfiguration<Ward>
+{
+    public void Configure(EntityTypeBuilder<Ward> builder)
+    {
+        builder.ToTable("wards");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Name).HasMaxLength(120).IsRequired();
+        builder.Property(x => x.NameSinhala).HasMaxLength(120).IsRequired();
+        builder.Property(x => x.Gender).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.HasMany(x => x.Beds).WithOne(x => x.Ward).HasForeignKey(x => x.WardId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class BedConfiguration : IEntityTypeConfiguration<Bed>
+{
+    public void Configure(EntityTypeBuilder<Bed> builder)
+    {
+        builder.ToTable("beds");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.BedLabel).HasMaxLength(16).IsRequired();
+        builder.HasIndex(x => new { x.WardId, x.BedLabel }).IsUnique();
+    }
+}
+
+public sealed class AdmissionRequestConfiguration : IEntityTypeConfiguration<AdmissionRequest>
+{
+    public void Configure(EntityTypeBuilder<AdmissionRequest> builder)
+    {
+        builder.ToTable("admission_requests");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Reason).HasMaxLength(1000).IsRequired();
+        builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.HasOne(x => x.Patient).WithMany(x => x.AdmissionRequests).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Ward).WithMany(x => x.AdmissionRequests).HasForeignKey(x => x.WardId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Bed).WithMany(x => x.AdmissionRequests).HasForeignKey(x => x.BedId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.DecidedByUser).WithMany().HasForeignKey(x => x.DecidedBy).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -207,5 +264,85 @@ public sealed class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceL
         builder.Property(x => x.Description).HasMaxLength(240).IsRequired();
         builder.Property(x => x.UnitPrice).HasPrecision(12, 2);
         builder.Property(x => x.LineTotal).HasPrecision(12, 2);
+    }
+}
+
+public sealed class FeedbackConfiguration : IEntityTypeConfiguration<Feedback>
+{
+    public void Configure(EntityTypeBuilder<Feedback> builder)
+    {
+        builder.ToTable("feedbacks", table =>
+        {
+            table.HasCheckConstraint("ck_feedbacks_rating", "\"Rating\" >= 1 AND \"Rating\" <= 5");
+        });
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.PatientNameSnapshot).HasMaxLength(160).IsRequired();
+        builder.Property(x => x.Comment).HasMaxLength(2000).IsRequired();
+        builder.HasIndex(x => x.PatientId);
+        builder.HasIndex(x => x.Status);
+        builder.HasIndex(x => x.Sentiment);
+        builder.HasIndex(x => x.Category);
+        builder.HasIndex(x => x.CreatedAt);
+        builder.HasOne(x => x.Patient).WithMany(x => x.Feedbacks).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Appointment).WithMany(x => x.Feedbacks).HasForeignKey(x => x.AppointmentId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.Treatment).WithMany(x => x.Feedbacks).HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.Moderator).WithMany().HasForeignKey(x => x.ModeratedBy).OnDelete(DeleteBehavior.SetNull);
+        builder.HasMany(x => x.Reactions).WithOne(x => x.Feedback).HasForeignKey(x => x.FeedbackId);
+        builder.HasMany(x => x.Replies).WithOne(x => x.Feedback).HasForeignKey(x => x.FeedbackId);
+    }
+}
+
+public sealed class FeedbackReactionConfiguration : IEntityTypeConfiguration<FeedbackReaction>
+{
+    public void Configure(EntityTypeBuilder<FeedbackReaction> builder)
+    {
+        builder.ToTable("feedback_reactions");
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => new { x.FeedbackId, x.UserId }).IsUnique();
+        builder.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class FeedbackReplyConfiguration : IEntityTypeConfiguration<FeedbackReply>
+{
+    public void Configure(EntityTypeBuilder<FeedbackReply> builder)
+    {
+        builder.ToTable("feedback_replies");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Reply).HasMaxLength(2000).IsRequired();
+        builder.HasIndex(x => x.FeedbackId);
+        builder.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+public sealed class ComplaintConfiguration : IEntityTypeConfiguration<Complaint>
+{
+    public void Configure(EntityTypeBuilder<Complaint> builder)
+    {
+        builder.ToTable("complaints");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Subject).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+        builder.HasIndex(x => x.PatientId);
+        builder.HasIndex(x => x.Status);
+        builder.HasIndex(x => x.CreatedAt);
+        builder.HasOne(x => x.Patient).WithMany(x => x.Complaints).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Assignee).WithMany().HasForeignKey(x => x.AssignedTo).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.Feedback).WithMany(x => x.Complaints).HasForeignKey(x => x.FeedbackId).OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notification>
+{
+    public void Configure(EntityTypeBuilder<Notification> builder)
+    {
+        builder.ToTable("notifications");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Title).HasMaxLength(160).IsRequired();
+        builder.Property(x => x.Message).HasMaxLength(1000).IsRequired();
+        builder.HasIndex(x => new { x.PatientId, x.IsRead });
+        builder.HasIndex(x => x.CreatedAt);
+        builder.HasOne(x => x.Patient).WithMany(x => x.Notifications).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.StaffRecipient).WithMany().HasForeignKey(x => x.StaffUserId).OnDelete(DeleteBehavior.Restrict);
     }
 }

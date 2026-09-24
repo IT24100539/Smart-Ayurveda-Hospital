@@ -16,13 +16,21 @@ public sealed class HospitalDbContext : DbContext
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Consultation> Consultations => Set<Consultation>();
     public DbSet<Treatment> Treatments => Set<Treatment>();
-    public DbSet<Therapist> Therapists => Set<Therapist>();
-    public DbSet<TreatmentSchedule> TreatmentSchedules => Set<TreatmentSchedule>();
+public DbSet<Therapist> Therapists => Set<Therapist>();
+public DbSet<TreatmentSchedule> TreatmentSchedules => Set<TreatmentSchedule>();
+public DbSet<Ward> Wards => Set<Ward>();
+public DbSet<Bed> Beds => Set<Bed>();
+public DbSet<AdmissionRequest> AdmissionRequests => Set<AdmissionRequest>();
     public DbSet<Medicine> Medicines => Set<Medicine>();
     public DbSet<Prescription> Prescriptions => Set<Prescription>();
     public DbSet<PrescriptionItem> PrescriptionItems => Set<PrescriptionItem>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+    public DbSet<Feedback> Feedbacks => Set<Feedback>();
+    public DbSet<FeedbackReaction> FeedbackReactions => Set<FeedbackReaction>();
+    public DbSet<FeedbackReply> FeedbackReplies => Set<FeedbackReply>();
+    public DbSet<Complaint> Complaints => Set<Complaint>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

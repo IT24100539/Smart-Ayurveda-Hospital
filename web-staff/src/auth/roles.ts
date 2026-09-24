@@ -16,7 +16,7 @@ export const ROUTE_ROLES = {
   treatments: ["Admin", "Doctor"] as UserRole[],
   appointments: STAFF_ROLES,
   wards: ["Admin", "Doctor"] as UserRole[],
-  feedback: ["Admin", "FrontDeskStaff"] as UserRole[],
+  feedback: STAFF_ROLES,
   aiApprovals: ["Admin", "Doctor"] as UserRole[]
 };
 

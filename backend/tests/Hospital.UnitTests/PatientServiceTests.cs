@@ -72,6 +72,9 @@ public sealed class PatientServiceTests
         public Task<Patient?> GetByPhoneAsync(string phone, CancellationToken cancellationToken) =>
             Task.FromResult(Items.FirstOrDefault(x => x.Phone == phone));
 
+        public Task<Patient?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
+            Task.FromResult(Items.FirstOrDefault(x => string.Equals(x.Email, email, StringComparison.OrdinalIgnoreCase)));
+
         public Task<(IReadOnlyList<Patient> Items, int Total)> SearchAsync(
             string? query, int page, int pageSize, CancellationToken cancellationToken) =>
             Task.FromResult(((IReadOnlyList<Patient>)Items, Items.Count));
