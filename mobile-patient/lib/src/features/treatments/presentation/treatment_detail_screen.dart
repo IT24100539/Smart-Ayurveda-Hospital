@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../router/app_routes.dart';
-import '../../../theme/app_theme.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/availability_provider.dart';
 import '../application/treatments_provider.dart';
@@ -22,7 +21,6 @@ class TreatmentDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final treatmentsState = ref.watch(treatmentsProvider);
 
     return treatmentsState.when(
@@ -194,7 +192,7 @@ class _TreatmentDetailView extends ConsumerWidget {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.1),
+                                color: Colors.green.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
