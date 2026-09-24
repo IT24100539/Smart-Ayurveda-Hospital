@@ -63,6 +63,8 @@ public sealed class WardServiceTests
     {
         private readonly Patient _p;
         public FakePatients(Patient p) => _p = p;
+        public Task<Patient?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
+            Task.FromResult(string.Equals(_p.Email, email, StringComparison.OrdinalIgnoreCase) ? _p : null);
         public Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken) => Task.FromResult(id == _p.Id ? _p : null as Patient);
         public Task<Patient?> GetByPhoneAsync(string phone, CancellationToken cancellationToken) => Task.FromResult<Patient?>(null);
         public Task<(IReadOnlyList<Patient> Items, int Total)> SearchAsync(string? query, int page, int pageSize, CancellationToken cancellationToken) => Task.FromResult(((IReadOnlyList<Patient>)Array.Empty<Patient>(), 0));

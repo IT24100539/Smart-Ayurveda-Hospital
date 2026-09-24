@@ -14,7 +14,7 @@ public sealed class FeedbackServiceTests
     public async Task Create_WhenAppointmentIsNotCompleted_Throws()
     {
         var harness = new FeedbackHarness();
-        harness.Appointments.Appointment = FeedbackHarness.Visit(harness.Patient.Id, AppointmentStatus.Scheduled);
+        harness.Appointments.Appointment = FeedbackHarness.Visit(harness.Patient.Id, AppointmentStatus.Approved);
 
         var act = () => harness.Feedback.CreateAsync(new CreateFeedbackRequest(
             harness.Appointments.Appointment.Id,

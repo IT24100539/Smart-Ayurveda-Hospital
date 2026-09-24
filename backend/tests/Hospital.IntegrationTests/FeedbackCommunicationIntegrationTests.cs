@@ -31,14 +31,14 @@ public sealed class FeedbackCommunicationIntegrationTests
     {
         var agentCallsBefore = _factory.Agent.Calls;
         var admin = await LoginAsync("admin@smartayurveda.local", "ChangeMe!Admin1");
-        var doctorId = await FirstDoctorIdAsync(admin);
+        var treatmentId = await FirstTreatmentIdAsync(admin);
 
         var email = $"patient-{Guid.NewGuid():N}@example.local";
         const string password = "ChangeMe!Patient1";
         const string fullName = "Devika Nambiar";
         await RegisterPatientAsync(email, password, fullName, $"91{Random.Shared.Next(10000000, 99999999)}");
         var patientId = await CreatePatientRecordAsync(admin, email, "Devika", "Nambiar");
-        var appointmentId = await CreateCompletedAppointmentAsync(admin, patientId, doctorId);
+        var appointmentId = await CreateCompletedAppointmentAsync(admin, patientId, treatmentId);
 
         var patient = await LoginAsync(email, password);
         const string comment = "The completed nadi pariksha explained my vata imbalance clearly.";
@@ -93,14 +93,14 @@ public sealed class FeedbackCommunicationIntegrationTests
     public async Task PublicFeed_HidesAnonymousName_AfterStaffShowsTheComment()
     {
         var admin = await LoginAsync("admin@smartayurveda.local", "ChangeMe!Admin1");
-        var doctorId = await FirstDoctorIdAsync(admin);
+        var treatmentId = await FirstTreatmentIdAsync(admin);
 
         var email = $"anon-{Guid.NewGuid():N}@example.local";
         const string password = "ChangeMe!Patient1";
         const string fullName = "Lakshmi Vaidyar";
         await RegisterPatientAsync(email, password, fullName, $"91{Random.Shared.Next(10000000, 99999999)}");
         var patientId = await CreatePatientRecordAsync(admin, email, "Lakshmi", "Vaidyar");
-        var appointmentId = await CreateCompletedAppointmentAsync(admin, patientId, doctorId);
+        var appointmentId = await CreateCompletedAppointmentAsync(admin, patientId, treatmentId);
 
         var patient = await LoginAsync(email, password);
         const string comment = "I prefer this shirodhara note to stay unnamed on the public board.";
@@ -163,12 +163,12 @@ public sealed class FeedbackCommunicationIntegrationTests
         try
         {
             var admin = await LoginAsync("admin@smartayurveda.local", "ChangeMe!Admin1");
-            var doctorId = await FirstDoctorIdAsync(admin);
+            var treatmentId = await FirstTreatmentIdAsync(admin);
             var email = $"agent-down-{Guid.NewGuid():N}@example.local";
             const string password = "ChangeMe!Patient1";
             await RegisterPatientAsync(email, password, "Meera Nair", $"91{Random.Shared.Next(10000000, 99999999)}");
             var patientId = await CreatePatientRecordAsync(admin, email, "Meera", "Nair");
-            var appointmentId = await CreateCompletedAppointmentAsync(admin, patientId, doctorId);
+            var appointmentId = await CreateCompletedAppointmentAsync(admin, patientId, treatmentId);
             var patient = await LoginAsync(email, password);
             const string comment = "The panchakarma wait was long, but the comment must still be saved.";
 
@@ -194,11 +194,11 @@ public sealed class FeedbackCommunicationIntegrationTests
         }
     }
 
-    private async Task<Guid> FirstDoctorIdAsync(string token)
+    private async Task<Guid> FirstTreatmentIdAsync(string token)
     {
         var page = await GetAsync<AppointmentPage>(token, "/api/appointments");
         page.Items.Should().NotBeEmpty();
-        return page.Items[0].DoctorId;
+        return page.Items[0].TreatmentId;
     }
 
     private async Task RegisterPatientAsync(string email, string password, string fullName, string phoneNumber)
@@ -235,20 +235,18 @@ public sealed class FeedbackCommunicationIntegrationTests
         return created.Id;
     }
 
-    private async Task<Guid> CreateCompletedAppointmentAsync(string token, Guid patientId, Guid doctorId)
+    private async Task<Guid> CreateCompletedAppointmentAsync(string token, Guid patientId, Guid treatmentId)
     {
         var slot = Interlocked.Increment(ref _slot);
         var created = await PostAsync<AppointmentPayload>(token, "/api/appointments", new
         {
             patientId,
-            doctorId,
-            scheduledAt = DateTimeOffset.UtcNow.AddDays(40).AddMinutes(slot * 180),
-            durationMinutes = 30,
-            reason = "Follow-up nadi pariksha",
-            notes = (string?)null
+            treatmentId,
+            requestedDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(40 + slot)),
+            requestedTimeSlot = "09:00-09:30"
         }, HttpStatusCode.Created);
 
-        created.Status.Should().Be("Scheduled");
+        created.Status.Should().Be("Pending");
 
         var completed = await SendAsync<AppointmentPayload>(
             token,
@@ -298,7 +296,7 @@ public sealed class FeedbackCommunicationIntegrationTests
 
     private sealed record AuthPayload(string Token);
     private sealed record PatientPayload(Guid Id, string? Email);
-    private sealed record AppointmentPayload(Guid Id, Guid DoctorId, string Status);
+    private sealed record AppointmentPayload(Guid Id, Guid TreatmentId, string Status);
     private sealed record AppointmentPage(List<AppointmentPayload> Items);
     private sealed record FeedbackPayload(
         Guid Id,

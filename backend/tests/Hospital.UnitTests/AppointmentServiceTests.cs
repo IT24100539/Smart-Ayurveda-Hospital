@@ -232,15 +232,5 @@ public sealed class AppointmentServiceTests
         public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(_schedule is not null && _schedule.Id == id ? _schedule : null);
 
-        public Task<StaffUser?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
-            Task.FromResult<StaffUser?>(null);
-
-        public Task<StaffUser?> FindActiveByRoleAsync(StaffRole role, CancellationToken cancellationToken) =>
-            Task.FromResult(_staff.IsActive && _staff.Role == role ? _staff : null);
-
-        public Task<IReadOnlyList<StaffUser>> ListActiveAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(_staff.IsActive
-                ? (IReadOnlyList<StaffUser>)new[] { _staff }
-                : Array.Empty<StaffUser>());
     }
 }
