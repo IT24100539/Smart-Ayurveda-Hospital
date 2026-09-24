@@ -90,6 +90,11 @@ def _post(monkeypatch, comment: str, similar_count: int, sentiment: str, categor
     )
 
 
+def test_feedback_support_route_is_registered():
+    paths = {getattr(route, "path", None) for route in app.routes}
+    assert "/internal/agents/feedback-support" in paths
+
+
 def test_route_requires_internal_secret():
     client = TestClient(app)
     response = client.post(

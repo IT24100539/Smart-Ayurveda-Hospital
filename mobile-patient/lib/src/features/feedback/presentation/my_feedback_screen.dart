@@ -90,7 +90,9 @@ class _OwnFeedbackCard extends ConsumerWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+                  child: Text(
+                    MaterialLocalizations.of(context).cancelButtonLabel,
+                  ),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(context, true),
@@ -106,28 +108,30 @@ class _OwnFeedbackCard extends ConsumerWidget {
     comment.dispose();
     if (saved != true || !context.mounted) return;
     if (rating < 1 || text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.commentRequired)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.commentRequired)));
       return;
     }
     try {
-      await ref.read(communicationRepositoryProvider).updateFeedback(
-        id: item.id,
-        rating: rating,
-        comment: text,
-        isAnonymous: anonymous,
-      );
+      await ref
+          .read(communicationRepositoryProvider)
+          .updateFeedback(
+            id: item.id,
+            rating: rating,
+            comment: text,
+            isAnonymous: anonymous,
+          );
       ref.invalidate(myFeedbackProvider);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.feedbackUpdated)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.feedbackUpdated)));
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(feedbackErrorText(error, l10n))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(feedbackErrorText(error, l10n))));
     }
   }
 
@@ -152,21 +156,20 @@ class _OwnFeedbackCard extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
     try {
-      await ref.read(communicationRepositoryProvider).updateFeedback(
-        id: item.id,
-        withdraw: true,
-      );
+      await ref
+          .read(communicationRepositoryProvider)
+          .updateFeedback(id: item.id, withdraw: true);
       ref.invalidate(myFeedbackProvider);
       ref.invalidate(publicFeedProvider);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.feedbackWithdrawn)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.feedbackWithdrawn)));
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(feedbackErrorText(error, l10n))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(feedbackErrorText(error, l10n))));
     }
   }
 

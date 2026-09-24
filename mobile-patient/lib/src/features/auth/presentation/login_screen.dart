@@ -121,11 +121,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.spa,
-                      size: 40,
-                      color: theme.colorScheme.primary,
-                    ),
+                    Icon(Icons.spa, size: 40, color: theme.colorScheme.primary),
                     const SizedBox(height: 18),
                     Text(
                       _isRegister ? l10n.register : l10n.signIn,
@@ -136,9 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _isRegister
-                          ? l10n.registerSubtitle
-                          : l10n.signInSubtitle,
+                      _isRegister ? l10n.registerSubtitle : l10n.signInSubtitle,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,

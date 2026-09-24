@@ -5,9 +5,6 @@ import 'src/app.dart';
 
 void main() {
   runApp(
-    ProviderScope(
-      overrides: [unauthorizedOverride],
-      child: const PatientApp(),
-    ),
+    ProviderScope(overrides: [unauthorizedOverride], child: const PatientApp()),
   );
 }

@@ -96,10 +96,7 @@ abstract final class AppTheme {
           backgroundColor: AyurvedaColors.forest,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(52),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),

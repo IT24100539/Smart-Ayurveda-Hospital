@@ -27,15 +27,17 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       _items = [for (final notice in current) notice.copyWith(isRead: true)];
     });
     try {
-      await ref.read(communicationRepositoryProvider).markAllNotificationsRead();
+      await ref
+          .read(communicationRepositoryProvider)
+          .markAllNotificationsRead();
       ref.invalidate(notificationsProvider);
     } catch (error) {
       if (!mounted) return;
       setState(() => _items = current);
       final l10n = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(feedbackErrorText(error, l10n))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(feedbackErrorText(error, l10n))));
     }
   }
 
@@ -72,17 +74,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final notices = ref.watch(notificationsProvider);
     final cached = _items;
 
-    final hasUnread = (cached ?? notices.valueOrNull)?.any((item) => !item.isRead) ?? false;
+    final hasUnread =
+        (cached ?? notices.valueOrNull)?.any((item) => !item.isRead) ?? false;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.notificationsTitle),
         actions: [
           if (hasUnread)
-            TextButton(
-              onPressed: _markAllRead,
-              child: Text(l10n.markAllRead),
-            ),
+            TextButton(onPressed: _markAllRead, child: Text(l10n.markAllRead)),
         ],
       ),
       body: cached != null

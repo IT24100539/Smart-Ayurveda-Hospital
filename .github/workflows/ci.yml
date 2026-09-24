@@ -90,4 +90,5 @@ jobs:
         working-directory: mobile-patient
         run: |
           flutter pub get
+          flutter gen-l10n
           flutter analyze

@@ -1,8 +1,11 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using Hospital.Api.Hosting;
 using Hospital.Api.Middleware;
+using Hospital.Api.Security;
 using Hospital.Application;
+using Hospital.Application.Abstractions;
 using Hospital.Infrastructure;
 using Hospital.Infrastructure.Identity;
 using Hospital.Infrastructure.Persistence;
@@ -27,6 +30,16 @@ try
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.Configure<InternalServiceOptions>(builder.Configuration.GetSection(InternalServiceOptions.SectionName));
+    builder.Services.AddSingleton<InternalServiceKeyFilter>();
+    builder.Services.Configure<ComplaintEscalationOptions>(
+        builder.Configuration.GetSection(ComplaintEscalationOptions.SectionName));
+    builder.Services.AddSingleton<ComplaintEscalationHostedService>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<ComplaintEscalationHostedService>());
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<HttpCurrentUser>();
+    builder.Services.AddScoped<CurrentUserOverride>();
+    builder.Services.AddScoped<ICurrentUser, CompositeCurrentUser>();
     builder.Services.AddControllers().AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -65,10 +78,22 @@ try
     {
         options.AddPolicy("StaffPortal", policy =>
         {
-            var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                ?? builder.Configuration.GetSection("Cors:StaffOrigins").Get<string[]>()
-                ?? new[] { "http://localhost:5173" };
-            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+            if (builder.Environment.IsDevelopment())
+            {
+                // Flutter web picks a new localhost port on every `flutter run`.
+                policy.SetIsOriginAllowed(origin =>
+                    Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+                    uri.Host is "localhost" or "127.0.0.1");
+            }
+            else
+            {
+                var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                    ?? builder.Configuration.GetSection("Cors:StaffOrigins").Get<string[]>()
+                    ?? new[] { "http://localhost:5173" };
+                policy.WithOrigins(origins);
+            }
+
+            policy.AllowAnyHeader().AllowAnyMethod();
         });
     });
 
@@ -83,7 +108,10 @@ try
         app.UseSwaggerUI();
     }
 
-    app.UseHttpsRedirection();
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
     app.UseCors("StaffPortal");
     app.UseAuthentication();
     app.UseAuthorization();

@@ -88,17 +88,19 @@ class _PublicFeedbackFeedScreenState
   Future<void> _reply(PublicFeedback item, String text) async {
     final l10n = AppLocalizations.of(context);
     try {
-      await ref.read(communicationRepositoryProvider).replyToFeedback(item.id, text);
+      await ref
+          .read(communicationRepositoryProvider)
+          .replyToFeedback(item.id, text);
       ref.invalidate(publicFeedProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.replySent)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.replySent)));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(feedbackErrorText(error, l10n))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(feedbackErrorText(error, l10n))));
       rethrow;
     }
   }

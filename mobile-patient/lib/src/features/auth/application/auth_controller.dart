@@ -96,10 +96,7 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> _persist(AuthResult result) async {
     await _tokenStorage.writeToken(result.token);
-    state = AuthState(
-      status: AuthStatus.authenticated,
-      user: result.user,
-    );
+    state = AuthState(status: AuthStatus.authenticated, user: result.user);
   }
 }
 

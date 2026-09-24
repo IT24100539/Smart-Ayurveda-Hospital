@@ -1,5 +1,6 @@
 using Hospital.Application.Abstractions;
 using Hospital.Domain.Entities;
+using Hospital.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hospital.Infrastructure.Persistence.Repositories;
@@ -15,6 +16,14 @@ public sealed class PatientRepository : IPatientRepository
 
     public Task<Patient?> GetByPhoneAsync(string phone, CancellationToken cancellationToken) =>
         _db.Patients.FirstOrDefaultAsync(x => x.Phone == phone, cancellationToken);
+
+    public Task<Patient?> GetByEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        return _db.Patients.FirstOrDefaultAsync(
+            x => x.Email != null && x.Email.ToLower() == normalized,
+            cancellationToken);
+    }
 
     public async Task<(IReadOnlyList<Patient> Items, int Total)> SearchAsync(
         string? query,
@@ -58,6 +67,12 @@ public sealed class UserRepository : IUserRepository
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
         _db.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
 
+    public Task<User?> FindActiveByRoleAsync(UserRole role, CancellationToken cancellationToken) =>
+        _db.Users
+            .Where(x => x.IsActive && x.Role == role)
+            .OrderBy(x => x.Email)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task AddAsync(User user, CancellationToken cancellationToken) =>
         await _db.Users.AddAsync(user, cancellationToken);
 }
@@ -71,8 +86,23 @@ public sealed class StaffUserRepository : IStaffUserRepository
     public Task<StaffUser?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.StaffUsers.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-    public Task<StaffUser?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
-        _db.StaffUsers.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+    public Task<StaffUser?> GetByEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        return _db.StaffUsers.FirstOrDefaultAsync(x => x.Email.ToLower() == normalized, cancellationToken);
+    }
+
+    public Task<StaffUser?> FindActiveByRoleAsync(StaffRole role, CancellationToken cancellationToken) =>
+        _db.StaffUsers
+            .Where(x => x.IsActive && x.Role == role)
+            .OrderBy(x => x.Email)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<StaffUser>> ListActiveAsync(CancellationToken cancellationToken) =>
+        await _db.StaffUsers.AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.FullName)
+            .ToListAsync(cancellationToken);
 }
 
 public sealed class AppointmentRepository : IAppointmentRepository
