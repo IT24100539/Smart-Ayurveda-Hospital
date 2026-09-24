@@ -10,48 +10,128 @@ namespace Hospital.UnitTests;
 public sealed class AppointmentServiceTests
 {
     [Fact]
-    public async Task CreateAsync_WhenDoctorSlotTaken_ThrowsConflict()
+    public async Task CreateAsync_WhenSlotAlreadyTaken_ThrowsConflict()
     {
-        var doctor = new StaffUser { Id = Guid.NewGuid(), Role = StaffRole.Doctor, FullName = "Dr. Rao" };
         var patient = new Patient { Id = Guid.NewGuid(), FirstName = "Asha", LastName = "Nair", Uhid = "SAH-2026-00002" };
-        var appointments = new FakeAppointmentRepository { Overlap = true };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "Abhyanga" };
+        var appointments = new FakeAppointmentRepository { HasActiveSlot = true };
         var sut = new AppointmentService(
             appointments,
-            new FakeStaffAndPatients(patient, doctor),
-            new FakeStaffAndPatients(patient, doctor),
+            new FakePatients(patient),
+            new FakeTreatments(treatment),
+            new FakeBookingValidator(),
             new FakeUnitOfWork(),
             new FixedClock());
 
         var request = new CreateAppointmentRequest(
             patient.Id,
-            doctor.Id,
-            DateTimeOffset.UtcNow.AddDays(1),
-            30,
-            "Follow-up",
-            null);
+            treatment.Id,
+            null,
+            new DateOnly(2026, 9, 15),
+            "09:00-10:00");
 
         await Assert.ThrowsAsync<ConflictException>(() => sut.CreateAsync(request, CancellationToken.None));
     }
 
     [Fact]
-    public async Task CreateAsync_WhenAssigneeIsNotDoctor_Throws()
+    public async Task CreateAsync_WhenRequestedDateDoesNotMatchSchedule_Throws()
     {
-        var therapist = new StaffUser { Id = Guid.NewGuid(), Role = StaffRole.Therapist, FullName = "Therapist" };
         var patient = new Patient { Id = Guid.NewGuid(), FirstName = "Asha", LastName = "Nair" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "Abhyanga" };
+        var schedule = new TreatmentSchedule { Id = Guid.NewGuid(), TreatmentId = treatment.Id, TimeSlot = "09:00-10:00", DayOfWeek = DayOfWeek.Monday, IsActive = true };
+        var appointments = new FakeAppointmentRepository();
         var sut = new AppointmentService(
-            new FakeAppointmentRepository(),
-            new FakeStaffAndPatients(patient, therapist),
-            new FakeStaffAndPatients(patient, therapist),
+            appointments,
+            new FakePatients(patient),
+            new FakeTreatments(treatment, schedule),
+            new FakeBookingValidator(),
             new FakeUnitOfWork(),
             new FixedClock());
 
         var request = new CreateAppointmentRequest(
             patient.Id,
-            therapist.Id,
-            DateTimeOffset.UtcNow.AddDays(1),
-            30,
-            "Abhyanga",
-            null);
+            treatment.Id,
+            schedule.Id,
+            new DateOnly(2026, 9, 15), // Tuesday, so it does not match the Monday schedule
+            "09:00-10:00");
+
+        await Assert.ThrowsAsync<DomainException>(() => sut.CreateAsync(request, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenScheduleAtCapacity_ThrowsConflict()
+    {
+        var patient = new Patient { Id = Guid.NewGuid(), FirstName = "Asha", LastName = "Nair" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "Abhyanga" };
+        var schedule = new TreatmentSchedule { Id = Guid.NewGuid(), TreatmentId = treatment.Id, TimeSlot = "09:00-10:00", DayOfWeek = DayOfWeek.Tuesday, IsActive = true, MaxPatients = 2 };
+        var appointments = new FakeAppointmentRepository { ActiveCount = 2 };
+        var sut = new AppointmentService(
+            appointments,
+            new FakePatients(patient),
+            new FakeTreatments(treatment, schedule),
+            new FakeBookingValidator(),
+            new FakeUnitOfWork(),
+            new FixedClock());
+
+        var request = new CreateAppointmentRequest(
+            patient.Id,
+            treatment.Id,
+            schedule.Id,
+            new DateOnly(2026, 9, 15),
+            "09:00-10:00");
+
+        await Assert.ThrowsAsync<ConflictException>(() => sut.CreateAsync(request, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CancelAsync_AllowsOwnerAndRejectsOthers()
+    {
+        var owner = new Patient { Id = Guid.NewGuid(), FirstName = "Owner" };
+        var other = new Patient { Id = Guid.NewGuid(), FirstName = "Other" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "Abhyanga" };
+        var appt = new Appointment { Id = Guid.NewGuid(), PatientId = owner.Id, TreatmentId = treatment.Id, RequestedDate = new DateOnly(2026,9,15), RequestedTimeSlot = "09:00-10:00", Status = AppointmentStatus.Pending };
+
+        var appointments = new FakeAppointmentRepository();
+        appointments.Store(appt);
+
+        var sut = new AppointmentService(
+            appointments,
+            new FakePatients(owner),
+            new FakeTreatments(treatment),
+            new FakeBookingValidator(),
+            new FakeUnitOfWork(),
+            new FixedClock());
+
+        // Owner can cancel
+        await sut.CancelAsync(appt.Id, owner.Id, CancellationToken.None);
+        var stored = await appointments.GetByIdAsync(appt.Id, CancellationToken.None);
+        Assert.Equal(AppointmentStatus.Cancelled, stored!.Status);
+
+        // Other cannot cancel
+        await Assert.ThrowsAsync<UnauthorizedException>(() => sut.CancelAsync(appt.Id, other.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenScheduleBelongsToOtherTreatment_Throws()
+    {
+        var patient = new Patient { Id = Guid.NewGuid(), FirstName = "Asha", LastName = "Nair" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "Abhyanga" };
+        var otherTreatmentId = Guid.NewGuid();
+        var schedule = new TreatmentSchedule { Id = Guid.NewGuid(), TreatmentId = otherTreatmentId, TimeSlot = "09:00-10:00" };
+        var sut = new AppointmentService(
+            new FakeAppointmentRepository(),
+            new FakePatients(patient),
+            new FakeTreatments(treatment, schedule),
+            new FakeBookingValidator(),
+            new FakeUnitOfWork(),
+            new FixedClock());
+
+        var request = new CreateAppointmentRequest(
+            patient.Id,
+            treatment.Id,
+            schedule.Id,
+            new DateOnly(2026, 9, 15),
+            "09:00-10:00");
 
         await Assert.ThrowsAsync<DomainException>(() => sut.CreateAsync(request, CancellationToken.None));
     }
@@ -68,32 +148,53 @@ public sealed class AppointmentServiceTests
 
     private sealed class FakeAppointmentRepository : IAppointmentRepository
     {
-        public bool Overlap { get; set; }
+        public bool HasActiveSlot { get; set; }
+        public int ActiveCount { get; set; }
+
+        private readonly Dictionary<Guid, Appointment> _store = new();
+
+        public void Store(Appointment a) => _store[a.Id] = a;
 
         public Task<Appointment?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
-            Task.FromResult<Appointment?>(null);
+            Task.FromResult(_store.TryGetValue(id, out var a) ? a : null as Appointment);
 
         public Task<(IReadOnlyList<Appointment> Items, int Total)> ListAsync(
-            DateOnly? onDate, Guid? patientId, Guid? doctorId, int page, int pageSize, CancellationToken cancellationToken) =>
+            DateOnly? onDate, Guid? patientId, Guid? treatmentId, int page, int pageSize, CancellationToken cancellationToken) =>
             Task.FromResult(((IReadOnlyList<Appointment>)Array.Empty<Appointment>(), 0));
 
-        public Task<bool> HasOverlapAsync(
-            Guid doctorId, DateTimeOffset start, DateTimeOffset end, Guid? excludeId, CancellationToken cancellationToken) =>
-            Task.FromResult(Overlap);
+        public Task<bool> HasActiveSlotAsync(
+            Guid patientId,
+            Guid treatmentId,
+            DateOnly requestedDate,
+            string requestedTimeSlot,
+            Guid? excludeId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(HasActiveSlot);
+
+        public Task<int> CountActiveAppointmentsAsync(Guid treatmentId, DateOnly requestedDate, string requestedTimeSlot, CancellationToken cancellationToken) =>
+            Task.FromResult(ActiveCount);
+
+        public Task<bool> TryAddWithinCapacityAsync(Appointment appointment, int maxPatients, CancellationToken cancellationToken) =>
+            Task.FromResult(ActiveCount < maxPatients);
 
         public Task AddAsync(Appointment appointment, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
-    private sealed class FakeStaffAndPatients : IPatientRepository, IStaffUserRepository
+    private sealed class FakeBookingValidator : IBookingValidator
+    {
+        public void Validate(TreatmentSchedule schedule, DateOnly requestedDate, string requestedTimeSlot)
+        {
+            if (!schedule.IsActive) throw new DomainException("inactive");
+            if (requestedDate.DayOfWeek != schedule.DayOfWeek) throw new DomainException("day mismatch");
+            if (!string.Equals(schedule.TimeSlot?.Trim(), requestedTimeSlot?.Trim(), StringComparison.Ordinal)) throw new DomainException("slot mismatch");
+        }
+    }
+
+    private sealed class FakePatients : IPatientRepository
     {
         private readonly Patient _patient;
-        private readonly StaffUser _staff;
 
-        public FakeStaffAndPatients(Patient patient, StaffUser staff)
-        {
-            _patient = patient;
-            _staff = staff;
-        }
+        public FakePatients(Patient patient) => _patient = patient;
 
         public Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(id == _patient.Id ? _patient : null);
@@ -109,19 +210,27 @@ public sealed class AppointmentServiceTests
             Task.FromResult(((IReadOnlyList<Patient>)Array.Empty<Patient>(), 0));
 
         public Task AddAsync(Patient patient, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
 
-        Task<StaffUser?> IStaffUserRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
-            Task.FromResult(id == _staff.Id ? _staff : null);
+    private sealed class FakeTreatments : ITreatmentRepository
+    {
+        public Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<TreatmentSchedule>>(_schedule is not null && _schedule.TreatmentId == treatmentId
+                ? new[] { _schedule } : Array.Empty<TreatmentSchedule>());
+        private readonly Treatment _treatment;
+        private readonly TreatmentSchedule? _schedule;
 
-        public Task<StaffUser?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
-            Task.FromResult<StaffUser?>(null);
+        public FakeTreatments(Treatment treatment, TreatmentSchedule? schedule = null)
+        {
+            _treatment = treatment;
+            _schedule = schedule;
+        }
 
-        public Task<StaffUser?> FindActiveByRoleAsync(StaffRole role, CancellationToken cancellationToken) =>
-            Task.FromResult(_staff.IsActive && _staff.Role == role ? _staff : null);
+        public Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+            Task.FromResult(id == _treatment.Id ? _treatment : null);
 
-        public Task<IReadOnlyList<StaffUser>> ListActiveAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(_staff.IsActive
-                ? (IReadOnlyList<StaffUser>)new[] { _staff }
-                : Array.Empty<StaffUser>());
+        public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
+            Task.FromResult(_schedule is not null && _schedule.Id == id ? _schedule : null);
+
     }
 }

@@ -13,18 +13,19 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: ayurveda_hospital
+          POSTGRES_DB: ayurveda_hospital_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d ayurveda_hospital"
+          --health-cmd "pg_isready -U postgres -d ayurveda_hospital_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=ayurveda_hospital;Username=postgres;Password=postgres
+      ConnectionStrings__IntegrationTests: >-
+        Host=localhost;Port=5432;Database=ayurveda_hospital_test;Username=postgres;Password=postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

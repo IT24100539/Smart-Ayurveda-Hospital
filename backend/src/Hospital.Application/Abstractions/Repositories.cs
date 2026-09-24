@@ -28,17 +28,43 @@ public interface IUserRepository
     Task AddAsync(User user, CancellationToken cancellationToken);
 }
 
+public interface ITreatmentRepository
+{
+    Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken);
+    Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken);
+}
+
+public interface IWardRepository
+{
+    Task<Ward?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<Ward?> GetWithBedsAsync(Guid id, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Ward>> ListAllAsync(CancellationToken cancellationToken);
+    Task AddAdmissionRequestAsync(AdmissionRequest request, CancellationToken cancellationToken);
+    Task<AdmissionRequest?> GetAdmissionRequestByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<IReadOnlyList<AdmissionRequest>> ListPendingAdmissionsAsync(CancellationToken cancellationToken);
+    Task<bool> TryApproveAdmissionAssignBedAsync(Guid admissionRequestId, Guid decidedBy, DateTimeOffset decidedAt, CancellationToken cancellationToken);
+}
+
 public interface IAppointmentRepository
 {
     Task<Appointment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<(IReadOnlyList<Appointment> Items, int Total)> ListAsync(
         DateOnly? onDate,
         Guid? patientId,
-        Guid? doctorId,
+        Guid? treatmentId,
         int page,
         int pageSize,
         CancellationToken cancellationToken);
-    Task<bool> HasOverlapAsync(Guid doctorId, DateTimeOffset start, DateTimeOffset end, Guid? excludeId, CancellationToken cancellationToken);
+    Task<bool> HasActiveSlotAsync(
+        Guid patientId,
+        Guid treatmentId,
+        DateOnly requestedDate,
+        string requestedTimeSlot,
+        Guid? excludeId,
+        CancellationToken cancellationToken);
+    Task<int> CountActiveAppointmentsAsync(Guid treatmentId, DateOnly requestedDate, string requestedTimeSlot, CancellationToken cancellationToken);
+    Task<bool> TryAddWithinCapacityAsync(Appointment appointment, int maxPatients, CancellationToken cancellationToken);
     Task AddAsync(Appointment appointment, CancellationToken cancellationToken);
 }
 

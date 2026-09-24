@@ -5,12 +5,31 @@ plan produced by one member's agent stays legible to the coordinator and to
 the ASP.NET API that ultimately persists it.
 """
 
-from datetime import UTC, datetime
+import logging
+import re
+from datetime import UTC, date, datetime
 from enum import Enum
-from typing import Any
-from uuid import uuid4
+from typing import Any, Literal
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ModelWrapValidatorHandler, ValidationError, field_validator, model_validator
+
+
+logger = logging.getLogger(__name__)
+
+# Deliberately small, auditable heuristic; this is not a security boundary for tools.
+_INJECTION_PATTERNS = (
+    r"\bignore\b.{0,40}\b(previous|prior|above)\s+instructions\b",
+    r"\b(skip|bypass|disable|avoid)\b.{0,40}\bvalidation\b",
+    r"\b(skip|bypass|disable|avoid)\b.{0,40}\bapproval\b",
+    r"\b(without|no)\s+(human\s+)?approval\b",
+    r"\b(outside|bypass|ignore)\b.{0,40}\b(allowlist|allow\s+list|allowed\s+tools)\b",
+    r"\btools?\b.{0,40}\bnot\s+(?:on|in)\b.{0,20}\b(allowlist|allow\s+list)\b",
+    r"\b(unapproved|unauthorized|unlisted|non[- ]allowlisted)\s+tools?\b",
+    r"[\{,]\s*[\"'](?:tool(?:_results?|_calls?)?|function_call|role|approval_status|admission_request_id|succeeded)[\"']\s*:",
+    r"[\{,]\s*[\"']status[\"']\s*:\s*[\"'](?:approved|success|bed_allocated)[\"']",
+    r"(?:<\s*/?\s*tool[_ -]?results?\b|\btool[_ -]?results?\s*:)",
+)
 
 
 class ApprovalStatus(str, Enum):
@@ -44,6 +63,73 @@ class ValidationResult(BaseModel):
     detail: str = ""
 
 
+class SchedulingAgentRequest(BaseModel):
+    """Validated entry contract; construct this before any scheduling work.
+
+    Preferred dates use the service's UTC calendar day. Only a date object or
+    an ISO YYYY-MM-DD string is accepted, never timestamps or epoch numbers.
+    """
+
+    patient_id: UUID
+    treatment_id: UUID
+    ward_id: UUID
+    objective_text: str
+    preferred_date: date
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def log_refusal(cls, value: Any, handler: ModelWrapValidatorHandler) -> "SchedulingAgentRequest":
+        try:
+            return handler(value)
+        except ValidationError as exc:
+            # Log field names only: objectives and identifiers may be sensitive.
+            fields = sorted({str(error["loc"][0]) if error["loc"] else "request" for error in exc.errors()})
+            logger.warning("Scheduling request refused: invalid fields: %s", ", ".join(fields))
+            raise
+
+    @field_validator("preferred_date", mode="before")
+    @classmethod
+    def require_calendar_date(cls, value: Any) -> date:
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return value
+        if isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                pass
+        raise ValueError("preferred_date must be a valid date in YYYY-MM-DD format.")
+
+    @field_validator("preferred_date")
+    @classmethod
+    def require_future_date(cls, value: date) -> date:
+        if value <= datetime.now(UTC).date():
+            raise ValueError("preferred_date must be in the future (UTC).")
+        return value
+
+    @field_validator("objective_text")
+    @classmethod
+    def validate_objective(cls, value: str) -> str:
+        objective = value.strip()
+        if not objective:
+            raise ValueError("objective_text must not be empty or blank.")
+        normalized = " ".join(objective.casefold().split())
+        if any(re.search(pattern, normalized) for pattern in _INJECTION_PATTERNS):
+            raise ValueError("objective_text contains a suspected instruction override or forged tool result.")
+        return objective
+
+
+class SchedulingAgentResponse(BaseModel):
+    """Scheduling outcome; approval and bed allocation remain outside the agent."""
+
+    workflow_id: str
+    plan: list[str] = Field(default_factory=list)
+    tool_results: list[ToolResult] = Field(default_factory=list)
+    validation_result: ValidationResult
+    status: Literal["awaiting_approval", "safe_failure"]
+    admission_request_id: UUID | None = None
+    failure_reason: str | None = None
+
+
 class WorkflowState(BaseModel):
     """The full state of one agent workflow.
 
@@ -59,7 +145,7 @@ class WorkflowState(BaseModel):
     tool_results: list[ToolResult] = Field(default_factory=list)
     validation_results: list[ValidationResult] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
-    approval_status: ApprovalStatus = ApprovalStatus.PENDING
+    approval_status: ApprovalStatus | None = ApprovalStatus.PENDING
     final_outcome: str | None = None
 
     @property

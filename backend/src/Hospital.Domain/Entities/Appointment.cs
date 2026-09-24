@@ -8,16 +8,19 @@ public class Appointment : BaseEntity
     public Guid PatientId { get; set; }
     public Patient Patient { get; set; } = null!;
 
-    public Guid DoctorId { get; set; }
-    public StaffUser Doctor { get; set; } = null!;
+    public Guid TreatmentId { get; set; }
+    public Treatment Treatment { get; set; } = null!;
 
-    public DateTimeOffset ScheduledAt { get; set; }
-    public DateTimeOffset EndsAt { get; set; }
-    public int DurationMinutes { get; set; } = 30;
-    public AppointmentStatus Status { get; set; } = AppointmentStatus.Scheduled;
-    public string Reason { get; set; } = string.Empty;
-    public string? Notes { get; set; }
-    public string? CancellationReason { get; set; }
+    public Guid? ScheduleId { get; set; }
+    public TreatmentSchedule? Schedule { get; set; }
+
+    public DateOnly RequestedDate { get; set; }
+    public string RequestedTimeSlot { get; set; } = string.Empty;
+    public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
+
+    public Guid? DecidedBy { get; set; }
+    public User? DecidedByUser { get; set; }
+    public DateTimeOffset? DecidedAt { get; set; }
 
     public Consultation? Consultation { get; set; }
     public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();

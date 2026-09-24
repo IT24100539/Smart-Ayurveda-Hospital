@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
@@ -200,16 +201,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         key: LoginScreenKeys.phoneNumber,
                         controller: _phoneNumberController,
                         keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[0-9+\s-]'),
+                          ),
+                          LengthLimitingTextInputFormatter(16),
+                        ],
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.telephoneNumber],
                         decoration: InputDecoration(
                           labelText: l10n.phoneNumberLabel,
                           prefixIcon: const Icon(Icons.phone_outlined),
                         ),
-                        validator: (value) =>
-                            (value == null || value.trim().isEmpty)
-                            ? l10n.phoneNumberRequired
-                            : null,
+                        validator: (value) {
+                          final phone = value?.trim() ?? '';
+                          if (phone.isEmpty) return l10n.phoneNumberRequired;
+                          if (!isValidSriLankanMobileNumber(phone)) {
+                            return l10n.phoneNumberInvalid;
+                          }
+                          return null;
+                        },
                       ),
                     ],
 
@@ -287,6 +298,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
 /// Intentionally permissive; `EmailValidator` on the API is the real gate.
 final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+/// Accepts Sri Lankan mobile numbers in local (`07XXXXXXXX`) or international
+/// (`+947XXXXXXXX`) form. Spaces and hyphens are allowed for readability.
+bool isValidSriLankanMobileNumber(String value) {
+  final compact = value.replaceAll(RegExp(r'[\s-]'), '');
+  return RegExp(r'^(?:0|\+94)7[01245678]\d{7}$').hasMatch(compact);
+}
 
 class _MessageBanner extends StatelessWidget {
   const _MessageBanner({
