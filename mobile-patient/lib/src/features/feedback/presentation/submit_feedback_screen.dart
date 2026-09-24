@@ -170,7 +170,8 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
                 padding: const EdgeInsets.only(bottom: 16),
                 child: _CompletedVisitPicker(
                   selectedId: _selectedAppointmentId,
-                  onSelected: (value) => setState(() => _selectedAppointmentId = value),
+                  onSelected: (value) =>
+                      setState(() => _selectedAppointmentId = value),
                 ),
               ),
             Text(

@@ -109,7 +109,7 @@ class AppLocalizationsSi extends AppLocalizations {
   String get navAppointments => 'වෙන්කිරීම්';
 
   @override
-  String get navBilling => 'බිල්පත්';
+  String get navFeedback => 'ප්‍රතිචාර';
 
   @override
   String get navProfile => 'පැතිකඩ';
@@ -142,10 +142,6 @@ class AppLocalizationsSi extends AppLocalizations {
       'ඔබේ නාඩි පරීක්ෂා සහ උපදේශන වෙන්කිරීම් මෙහි දැක්වේ.';
 
   @override
-  String get billingPlaceholder =>
-      'ඔබේ බිල්පත් සහ ප්‍රතිකාර පිළිබඳ ප්‍රතිචාර මෙහි දැක්වේ.';
-
-  @override
   String get profilePlaceholder =>
       'ඔබේ ප්‍රකෘති තොරතුරු සහ ගිණුම් සැකසුම් මෙහි දැක්වේ.';
 
@@ -154,4 +150,208 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get signOut => 'ඉවත් වන්න';
+
+  @override
+  String get leaveFeedback => 'ප්‍රතිචාරයක් දෙන්න';
+
+  @override
+  String get submitFeedbackTitle => 'ඔබේ අත්දැකීම';
+
+  @override
+  String get ratingLabel => 'මෙම පැමිණීම කෙසේද?';
+
+  @override
+  String get commentLabel => 'අදහස';
+
+  @override
+  String get commentHint =>
+      'ප්‍රතිකාර කණ්ඩායම මෙම පැමිණීම ගැන දැනගත යුත්තේ කුමක්ද?';
+
+  @override
+  String get commentRequired => 'කරුණාකර කෙටි අදහසක් ලියන්න';
+
+  @override
+  String get ratingRequired => 'තරු ශ්‍රේණියක් තෝරන්න';
+
+  @override
+  String get anonymousLabel => 'නිර්නාමිකව පළ කරන්න';
+
+  @override
+  String get anonymousHelp => 'ඔබේ නම පොදු පුවරුවේ නොපෙන්වයි.';
+
+  @override
+  String get postedAsLabel => 'පළ වන නම';
+
+  @override
+  String get yourName => 'ඔබේ නම';
+
+  @override
+  String get submitFeedback => 'ප්‍රතිචාරය යවන්න';
+
+  @override
+  String get feedbackSent =>
+      'ස්තූතියි. ඔබේ සටහන ප්‍රතිකාර කණ්ඩායම සමාලෝචනය කිරීමෙන් පසු පෙනෙනු ඇත.';
+
+  @override
+  String get linkedVisit => 'මෙම සම්පූර්ණ වූ පැමිණීමට සම්බන්ධයි';
+
+  @override
+  String get feedbackNeedsLink =>
+      'පැමිණීම සම්බන්ධ කිරීමට සම්පූර්ණ වූ වෙන්කිරීමකින් මෙය විවෘත කරන්න.';
+
+  @override
+  String get publicFeedTitle => 'රෝගී ප්‍රතිචාර';
+
+  @override
+  String get publicFeedEmpty =>
+      'තවම අනුමත සටහන් නැත. සමාලෝචනයෙන් පසු ඒවා මෙහි දිස් වේ.';
+
+  @override
+  String get anonymousPatient => 'නිර්නාමික රෝගියා';
+
+  @override
+  String get helpful => 'ප්‍රයෝජනවත්';
+
+  @override
+  String get notHelpful => 'ප්‍රයෝජනවත් නැත';
+
+  @override
+  String get repliesHeading => 'පිළිතුරු';
+
+  @override
+  String get noReplies => 'තවම පිළිතුරු නැත.';
+
+  @override
+  String get careTeam => 'ප්‍රතිකාර කණ්ඩායම';
+
+  @override
+  String get patientRole => 'රෝගියා';
+
+  @override
+  String get reactionFailed => 'ඔබේ ප්‍රතිචාරය සුරැකිය නොහැකි විය.';
+
+  @override
+  String get complaintsTitle => 'මගේ පැමිණිලි';
+
+  @override
+  String get submitComplaintTitle => 'ගැටලුවක් දන්වන්න';
+
+  @override
+  String get newComplaint => 'නව පැමිණිල්ල';
+
+  @override
+  String get subjectLabel => 'මාතෘකාව';
+
+  @override
+  String get descriptionLabel => 'විස්තරය';
+
+  @override
+  String get subjectRequired => 'මාතෘකාවක් ඇතුළත් කරන්න';
+
+  @override
+  String get descriptionRequired => 'සිදු වූ දේ විස්තර කරන්න';
+
+  @override
+  String get priorityLabel => 'ප්‍රමුඛතාව';
+
+  @override
+  String get priorityNormal => 'සාමාන්‍ය';
+
+  @override
+  String get priorityHigh => 'ඉහළ';
+
+  @override
+  String get complaintSent => 'ඔබේ ගැටලුව ලැබුණි.';
+
+  @override
+  String get complaintsEmpty => 'ඔබ තවම ගැටලුවක් දන්වා නැත.';
+
+  @override
+  String get statusOpen => 'විවෘතයි';
+
+  @override
+  String get statusInProgress => 'සැකසෙමින්';
+
+  @override
+  String get statusEscalated => 'ඉහළ නංවා ඇත';
+
+  @override
+  String get statusResolved => 'විසඳා ඇත';
+
+  @override
+  String get notificationsTitle => 'දැනුම්දීම්';
+
+  @override
+  String get unreadLabel => 'නොකියවූ';
+
+  @override
+  String get notificationsEmpty => 'ඔබ යාවත්කාලීනයි.';
+
+  @override
+  String get notificationReply => 'පිළිතුර';
+
+  @override
+  String get notificationStatus => 'තත්ත්ව යාවත්කාලීනය';
+
+  @override
+  String get notificationEscalated => 'ඉහළ නැංවීම';
+
+  @override
+  String get notificationGeneral => 'දැනුම්දීම';
+
+  @override
+  String get retry => 'නැවත උත්සාහ කරන්න';
+
+  @override
+  String get myFeedbackTitle => 'මගේ ප්‍රතිචාර';
+
+  @override
+  String get myFeedbackEmpty => 'ඔබ තවම ප්‍රතිචාරයක් බෙදා නැත.';
+
+  @override
+  String get editFeedback => 'සංස්කරණය';
+
+  @override
+  String get withdrawFeedback => 'ඉවත් කරන්න';
+
+  @override
+  String get withdrawConfirm =>
+      'මෙම ප්‍රතිචාරය ඉවත් කරන්නද? එය පොදු පුවරුවෙන් සඟවනු ලැබේ.';
+
+  @override
+  String get feedbackUpdated => 'ඔබේ ප්‍රතිචාරය යාවත්කාලීන විය.';
+
+  @override
+  String get feedbackWithdrawn => 'ඔබේ ප්‍රතිචාරය ඉවත් කරන ලදි.';
+
+  @override
+  String get canStillEdit => 'යැවූ පසු පැය 24ක් ඇතුළත සංස්කරණය කළ හැක.';
+
+  @override
+  String get editingClosed => 'පැය 24ක සංස්කරණ කාලය අවසන්.';
+
+  @override
+  String get replyHint => 'මෙම සටහනට පිළිතුරු දෙන්න';
+
+  @override
+  String get sendReply => 'පිළිතුර යවන්න';
+
+  @override
+  String get replySent => 'ඔබේ පිළිතුර පළ විය.';
+
+  @override
+  String get markAllRead => 'සියල්ල කියවූ ලෙස සලකුණු කරන්න';
+
+  @override
+  String get chooseCompletedVisit => 'සම්පූර්ණ වූ පැමිණීම';
+
+  @override
+  String get noCompletedVisit =>
+      'ප්‍රතිචාරය සඳහා සම්පූර්ණ වූ පැමිණීමක් තවම නැත.';
+
+  @override
+  String get escalatedOn => 'ඉහළ නංවා ඇත';
+
+  @override
+  String get saveChanges => 'වෙනස්කම් සුරකින්න';
 }
