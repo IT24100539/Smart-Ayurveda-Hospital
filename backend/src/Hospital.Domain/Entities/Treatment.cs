@@ -17,9 +17,8 @@ public class Treatment : BaseEntity
 
     /// <summary>List price for invoicing. Retained from the shared catalog.</summary>
     public decimal UnitPrice { get; set; }
-public bool IsActive { get; set; } = true;
 
-public ICollection<TreatmentSchedule> Schedules { get; set; } = new List<TreatmentSchedule>();
-public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
-public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
+    public ICollection<TreatmentSchedule> Schedules { get; set; } = new List<TreatmentSchedule>();
+    public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+    public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }

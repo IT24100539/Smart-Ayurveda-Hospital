@@ -108,7 +108,7 @@ export function TreatmentsView() {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex justify-center gap-1">
-                        {days.map((d, i) => (
+                        {days.map((_, i) => (
                           <div 
                             key={i} 
                             className={`w-6 h-6 flex items-center justify-center rounded text-xs ${t.availableDays?.includes(i) ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-300'}`}

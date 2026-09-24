@@ -148,7 +148,7 @@ public sealed class TreatmentServiceTests
         {
             TreatmentId = treatment.Id,
             Treatment = treatment,
-            DayOfWeek = day,
+            DayOfWeek = TreatmentService.ToSystemDay(day),
             StartTime = new TimeOnly(9, 0),
             EndTime = new TimeOnly(12, 0),
             MaxSlotsPerDay = maxSlots,
@@ -246,5 +246,17 @@ public sealed class TreatmentServiceTests
 
         public Task<Therapist?> GetTherapistByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(_therapists.FirstOrDefault(x => x.Id == id));
+
+        public Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken)
+        {
+            var treatment = _items.FirstOrDefault(x => x.Id == treatmentId);
+            return Task.FromResult<IReadOnlyList<TreatmentSchedule>>(treatment?.Schedules.ToList() ?? new List<TreatmentSchedule>());
+        }
+
+        public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            var schedule = _items.SelectMany(x => x.Schedules).FirstOrDefault(s => s.Id == id);
+            return Task.FromResult(schedule);
+        }
     }
 }

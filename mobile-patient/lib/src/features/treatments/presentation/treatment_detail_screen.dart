@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../router/app_routes.dart';
 import '../../../theme/app_theme.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/availability_provider.dart';
@@ -55,7 +56,7 @@ class _TreatmentDetailView extends ConsumerWidget {
   void _handleRequestAppointment(BuildContext context, WidgetRef ref) {
     final authState = ref.read(authControllerProvider);
     if (authState.isAuthenticated) {
-      context.push('/appointments/book/${treatment.id}');
+      context.push(AppRoutes.bookingFor(treatment.id));
     } else {
       context.push('/login?returnPath=/treatments/${treatment.id}');
     }
