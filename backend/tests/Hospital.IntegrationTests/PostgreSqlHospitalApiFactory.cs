@@ -16,6 +16,7 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
     private const string ConnectionStringEnvironmentVariable = "ConnectionStrings__IntegrationTests";
     private const string RequiredDatabaseName = "ayurveda_hospital_test";
     private const string DevelopmentDatabaseName = "ayurveda_hospital";
+    private const long DatabaseResetAdvisoryLockKey = 4815162342;
     private readonly string _connectionString = GetValidatedConnectionString();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -40,15 +41,37 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
             await using var scope = Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
 
-            // Drop and recreate the schema instead of the whole database.
-            // This avoids the "database does not exist" window that occurs when
-            // EnsureDeletedAsync drops the database while other connections are still open.
-            await db.Database.ExecuteSqlRawAsync("""
-                DROP SCHEMA public CASCADE;
-                CREATE SCHEMA public;
-                """);
+            await using var connection = (NpgsqlConnection)db.Database.GetDbConnection();
+            await connection.OpenAsync();
 
-            await db.Database.MigrateAsync();
+            await using (var lockCommand = new NpgsqlCommand(
+                "SELECT pg_advisory_lock(@key);",
+                connection))
+            {
+                lockCommand.Parameters.AddWithValue("key", DatabaseResetAdvisoryLockKey);
+                await lockCommand.ExecuteNonQueryAsync();
+            }
+
+            try
+            {
+                // Drop and recreate the schema instead of the whole database.
+                // This avoids the "database does not exist" window that occurs when
+                // EnsureDeletedAsync drops the database while other connections are still open.
+                await db.Database.ExecuteSqlRawAsync("""
+                    DROP SCHEMA IF EXISTS public CASCADE;
+                    CREATE SCHEMA public;
+                    """);
+
+                await db.Database.MigrateAsync();
+            }
+            finally
+            {
+                await using var unlockCommand = new NpgsqlCommand(
+                    "SELECT pg_advisory_unlock(@key);",
+                    connection);
+                unlockCommand.Parameters.AddWithValue("key", DatabaseResetAdvisoryLockKey);
+                await unlockCommand.ExecuteNonQueryAsync();
+            }
         }
         finally
         {
