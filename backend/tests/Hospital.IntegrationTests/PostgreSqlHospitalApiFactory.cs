@@ -29,12 +29,24 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
         });
     }
 
+    private static readonly SemaphoreSlim DatabaseResetLock = new(1, 1);
+
     public async Task ResetDatabaseAsync()
     {
-        using var scope = Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
-        await db.Database.EnsureDeletedAsync();
-        await db.Database.MigrateAsync();
+        await DatabaseResetLock.WaitAsync();
+
+        try
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+
+            await db.Database.EnsureDeletedAsync();
+            await db.Database.MigrateAsync();
+        }
+        finally
+        {
+            DatabaseResetLock.Release();
+        }
     }
 
     private static string GetValidatedConnectionString()
