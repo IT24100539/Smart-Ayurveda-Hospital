@@ -4,25 +4,25 @@ namespace Hospital.Application.Appointments.Dtos;
 
 public sealed record CreateAppointmentRequest(
     Guid PatientId,
-    Guid DoctorId,
-    DateTimeOffset ScheduledAt,
-    int DurationMinutes,
-    string Reason,
-    string? Notes);
+    Guid TreatmentId,
+    Guid? ScheduleId,
+    DateOnly RequestedDate,
+    string RequestedTimeSlot);
 
 public sealed record UpdateAppointmentStatusRequest(
     AppointmentStatus Status,
-    string? CancellationReason);
+    Guid? DecidedBy);
 
 public sealed record AppointmentDto(
     Guid Id,
     Guid PatientId,
     string PatientName,
     string PatientUhid,
-    Guid DoctorId,
-    string DoctorName,
-    DateTimeOffset ScheduledAt,
-    int DurationMinutes,
+    Guid TreatmentId,
+    string TreatmentName,
+    Guid? ScheduleId,
+    DateOnly RequestedDate,
+    string RequestedTimeSlot,
     AppointmentStatus Status,
-    string Reason,
-    string? Notes);
+    Guid? DecidedBy,
+    DateTimeOffset? DecidedAt);

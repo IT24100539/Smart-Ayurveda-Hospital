@@ -1,7 +1,7 @@
 import { hasValidJwt, useAuthStore } from "../store/authStore";
 import type { AuthUser } from "../auth/roles";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api").replace(
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5080/api").replace(
   /\/$/,
   ""
 );

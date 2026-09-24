@@ -43,9 +43,9 @@ class HomeShell extends StatelessWidget {
             label: l10n.navAppointments,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.receipt_long_outlined),
-            selectedIcon: const Icon(Icons.receipt_long),
-            label: l10n.navBilling,
+            icon: const Icon(Icons.reviews_outlined),
+            selectedIcon: const Icon(Icons.reviews),
+            label: l10n.navFeedback,
           ),
           NavigationDestination(
             icon: const Icon(Icons.person_outline),

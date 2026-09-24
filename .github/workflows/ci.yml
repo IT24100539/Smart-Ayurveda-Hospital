@@ -13,18 +13,19 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: ayurveda_hospital
+          POSTGRES_DB: ayurveda_hospital_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d ayurveda_hospital"
+          --health-cmd "pg_isready -U postgres -d ayurveda_hospital_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=ayurveda_hospital;Username=postgres;Password=postgres
+      ConnectionStrings__IntegrationTests: >-
+        Host=localhost;Port=5432;Database=ayurveda_hospital_test;Username=postgres;Password=postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -39,6 +40,22 @@ jobs:
       - name: Test
         working-directory: backend
         run: dotnet test Hospital.sln --no-build
+
+  agent-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: agent-service/requirements.txt
+      - name: Install dependencies
+        working-directory: agent-service
+        run: pip install -r requirements.txt
+      - name: Test
+        working-directory: agent-service
+        run: pytest
 
   frontend-lint:
     runs-on: ubuntu-latest
@@ -90,4 +107,5 @@ jobs:
         working-directory: mobile-patient
         run: |
           flutter pub get
+          flutter gen-l10n
           flutter analyze

@@ -12,6 +12,4 @@ public class StaffUser : BaseEntity
     public string? Specialization { get; set; }
     public string? Phone { get; set; }
     public bool IsActive { get; set; } = true;
-
-    public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
 }
