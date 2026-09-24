@@ -40,7 +40,14 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
             await using var scope = Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
 
-            await db.Database.EnsureDeletedAsync();
+            // Drop and recreate the schema instead of the whole database.
+            // This avoids the "database does not exist" window that occurs when
+            // EnsureDeletedAsync drops the database while other connections are still open.
+            await db.Database.ExecuteSqlRawAsync("""
+                DROP SCHEMA public CASCADE;
+                CREATE SCHEMA public;
+                """);
+
             await db.Database.MigrateAsync();
         }
         finally
