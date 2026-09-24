@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     shared_secret: str = "dev-internal-agent-secret"
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.1"
+    ollama_timeout_seconds: float = 30
+    hospital_api_base_url: str = "http://127.0.0.1:5080"
+    internal_service_key: str = "dev-internal-service-key"
     environment: str = "development"
 
     @property

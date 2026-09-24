@@ -27,6 +27,12 @@ public static class DependencyInjection
         services.AddScoped<IStaffUserRepository, StaffUserRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+        services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+        services.AddScoped<IFeedbackReactionRepository, FeedbackReactionRepository>();
+        services.AddScoped<IFeedbackReplyRepository, FeedbackReplyRepository>();
+        services.AddScoped<IComplaintRepository, ComplaintRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<ITreatmentCatalog, TreatmentCatalog>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();

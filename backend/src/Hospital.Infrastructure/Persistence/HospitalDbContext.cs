@@ -21,6 +21,11 @@ public sealed class HospitalDbContext : DbContext
     public DbSet<PrescriptionItem> PrescriptionItems => Set<PrescriptionItem>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+    public DbSet<Feedback> Feedbacks => Set<Feedback>();
+    public DbSet<FeedbackReaction> FeedbackReactions => Set<FeedbackReaction>();
+    public DbSet<FeedbackReply> FeedbackReplies => Set<FeedbackReply>();
+    public DbSet<Complaint> Complaints => Set<Complaint>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

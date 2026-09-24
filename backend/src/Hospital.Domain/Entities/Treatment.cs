@@ -11,4 +11,6 @@ public class Treatment : BaseEntity
     public int DurationMinutes { get; set; }
     public decimal UnitPrice { get; set; }
     public bool IsActive { get; set; } = true;
+
+    public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }

@@ -74,6 +74,61 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.ToTable("appointments", (string)null);
                 });
 
+            modelBuilder.Entity("Hospital.Domain.Entities.Complaint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssignedTo")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset?>("EscalatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("FeedbackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedTo");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("FeedbackId");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("complaints", (string)null);
+                });
+
             modelBuilder.Entity("Hospital.Domain.Entities.Consultation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -121,6 +176,154 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("consultations", (string)null);
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Feedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AppointmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsAnonymous")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModeratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ModeratedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PatientNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Sentiment")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("TreatmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ModeratedBy");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("Sentiment");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TreatmentId");
+
+                    b.ToTable("feedbacks", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_feedbacks_rating", "\"Rating\" >= 1 AND \"Rating\" <= 5");
+                        });
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.FeedbackReaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FeedbackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ReactionType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("FeedbackId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("feedback_reactions", (string)null);
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.FeedbackReply", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FeedbackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsAiGenerated")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Reply")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("UserRole")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeedbackId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("feedback_replies", (string)null);
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Invoice", b =>
@@ -255,6 +458,51 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("medicines", (string)null);
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StaffUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("StaffUserId");
+
+                    b.HasIndex("PatientId", "IsRead");
+
+                    b.ToTable("notifications", (string)null);
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Patient", b =>
@@ -565,6 +813,31 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("Hospital.Domain.Entities.Complaint", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.StaffUser", "Assignee")
+                        .WithMany()
+                        .HasForeignKey("AssignedTo")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Hospital.Domain.Entities.Feedback", "Feedback")
+                        .WithMany("Complaints")
+                        .HasForeignKey("FeedbackId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
+                        .WithMany("Complaints")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Assignee");
+
+                    b.Navigation("Feedback");
+
+                    b.Navigation("Patient");
+                });
+
             modelBuilder.Entity("Hospital.Domain.Entities.Consultation", b =>
                 {
                     b.HasOne("Hospital.Domain.Entities.Appointment", "Appointment")
@@ -574,6 +847,75 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Appointment");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Feedback", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Appointment", "Appointment")
+                        .WithMany("Feedbacks")
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Hospital.Domain.Entities.StaffUser", "Moderator")
+                        .WithMany()
+                        .HasForeignKey("ModeratedBy")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
+                        .WithMany("Feedbacks")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.Treatment", "Treatment")
+                        .WithMany("Feedbacks")
+                        .HasForeignKey("TreatmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Moderator");
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("Treatment");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.FeedbackReaction", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Feedback", "Feedback")
+                        .WithMany("Reactions")
+                        .HasForeignKey("FeedbackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Feedback");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.FeedbackReply", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Feedback", "Feedback")
+                        .WithMany("Replies")
+                        .HasForeignKey("FeedbackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Feedback");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Invoice", b =>
@@ -596,6 +938,24 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Invoice");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
+                        .WithMany("Notifications")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.StaffUser", "StaffRecipient")
+                        .WithMany()
+                        .HasForeignKey("StaffUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("StaffRecipient");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Prescription", b =>
@@ -631,11 +991,22 @@ namespace Hospital.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Hospital.Domain.Entities.Appointment", b =>
                 {
                     b.Navigation("Consultation");
+
+                    b.Navigation("Feedbacks");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Consultation", b =>
                 {
                     b.Navigation("Prescription");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Feedback", b =>
+                {
+                    b.Navigation("Complaints");
+
+                    b.Navigation("Reactions");
+
+                    b.Navigation("Replies");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Invoice", b =>
@@ -647,7 +1018,13 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("Appointments");
 
+                    b.Navigation("Complaints");
+
+                    b.Navigation("Feedbacks");
+
                     b.Navigation("Invoices");
+
+                    b.Navigation("Notifications");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Prescription", b =>
@@ -658,6 +1035,11 @@ namespace Hospital.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Hospital.Domain.Entities.StaffUser", b =>
                 {
                     b.Navigation("Appointments");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Treatment", b =>
+                {
+                    b.Navigation("Feedbacks");
                 });
 #pragma warning restore 612, 618
         }

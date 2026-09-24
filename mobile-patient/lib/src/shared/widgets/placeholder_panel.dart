@@ -4,7 +4,11 @@ import '../../l10n/app_localizations.dart';
 
 /// Stand-in body for tabs whose features are not built yet.
 class PlaceholderPanel extends StatelessWidget {
-  const PlaceholderPanel({required this.icon, required this.message, super.key});
+  const PlaceholderPanel({
+    required this.icon,
+    required this.message,
+    super.key,
+  });
 
   final IconData icon;
   final String message;

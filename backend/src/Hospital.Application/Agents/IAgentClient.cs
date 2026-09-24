@@ -8,4 +8,11 @@ namespace Hospital.Application.Agents;
 public interface IAgentClient
 {
     Task<AgentInvokeResponse> InvokeAsync(AgentInvokeRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Feedback-support graph. Returns analysis and an optional draft. Never publishes.
+    /// </summary>
+    Task<FeedbackSupportAgentResponse> DraftFeedbackSupportAsync(
+        FeedbackSupportAgentRequest request,
+        CancellationToken cancellationToken);
 }
