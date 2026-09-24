@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../router/app_routes.dart';
 import '../../appointments/presentation/appointments_screen.dart';
+import '../../appointments/domain/appointment_models.dart';
 import '../../auth/application/auth_controller.dart';
 import '../data/communication_repository.dart';
 import 'feedback_keys.dart';
@@ -268,7 +269,7 @@ class _CompletedVisitPicker extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final visits = ref.watch(myVisitsProvider);
+    final visits = ref.watch(myAppointmentsProvider);
     return visits.when(
       loading: () => const LinearProgressIndicator(),
       error: (error, _) => Text(
@@ -278,7 +279,9 @@ class _CompletedVisitPicker extends ConsumerWidget {
         ),
       ),
       data: (items) {
-        final completed = items.where((visit) => visit.isCompleted).toList();
+        final completed = items
+            .where((visit) => visit.status == AppointmentStatus.completed)
+            .toList();
         if (completed.isEmpty) {
           return Text(
             l10n.noCompletedVisit,
@@ -298,7 +301,7 @@ class _CompletedVisitPicker extends ConsumerWidget {
             for (final visit in completed)
               DropdownMenuItem(
                 value: visit.id,
-                child: Text(visit.reason.isEmpty ? visit.status : visit.reason),
+                child: Text(visit.treatmentName),
               ),
           ],
           onChanged: onSelected,

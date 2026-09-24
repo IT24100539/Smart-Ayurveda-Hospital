@@ -1,3 +1,4 @@
+from pydantic import AnyHttpUrl, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +14,8 @@ class Settings(BaseSettings):
     hospital_api_base_url: str = "http://127.0.0.1:5080"
     internal_service_key: str = "dev-internal-service-key"
     environment: str = "development"
+    backend_base_url: AnyHttpUrl = "http://127.0.0.1:5000"
+    internal_service_key: SecretStr = SecretStr("")
 
     @property
     def is_production(self) -> bool:

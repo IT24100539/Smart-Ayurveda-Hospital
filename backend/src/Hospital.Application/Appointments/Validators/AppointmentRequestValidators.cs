@@ -8,11 +8,9 @@ public sealed class CreateAppointmentRequestValidator : AbstractValidator<Create
     public CreateAppointmentRequestValidator()
     {
         RuleFor(x => x.PatientId).NotEmpty();
-        RuleFor(x => x.DoctorId).NotEmpty();
-        RuleFor(x => x.ScheduledAt).Must(dt => dt > DateTimeOffset.UtcNow.AddMinutes(-5))
-            .WithMessage("Appointment must be scheduled in the future.");
-        RuleFor(x => x.DurationMinutes).InclusiveBetween(15, 240);
-        RuleFor(x => x.Reason).NotEmpty().MaximumLength(500);
+        RuleFor(x => x.TreatmentId).NotEmpty();
+        RuleFor(x => x.RequestedDate).NotEqual(default(DateOnly));
+        RuleFor(x => x.RequestedTimeSlot).NotEmpty().MaximumLength(32);
     }
 }
 

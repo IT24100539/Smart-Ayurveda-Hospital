@@ -117,11 +117,12 @@ internal sealed class FeedbackHarness
         "Secret Name",
         "SAH-2026-00009",
         Guid.NewGuid(),
-        "Dr. Rao",
-        FeedbackTestClock.Now.AddDays(-2),
-        30,
-        status,
         "Nadi pariksha",
+        null,
+        DateOnly.FromDateTime(FeedbackTestClock.Now.AddDays(-2).UtcDateTime),
+        "09:00-09:30",
+        status,
+        null,
         null);
 
     public static Complaint OpenComplaint(Patient patient, DateTimeOffset createdAt, ComplaintStatus status) => new()
@@ -165,6 +166,9 @@ internal sealed class FeedbackHarness
 
     internal sealed class FakeAppointmentService : IAppointmentService
     {
+        public Task CancelAsync(Guid appointmentId, Guid requestingPatientId, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
         public AppointmentDto? Appointment { get; set; }
         public int GetCalls { get; private set; }
 

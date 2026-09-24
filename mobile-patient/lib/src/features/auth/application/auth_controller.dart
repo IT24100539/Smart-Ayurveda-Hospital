@@ -44,10 +44,10 @@ class AuthController extends Notifier<AuthState> {
   /// request will 401 and [handleUnauthorized] will clean up if it is stale.
   Future<void> restoreSession() async {
     final token = await _tokenStorage.readToken();
+    final hasToken = token != null && token.isNotEmpty;
     state = AuthState(
-      status: token == null || token.isEmpty
-          ? AuthStatus.unauthenticated
-          : AuthStatus.authenticated,
+      status: hasToken ? AuthStatus.authenticated : AuthStatus.unauthenticated,
+      user: hasToken ? AuthUser.fromJwt(token) : null,
     );
   }
 

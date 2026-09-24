@@ -70,6 +70,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get phoneNumberRequired => 'Please enter your phone number';
 
   @override
+  String get phoneNumberInvalid =>
+      'Enter a valid Sri Lankan mobile number (07XXXXXXXX or +947XXXXXXXX)';
+
+  @override
   String get passwordRequired => 'Please enter your password';
 
   @override
