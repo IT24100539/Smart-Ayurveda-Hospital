@@ -11,6 +11,7 @@ import pytest
 from pydantic import SecretStr
 
 from app import tools
+from app.tools import scheduling
 from app.agents import scheduling_bed_agent as agent
 from app.main import app
 from app.schemas import ApprovalStatus, SchedulingAgentResponse
@@ -31,7 +32,7 @@ def scenario(monkeypatch):
     monkeypatch.setattr(settings, "backend_base_url", "http://backend.test")
     monkeypatch.setattr(settings, "ollama_base_url", "http://ollama.test")
     case.sleep = AsyncMock()
-    monkeypatch.setattr(tools.asyncio, "sleep", case.sleep)
+    monkeypatch.setattr(scheduling.asyncio, "sleep", case.sleep)
 
     def handler(request):
         case.calls.append(request)

@@ -121,9 +121,9 @@ void main() {
     await _pump(tester, const MyAppointmentsScreen(), repository);
 
     for (final status in statuses) {
-      final chip = tester.widget<Chip>(
-        find.byKey(ValueKey('status-chip-${status.name}')),
-      );
+      final chipFinder = find.byKey(ValueKey('status-chip-${status.name}'));
+      await tester.scrollUntilVisible(chipFinder, 200);
+      final chip = tester.widget<Chip>(chipFinder);
       expect(
         chip.backgroundColor,
         AppointmentStatusColors.background(status),

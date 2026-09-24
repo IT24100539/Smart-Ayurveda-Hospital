@@ -8,6 +8,7 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from app import tools
+from app.tools import scheduling
 from app.schemas import ToolResult
 
 
@@ -36,11 +37,11 @@ def mock_http(monkeypatch):
         client_options.append(kwargs)
         return real_client(**kwargs, transport=httpx.MockTransport(handler))
 
-    monkeypatch.setattr(tools.httpx, "AsyncClient", client)
-    monkeypatch.setattr(tools.settings, "internal_service_key", SecretStr("test-service-secret"))
-    monkeypatch.setattr(tools.settings, "backend_base_url", "https://backend.example")
+    monkeypatch.setattr(scheduling.httpx, "AsyncClient", client)
+    monkeypatch.setattr(scheduling.settings, "internal_service_key", SecretStr("test-service-secret"))
+    monkeypatch.setattr(scheduling.settings, "backend_base_url", "https://backend.example")
     sleep = AsyncMock()
-    monkeypatch.setattr(tools.asyncio, "sleep", sleep)
+    monkeypatch.setattr(scheduling.asyncio, "sleep", sleep)
     return requests, outcomes, client_options, sleep
 
 
@@ -124,7 +125,7 @@ async def test_get_timeout_exhausted(mock_http, values):
     requests, outcomes, _, sleep = mock_http
     outcomes.extend([httpx.ReadTimeout("test-service-secret")] * 2)
     result = await tools.check_ward_availability(values["ward_id"])
-    assert isinstance(result, tools.ToolFailure)
+    assert isinstance(result, scheduling.ToolFailure)
     assert not result.succeeded
     assert result.error_code == "transport_error"
     assert not result.outcome_unknown
@@ -139,7 +140,7 @@ async def test_post_failure_never_retries(mock_http, values, failure):
     requests, outcomes, _, sleep = mock_http
     outcomes.append(failure)
     result = await tools.create_admission_request(**values)
-    assert isinstance(result, tools.ToolFailure)
+    assert isinstance(result, scheduling.ToolFailure)
     assert not result.succeeded
     assert result.outcome_unknown
     assert len(requests) == 1
@@ -191,7 +192,7 @@ async def test_malformed_gets_never_construct_client(mock_http, values):
 
 
 async def test_missing_key_fails_before_http(mock_http, values, monkeypatch):
-    monkeypatch.setattr(tools.settings, "internal_service_key", SecretStr(""))
+    monkeypatch.setattr(scheduling.settings, "internal_service_key", SecretStr(""))
     result = await tools.check_ward_availability(values["ward_id"])
     assert result.error_code == "configuration_error"
     assert mock_http[0] == mock_http[2] == []
