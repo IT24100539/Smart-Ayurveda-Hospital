@@ -74,7 +74,7 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.HasOne(x => x.Patient).WithMany(x => x.Appointments).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Treatment).WithMany(x => x.Appointments).HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Schedule).WithMany(x => x.Appointments).HasForeignKey(x => x.ScheduleId).OnDelete(DeleteBehavior.SetNull);
-        builder.HasOne(x => x.DecidedByUser).WithMany().HasForeignKey(x => x.DecidedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.DecidedByUser).WithMany().HasForeignKey(x => x.DecidedById).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Consultation).WithOne(x => x.Appointment).HasForeignKey<Consultation>(x => x.AppointmentId);
     }
 }
@@ -141,7 +141,7 @@ public sealed class AdmissionRequestConfiguration : IEntityTypeConfiguration<Adm
         builder.HasOne(x => x.Patient).WithMany(x => x.AdmissionRequests).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Ward).WithMany(x => x.AdmissionRequests).HasForeignKey(x => x.WardId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Bed).WithMany(x => x.AdmissionRequests).HasForeignKey(x => x.BedId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(x => x.DecidedByUser).WithMany().HasForeignKey(x => x.DecidedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.DecidedByUser).WithMany().HasForeignKey(x => x.DecidedById).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -302,7 +302,7 @@ public sealed class FeedbackConfiguration : IEntityTypeConfiguration<Feedback>
         builder.HasOne(x => x.Patient).WithMany(x => x.Feedbacks).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Appointment).WithMany(x => x.Feedbacks).HasForeignKey(x => x.AppointmentId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne(x => x.Treatment).WithMany(x => x.Feedbacks).HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.SetNull);
-        builder.HasOne(x => x.Moderator).WithMany().HasForeignKey(x => x.ModeratedBy).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.Moderator).WithMany().HasForeignKey(x => x.ModeratedById).OnDelete(DeleteBehavior.SetNull);
         builder.HasMany(x => x.Reactions).WithOne(x => x.Feedback).HasForeignKey(x => x.FeedbackId);
         builder.HasMany(x => x.Replies).WithOne(x => x.Feedback).HasForeignKey(x => x.FeedbackId);
     }
@@ -343,7 +343,7 @@ public sealed class ComplaintConfiguration : IEntityTypeConfiguration<Complaint>
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.CreatedAt);
         builder.HasOne(x => x.Patient).WithMany(x => x.Complaints).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(x => x.Assignee).WithMany().HasForeignKey(x => x.AssignedTo).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.Assignee).WithMany().HasForeignKey(x => x.AssignedToId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne(x => x.Feedback).WithMany(x => x.Complaints).HasForeignKey(x => x.FeedbackId).OnDelete(DeleteBehavior.SetNull);
     }
 }

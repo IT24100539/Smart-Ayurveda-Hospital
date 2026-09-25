@@ -4,18 +4,19 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../router/app_routes.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../theme/app_theme.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/availability_provider.dart';
 import '../application/treatments_provider.dart';
 import '../domain/treatment_models.dart';
 
-final selectedDateProvider = StateProvider.autoDispose<DateTime?>((ref) => null);
+final selectedDateProvider = StateProvider.autoDispose<DateTime?>(
+  (ref) => null,
+);
 
 class TreatmentDetailScreen extends ConsumerWidget {
-  const TreatmentDetailScreen({
-    super.key,
-    required this.treatmentId,
-  });
+  const TreatmentDetailScreen({super.key, required this.treatmentId});
 
   final String treatmentId;
 
@@ -25,11 +26,13 @@ class TreatmentDetailScreen extends ConsumerWidget {
 
     return treatmentsState.when(
       data: (treatments) {
-        final treatment = treatments.where((t) => t.id == treatmentId).firstOrNull;
+        final treatment = treatments
+            .where((t) => t.id == treatmentId)
+            .firstOrNull;
         if (treatment == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Treatment Details')),
-            body: const Center(child: Text('Treatment not found.')),
+            body: const EmptyState(message: 'Treatment not found.'),
           );
         }
         return _TreatmentDetailView(treatment: treatment);
@@ -40,7 +43,7 @@ class TreatmentDetailScreen extends ConsumerWidget {
       ),
       error: (error, stack) => Scaffold(
         appBar: AppBar(title: const Text('Error')),
-        body: Center(child: Text('Error loading treatment: $error')),
+        body: ErrorState(message: 'Error loading treatment: $error'),
       ),
     );
   }
@@ -66,11 +69,9 @@ class _TreatmentDetailView extends ConsumerWidget {
     final selectedDate = ref.watch(selectedDateProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(treatment.nameEnglish),
-      ),
+      appBar: AppBar(title: Text(treatment.nameEnglish)),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -90,7 +91,7 @@ class _TreatmentDetailView extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             Text(
               treatment.nameSinhala,
               style: theme.textTheme.headlineMedium?.copyWith(
@@ -105,7 +106,7 @@ class _TreatmentDetailView extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             if (treatment.therapistName != null)
               Text(
                 'Therapist: ${treatment.therapistName}',
@@ -119,10 +120,7 @@ class _TreatmentDetailView extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              treatment.description,
-              style: theme.textTheme.bodyMedium,
-            ),
+            Text(treatment.description, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 24),
 
             Text(
@@ -136,16 +134,14 @@ class _TreatmentDetailView extends ConsumerWidget {
               spacing: 8,
               runSpacing: 8,
               children: treatment.scheduleDays.map((day) {
-                return Chip(
-                  label: Text(formatDayTag(day)),
-                );
+                return Chip(label: Text(formatDayTag(day)));
               }).toList(),
             ),
             const SizedBox(height: 32),
-            
+
             const Divider(),
             const SizedBox(height: 16),
-            
+
             Text(
               'Check Availability',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -172,9 +168,9 @@ class _TreatmentDetailView extends ConsumerWidget {
                     : DateFormat('yyyy-MM-dd').format(selectedDate),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             if (selectedDate != null)
               Consumer(
                 builder: (context, ref, child) {
@@ -182,7 +178,7 @@ class _TreatmentDetailView extends ConsumerWidget {
                   final availabilityAsync = ref.watch(
                     availabilityProvider((id: treatment.id, date: dateStr)),
                   );
-                  
+
                   return availabilityAsync.when(
                     data: (availability) {
                       if (availability.isAvailable) {
@@ -192,17 +188,24 @@ class _TreatmentDetailView extends ConsumerWidget {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.green.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
+                                color: AyurvedaColors.sageMuted,
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.check_circle, color: Colors.green),
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: AyurvedaColors.forest,
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      availability.message ?? 'Available for booking!',
-                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                                      availability.message ??
+                                          'Available for booking!',
+                                      style: const TextStyle(
+                                        color: AyurvedaColors.forest,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -210,7 +213,8 @@ class _TreatmentDetailView extends ConsumerWidget {
                             ),
                             const SizedBox(height: 16),
                             FilledButton(
-                              onPressed: () => _handleRequestAppointment(context, ref),
+                              onPressed: () =>
+                                  _handleRequestAppointment(context, ref),
                               child: const Text('Request Appointment'),
                             ),
                           ],
@@ -220,15 +224,19 @@ class _TreatmentDetailView extends ConsumerWidget {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline, color: theme.colorScheme.error),
+                              Icon(
+                                Icons.error_outline,
+                                color: theme.colorScheme.error,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  availability.message ?? 'Not available on this date.',
+                                  availability.message ??
+                                      'Not available on this date.',
                                   style: TextStyle(
                                     color: theme.colorScheme.onErrorContainer,
                                     fontWeight: FontWeight.bold,
@@ -240,8 +248,11 @@ class _TreatmentDetailView extends ConsumerWidget {
                         );
                       }
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (error, stack) => Text('Failed to check availability: $error'),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, stack) => ErrorState(
+                      message: 'Failed to check availability: $error',
+                    ),
                   );
                 },
               ),

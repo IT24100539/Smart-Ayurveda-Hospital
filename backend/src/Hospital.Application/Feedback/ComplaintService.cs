@@ -174,7 +174,7 @@ public sealed class ComplaintService : IComplaintService
         complaint.Status = ComplaintStatus.Escalated;
         complaint.Priority = ComplaintPriority.High;
         complaint.EscalatedAt ??= _clock.UtcNow;
-        complaint.AssignedTo ??= staff.Id;
+        complaint.AssignedToId ??= staff.Id;
         if (!alreadyEscalated)
         {
             await AddNotificationAsync(
@@ -197,7 +197,7 @@ public sealed class ComplaintService : IComplaintService
     {
         var assignee = await _staffUsers.GetByIdAsync(assigneeId, cancellationToken)
             ?? throw new NotFoundException("Staff", assigneeId);
-        complaint.AssignedTo = assignee.Id;
+        complaint.AssignedToId = assignee.Id;
     }
 
     private async Task AddNotificationAsync(
@@ -234,7 +234,7 @@ public sealed class ComplaintService : IComplaintService
             complaint.Description,
             complaint.Priority,
             complaint.Status,
-            complaint.AssignedTo,
+            complaint.AssignedToId,
             complaint.EscalatedAt,
             complaint.CreatedAt,
             overdue);

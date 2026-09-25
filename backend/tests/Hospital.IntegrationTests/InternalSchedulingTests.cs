@@ -82,7 +82,7 @@ public sealed class InternalSchedulingTests
         admission.Status.Should().Be(AdmissionRequestStatus.Pending);
         admission.RequestedByAgent.Should().BeTrue();
         admission.BedId.Should().BeNull();
-        admission.DecidedBy.Should().BeNull();
+        admission.DecidedById.Should().BeNull();
         admission.DecidedAt.Should().BeNull();
         (await db.Beds.SingleAsync(x => x.Id == data.FreeBedId)).IsOccupied.Should().BeFalse();
         (await db.Beds.CountAsync(x => x.IsOccupied)).Should().Be(1);

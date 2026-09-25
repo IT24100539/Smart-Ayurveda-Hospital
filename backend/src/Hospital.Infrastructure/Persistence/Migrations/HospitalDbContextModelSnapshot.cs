@@ -37,7 +37,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("DecidedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("DecidedBy")
+                    b.Property<Guid?>("DecidedById")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("PatientId")
@@ -69,7 +69,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("BedId");
 
-                    b.HasIndex("DecidedBy");
+                    b.HasIndex("DecidedById");
 
                     b.HasIndex("PatientId");
 
@@ -90,7 +90,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("DecidedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("DecidedBy")
+                    b.Property<Guid?>("DecidedById")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("PatientId")
@@ -120,7 +120,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DecidedBy");
+                    b.HasIndex("DecidedById");
 
                     b.HasIndex("ScheduleId");
 
@@ -172,7 +172,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("AssignedTo")
+                    b.Property<Guid?>("AssignedToId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -208,7 +208,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AssignedTo");
+                    b.HasIndex("AssignedToId");
 
                     b.HasIndex("CreatedAt");
 
@@ -296,7 +296,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("ModeratedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("ModeratedBy")
+                    b.Property<Guid?>("ModeratedById")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("PatientId")
@@ -330,7 +330,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("ModeratedBy");
+                    b.HasIndex("ModeratedById");
 
                     b.HasIndex("PatientId");
 
@@ -1107,7 +1107,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.HasOne("Hospital.Domain.Entities.User", "DecidedByUser")
                         .WithMany()
-                        .HasForeignKey("DecidedBy")
+                        .HasForeignKey("DecidedById")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
@@ -1134,7 +1134,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("Hospital.Domain.Entities.User", "DecidedByUser")
                         .WithMany()
-                        .HasForeignKey("DecidedBy")
+                        .HasForeignKey("DecidedById")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
@@ -1178,7 +1178,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("Hospital.Domain.Entities.StaffUser", "Assignee")
                         .WithMany()
-                        .HasForeignKey("AssignedTo")
+                        .HasForeignKey("AssignedToId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Hospital.Domain.Entities.Feedback", "Feedback")
@@ -1219,7 +1219,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.HasOne("Hospital.Domain.Entities.StaffUser", "Moderator")
                         .WithMany()
-                        .HasForeignKey("ModeratedBy")
+                        .HasForeignKey("ModeratedById")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Hospital.Domain.Entities.Patient", "Patient")

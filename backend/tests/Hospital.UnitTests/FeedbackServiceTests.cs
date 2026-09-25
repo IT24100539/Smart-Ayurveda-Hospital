@@ -110,7 +110,7 @@ public sealed class FeedbackServiceTests
 
         Assert.Equal(3, updated.Rating);
         Assert.Equal(FeedbackStatus.PendingModeration, updated.Status);
-        Assert.Null(feedback.ModeratedBy);
+        Assert.Null(feedback.ModeratedById);
     }
 
     [Fact]
@@ -234,7 +234,7 @@ public sealed class FeedbackServiceTests
         var feedback = harness.SeedFeedback(Now);
         feedback.IsAnonymous = true;
         feedback.PatientNameSnapshot = "Secret Name";
-        feedback.ModeratedBy = harness.Staff.Id;
+        feedback.ModeratedById = harness.Staff.Id;
         feedback.ModeratedAt = Now;
         feedback.Replies.Add(new FeedbackReply
         {

@@ -393,7 +393,7 @@ public sealed class WardRepository : IWardRepository
         freeBed.IsOccupied = true;
         req.BedId = freeBed.Id;
         req.Status = AdmissionRequestStatus.Approved;
-        req.DecidedBy = decidedBy;
+        req.DecidedById = decidedBy;
         req.DecidedAt = decidedAt;
 
         await _db.SaveChangesAsync(cancellationToken);

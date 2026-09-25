@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../theme/app_theme.dart';
 import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
@@ -89,24 +90,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ? _NotificationList(items: cached, onTap: _markRead)
           : notices.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        feedbackErrorText(error, l10n),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      OutlinedButton(
-                        onPressed: () => ref.invalidate(notificationsProvider),
-                        child: Text(l10n.retry),
-                      ),
-                    ],
-                  ),
-                ),
+              error: (error, _) => ErrorState(
+                message: feedbackErrorText(error, l10n),
+                actionLabel: l10n.retry,
+                onAction: () => ref.invalidate(notificationsProvider),
               ),
               data: (loaded) =>
                   _NotificationList(items: loaded, onTap: _markRead),
@@ -125,7 +112,7 @@ class _NotificationList extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     if (items.isEmpty) {
-      return Center(child: Text(l10n.notificationsEmpty));
+      return EmptyState(message: l10n.notificationsEmpty);
     }
     final unread = items.where((item) => !item.isRead).length;
     return ListView.separated(

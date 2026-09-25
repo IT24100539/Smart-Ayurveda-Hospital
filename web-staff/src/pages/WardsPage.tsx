@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, api } from "../api/client";
+import { PageHeader } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
 
 export type Bed = { id: string; bedLabel: string; isOccupied: boolean };
@@ -76,12 +77,17 @@ export function WardsPage() {
   }
 
   return (
-    <section className="space-y-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">In-patient care</p>
-        <h1>Ward & bed dashboard</h1>
-        <p className="mt-1 text-sm text-muted">Live occupancy and admission requests requiring human approval.</p>
-      </div>
+    <section className="mx-auto max-w-7xl space-y-6">
+      <PageHeader
+        kicker="In-patient care"
+        title="Ward and bed dashboard"
+        description="Live occupancy and admission requests that need a staff decision before a bed is assigned."
+      />
+      <img
+        src="/images/ayurveda-ward.png"
+        alt="Quiet Ayurveda ward with linen beds"
+        className="h-44 w-full rounded-2xl object-cover shadow-md"
+      />
 
       {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger">{error}</div>}
       {loading ? (

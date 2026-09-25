@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, api } from "../api/client";
+import { PageHeader } from "../components/ui";
 import {
   decideWorkflow,
   getWorkflow,
@@ -159,18 +160,17 @@ export function AiApprovalsPage() {
   const canDecide = selected?.approvalStatus === "Pending";
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>AI approvals</h1>
-          <p className="mt-1 text-sm text-muted">Review agent plans before a vaidya confirms them.</p>
-        </div>
-        {/* Manual refresh only. Live updates are out of scope for this screen. */}
-        <button type="button" className={secondaryButton} onClick={() => setRefreshKey((value) => value + 1)}>
-          Refresh
-        </button>
-      </div>
-
+    <section className="mx-auto max-w-7xl space-y-4">
+      <PageHeader
+        kicker="Agent plans"
+        title="AI approvals"
+        description="Review agent plans before a vaidya confirms them."
+        action={
+          <button type="button" className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-primary-muted" onClick={() => setRefreshKey((value) => value + 1)}>
+            Refresh
+          </button>
+        }
+      />
       <div className="flex flex-wrap gap-3">
         <label className="text-sm text-muted">
           Agent

@@ -50,6 +50,8 @@ void main() {
     expect(find.byKey(FeedbackKeys.namePreview), findsOneWidget);
     expect(find.text('Nimal Perera'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(FeedbackKeys.anonymousToggle));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(FeedbackKeys.anonymousToggle));
     await tester.pumpAndSettle();
 

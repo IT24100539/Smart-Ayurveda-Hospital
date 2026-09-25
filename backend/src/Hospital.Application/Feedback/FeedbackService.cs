@@ -166,7 +166,7 @@ public sealed class FeedbackService : IFeedbackService
         else
         {
             feedback.Status = FeedbackStatus.PendingModeration;
-            feedback.ModeratedBy = null;
+            feedback.ModeratedById = null;
             feedback.ModeratedAt = null;
         }
 
@@ -229,7 +229,7 @@ public sealed class FeedbackService : IFeedbackService
         feedback.Status = action == FeedbackModerationAction.Hide
             ? FeedbackStatus.Hidden
             : FeedbackStatus.Visible;
-        feedback.ModeratedBy = staff.Id;
+        feedback.ModeratedById = staff.Id;
         feedback.ModeratedAt = _clock.UtcNow;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

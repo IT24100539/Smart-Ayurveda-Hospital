@@ -268,11 +268,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       key: LoginScreenKeys.submit,
                       onPressed: _isSubmitting ? null : _submit,
                       child: _isSubmitting
-                          ? const SizedBox.square(
+                          ? SizedBox.square(
                               dimension: 22,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             )
                           : Text(_isRegister ? l10n.register : l10n.signIn),

@@ -21,7 +21,7 @@ public sealed class AdmissionsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = "Staff,Admin")]
+    [Authorize(Roles = "FrontDeskStaff,Doctor,Admin")]
     public async Task<ActionResult<IReadOnlyList<AdmissionRequestDto>>> Pending(CancellationToken cancellationToken)
     {
         var list = await _wards.ListPendingAdmissionsAsync(cancellationToken);
@@ -29,7 +29,7 @@ public sealed class AdmissionsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/decision")]
-    [Authorize(Roles = "Staff,Admin")]
+    [Authorize(Roles = "FrontDeskStaff,Doctor,Admin")]
     public async Task<ActionResult> Decide(Guid id, AdmissionDecisionRequest request, CancellationToken cancellationToken)
     {
         var ok = await _wards.DecideAdmissionAsync(id, request, cancellationToken);
