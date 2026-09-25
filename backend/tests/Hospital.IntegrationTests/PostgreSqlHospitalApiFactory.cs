@@ -43,24 +43,19 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
 
             await db.Database.OpenConnectionAsync();
 
-            // Keep the advisory lock for the entire reset and migration operation.
+            await using var transaction = await db.Database.BeginTransactionAsync();
+
             await db.Database.ExecuteSqlInterpolatedAsync(
-                $"SELECT pg_advisory_lock({DatabaseResetAdvisoryLockKey});");
+                $"SELECT pg_advisory_xact_lock({DatabaseResetAdvisoryLockKey});");
 
-            try
-            {
-                await db.Database.ExecuteSqlRawAsync("""
-                    DROP SCHEMA IF EXISTS public CASCADE;
-                    CREATE SCHEMA public;
-                    """);
+            await db.Database.ExecuteSqlRawAsync("""
+                DROP SCHEMA IF EXISTS public CASCADE;
+                CREATE SCHEMA public;
+                """);
 
-                await db.Database.MigrateAsync();
-            }
-            finally
-            {
-                await db.Database.ExecuteSqlInterpolatedAsync(
-                    $"SELECT pg_advisory_unlock({DatabaseResetAdvisoryLockKey});");
-            }
+            await db.Database.MigrateAsync();
+
+            await transaction.CommitAsync();
         }
         finally
         {
