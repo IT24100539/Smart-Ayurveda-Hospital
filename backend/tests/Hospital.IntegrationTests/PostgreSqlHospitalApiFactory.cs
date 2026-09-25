@@ -16,6 +16,7 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
     private const string ConnectionStringEnvironmentVariable = "ConnectionStrings__IntegrationTests";
     private const string RequiredDatabaseName = "ayurveda_hospital_test";
     private const string DevelopmentDatabaseName = "ayurveda_hospital";
+    private const long DatabaseResetAdvisoryLockKey = 4815162342;
     private readonly string _connectionString = GetValidatedConnectionString();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -40,15 +41,26 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
             await using var scope = Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
 
-            // Drop and recreate the schema instead of the whole database.
-            // This avoids the "database does not exist" window that occurs when
-            // EnsureDeletedAsync drops the database while other connections are still open.
-            await db.Database.ExecuteSqlRawAsync("""
-                DROP SCHEMA public CASCADE;
-                CREATE SCHEMA public;
-                """);
+            await db.Database.OpenConnectionAsync();
 
-            await db.Database.MigrateAsync();
+            // Keep the advisory lock for the entire reset and migration operation.
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_lock({DatabaseResetAdvisoryLockKey});");
+
+            try
+            {
+                await db.Database.ExecuteSqlRawAsync("""
+                    DROP SCHEMA IF EXISTS public CASCADE;
+                    CREATE SCHEMA public;
+                    """);
+
+                await db.Database.MigrateAsync();
+            }
+            finally
+            {
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_unlock({DatabaseResetAdvisoryLockKey});");
+            }
         }
         finally
         {
