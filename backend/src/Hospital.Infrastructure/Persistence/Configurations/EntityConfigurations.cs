@@ -85,9 +85,24 @@ public sealed class TreatmentScheduleConfiguration : IEntityTypeConfiguration<Tr
     {
         builder.ToTable("treatment_schedules");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.TimeSlot).HasMaxLength(32).IsRequired();
+        builder.Property(x => x.DayOfWeek).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(x => x.StartTime).IsRequired();
+        builder.Property(x => x.EndTime).IsRequired();
+        builder.Property(x => x.TimeSlot).HasMaxLength(32);
+        builder.Property(x => x.MaxSlotsPerDay).IsRequired();
+        builder.Property(x => x.IsActive).IsRequired();
+
+        builder.HasIndex(x => new { x.TreatmentId, x.TherapistId, x.DayOfWeek, x.StartTime })
+            .IsUnique()
+            .HasDatabaseName("ix_schedules_unique_slot");
+        builder.HasIndex(x => new { x.TreatmentId, x.DayOfWeek })
+            .HasDatabaseName("ix_schedules_treatment_day");
+
         builder.HasOne(x => x.Treatment).WithMany(x => x.Schedules).HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(x => new { x.TreatmentId, x.DayOfWeek, x.TimeSlot });
+        builder.HasOne(x => x.Therapist)
+            .WithMany(x => x.Schedules)
+            .HasForeignKey(x => x.TherapistId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
 
@@ -148,10 +163,35 @@ public sealed class TreatmentConfiguration : IEntityTypeConfiguration<Treatment>
         builder.ToTable("treatments");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).HasMaxLength(160).IsRequired();
+        builder.Property(x => x.NameSinhala).HasMaxLength(160).IsRequired();
         builder.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+        builder.Property(x => x.DescriptionSinhala).HasMaxLength(2000).IsRequired();
+        builder.Property(x => x.Category).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.IsActive).IsRequired();
         builder.Property(x => x.UnitPrice).HasPrecision(12, 2);
+        builder.HasMany(x => x.Schedules).WithOne(x => x.Treatment).HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+public sealed class TherapistConfiguration : IEntityTypeConfiguration<Therapist>
+{
+    public void Configure(EntityTypeBuilder<Therapist> builder)
+    {
+        builder.ToTable("therapists");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.FullName).HasMaxLength(160).IsRequired();
+        builder.Property(x => x.Specialization).HasMaxLength(160).IsRequired();
+        builder.Property(x => x.CreatedAt).IsRequired();
+        builder.HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(x => x.UserId)
+            .IsUnique();
+    }
+}
+
+
 
 public sealed class MedicineConfiguration : IEntityTypeConfiguration<Medicine>
 {

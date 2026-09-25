@@ -73,6 +73,11 @@ public sealed class ExceptionHandlingMiddleware
                 body = Problem("https://tools.ietf.org/html/rfc9110#section-15.5.10", "Conflict", status, exception.Message);
                 _logger.LogWarning(exception, "Request failed with {Status}", status);
                 break;
+            case InvalidScheduleException:
+                status = HttpStatusCode.BadRequest;
+                body = Problem("https://tools.ietf.org/html/rfc9110#section-15.5.1", "Invalid schedule", status, exception.Message);
+                _logger.LogWarning(exception, "Request failed with {Status}", status);
+                break;
             case DomainException:
                 status = HttpStatusCode.BadRequest;
                 body = Problem("https://tools.ietf.org/html/rfc9110#section-15.5.1", "Bad Request", status, exception.Message);

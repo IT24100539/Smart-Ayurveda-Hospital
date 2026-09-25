@@ -6,9 +6,15 @@ from app.agents.feedback_support_agent import (
     FeedbackAgentResponse,
     run_feedback_support,
 )
-from app.graph.coordinator import invoke_graph
 from app.agents.scheduling_bed_agent import run_scheduling_bed_agent
-from app.schemas import SchedulingAgentRequest, SchedulingAgentResponse
+from app.agents.treatment_info_agent import run_treatment_info_agent
+from app.graph.coordinator import invoke_graph
+from app.schemas import (
+    SchedulingAgentRequest,
+    SchedulingAgentResponse,
+    TreatmentInfoAgentRequest,
+    TreatmentInfoAgentResponse,
+)
 from app.settings import settings
 
 app = FastAPI(
@@ -47,6 +53,16 @@ async def invoke(payload: dict) -> JSONResponse:
 
     result = await invoke_graph(agent=agent, prompt=prompt, context=context)
     return JSONResponse(result)
+
+
+@app.post("/internal/agents/treatment-info")
+async def treatment_info(
+    request: TreatmentInfoAgentRequest,
+    x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
+) -> TreatmentInfoAgentResponse:
+    if x_internal_secret != settings.shared_secret:
+        raise HTTPException(status_code=401, detail="Invalid internal secret.")
+    return await run_treatment_info_agent(request)
 
 
 @app.post("/internal/agents/feedback-support", response_model=FeedbackAgentResponse)

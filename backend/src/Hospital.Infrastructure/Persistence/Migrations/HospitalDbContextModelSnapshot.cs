@@ -798,19 +798,59 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.ToTable("staff_users", (string)null);
                 });
 
+            modelBuilder.Entity("Hospital.Domain.Entities.Therapist", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Specialization")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("therapists", (string)null);
+                });
+
             modelBuilder.Entity("Hospital.Domain.Entities.Treatment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Category")
-                        .HasColumnType("integer");
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("DescriptionSinhala")
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -822,6 +862,11 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("NameSinhala")
                         .IsRequired()
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
@@ -847,14 +892,28 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("DayOfWeek")
-                        .HasColumnType("integer");
+                    b.Property<string>("DayOfWeek")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
                     b.Property<int>("MaxPatients")
                         .HasColumnType("integer");
+
+                    b.Property<int>("MaxSlotsPerDay")
+                        .HasColumnType("integer");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid?>("TherapistId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("TimeSlot")
                         .IsRequired()
@@ -869,7 +928,14 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TreatmentId", "DayOfWeek", "TimeSlot");
+                    b.HasIndex("TherapistId");
+
+                    b.HasIndex("TreatmentId", "DayOfWeek")
+                        .HasDatabaseName("ix_schedules_treatment_day");
+
+                    b.HasIndex("TreatmentId", "TherapistId", "DayOfWeek", "StartTime")
+                        .IsUnique()
+                        .HasDatabaseName("ix_schedules_unique_slot");
 
                     b.ToTable("treatment_schedules", (string)null);
                 });
@@ -1208,13 +1274,30 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Navigation("Prescription");
                 });
 
+            modelBuilder.Entity("Hospital.Domain.Entities.Therapist", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Hospital.Domain.Entities.TreatmentSchedule", b =>
                 {
+                    b.HasOne("Hospital.Domain.Entities.Therapist", "Therapist")
+                        .WithMany("Schedules")
+                        .HasForeignKey("TherapistId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Hospital.Domain.Entities.Treatment", "Treatment")
                         .WithMany("Schedules")
                         .HasForeignKey("TreatmentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Therapist");
 
                     b.Navigation("Treatment");
                 });
@@ -1268,6 +1351,11 @@ namespace Hospital.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Hospital.Domain.Entities.Prescription", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Therapist", b =>
+                {
+                    b.Navigation("Schedules");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Treatment", b =>

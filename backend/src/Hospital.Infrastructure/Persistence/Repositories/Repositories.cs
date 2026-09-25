@@ -106,22 +106,6 @@ public sealed class StaffUserRepository : IStaffUserRepository
             .ToListAsync(cancellationToken);
 }
 
-public sealed class TreatmentRepository : ITreatmentRepository
-{
-    private readonly HospitalDbContext _db;
-
-    public TreatmentRepository(HospitalDbContext db) => _db = db;
-
-    public async Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken) =>
-        await _db.TreatmentSchedules.AsNoTracking().Where(x => x.TreatmentId == treatmentId).ToListAsync(cancellationToken);
-
-    public Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
-        _db.Treatments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-
-    public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
-        _db.TreatmentSchedules.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-}
-
 public sealed class AppointmentRepository : IAppointmentRepository
 {
     private readonly HospitalDbContext _db;
@@ -223,6 +207,125 @@ public sealed class AppointmentRepository : IAppointmentRepository
 
     public async Task AddAsync(Appointment appointment, CancellationToken cancellationToken) =>
         await _db.Appointments.AddAsync(appointment, cancellationToken);
+}
+
+public sealed class TreatmentRepository : ITreatmentRepository
+{
+    private readonly HospitalDbContext _db;
+
+    public TreatmentRepository(HospitalDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken) =>
+        await _db.TreatmentSchedules.AsNoTracking().Where(x => x.TreatmentId == treatmentId).ToListAsync(cancellationToken);
+
+    public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        _db.TreatmentSchedules.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        _db.Treatments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public Task<Treatment?> GetByIdWithScheduleAsync(Guid id, CancellationToken cancellationToken) =>
+        _db.Treatments
+            .Include(x => x.Schedules)
+            .ThenInclude(s => s.Therapist)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<(IReadOnlyList<Treatment> Items, int Total)> SearchAsync(
+        string? name,
+        TreatmentCategory? category,
+        bool? activeOnly,
+        int page,
+        int pageSize,
+        string? sort,
+        CancellationToken cancellationToken)
+    {
+        var q = _db.Treatments.AsNoTracking()
+            .Include(x => x.Schedules)
+            .AsSplitQuery()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            var term = name.Trim().ToLower();
+            q = q.Where(x => x.Name.ToLower().Contains(term) || x.NameSinhala.ToLower().Contains(term));
+        }
+
+        if (category is not null)
+        {
+            q = q.Where(x => x.Category == category);
+        }
+
+        if (activeOnly == true)
+        {
+            q = q.Where(x => x.IsActive);
+        }
+
+        q = ApplySort(q, sort);
+
+        var total = await q.CountAsync(cancellationToken);
+        var items = await q
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+        return (items, total);
+    }
+
+    public async Task AddAsync(Treatment treatment, CancellationToken cancellationToken) =>
+        await _db.Treatments.AddAsync(treatment, cancellationToken);
+
+    public Task<TreatmentSchedule?> GetScheduleEntryAsync(Guid treatmentId, Guid entryId, CancellationToken cancellationToken) =>
+        _db.TreatmentSchedules
+            .Include(x => x.Therapist)
+            .FirstOrDefaultAsync(x => x.Id == entryId && x.TreatmentId == treatmentId, cancellationToken);
+
+    public async Task AddScheduleAsync(TreatmentSchedule entry, CancellationToken cancellationToken) =>
+        await _db.TreatmentSchedules.AddAsync(entry, cancellationToken);
+
+    public void RemoveSchedule(TreatmentSchedule entry) =>
+        _db.TreatmentSchedules.Remove(entry);
+
+    public Task<Therapist?> GetTherapistByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        _db.Therapists.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    private static IQueryable<Treatment> ApplySort(IQueryable<Treatment> query, string? sort)
+    {
+        var descending = false;
+        var field = "name";
+        if (!string.IsNullOrWhiteSpace(sort))
+        {
+            var raw = sort.Trim();
+            if (raw.StartsWith('-'))
+            {
+                descending = true;
+                raw = raw[1..];
+            }
+            else if (raw.EndsWith(":desc", StringComparison.OrdinalIgnoreCase))
+            {
+                descending = true;
+                raw = raw[..^5];
+            }
+            else if (raw.EndsWith(":asc", StringComparison.OrdinalIgnoreCase))
+            {
+                raw = raw[..^4];
+            }
+
+            field = raw.Trim().ToLowerInvariant();
+        }
+
+        return (field, descending) switch
+        {
+            ("category", false) => query.OrderBy(x => x.Category).ThenBy(x => x.Name),
+            ("category", true) => query.OrderByDescending(x => x.Category).ThenBy(x => x.Name),
+            ("unitprice" or "price", false) => query.OrderBy(x => x.UnitPrice).ThenBy(x => x.Name),
+            ("unitprice" or "price", true) => query.OrderByDescending(x => x.UnitPrice).ThenBy(x => x.Name),
+            ("durationminutes" or "duration", false) => query.OrderBy(x => x.DurationMinutes).ThenBy(x => x.Name),
+            ("durationminutes" or "duration", true) => query.OrderByDescending(x => x.DurationMinutes).ThenBy(x => x.Name),
+            ("createdat", false) => query.OrderBy(x => x.CreatedAt),
+            ("createdat", true) => query.OrderByDescending(x => x.CreatedAt),
+            (_, true) => query.OrderByDescending(x => x.Name),
+            _ => query.OrderBy(x => x.Name)
+        };
+    }
 }
 
 public sealed class EfUnitOfWork : IUnitOfWork
