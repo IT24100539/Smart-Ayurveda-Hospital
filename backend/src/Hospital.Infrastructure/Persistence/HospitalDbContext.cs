@@ -31,6 +31,7 @@ public DbSet<AdmissionRequest> AdmissionRequests => Set<AdmissionRequest>();
     public DbSet<FeedbackReply> FeedbackReplies => Set<FeedbackReply>();
     public DbSet<Complaint> Complaints => Set<Complaint>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<WorkflowExecution> WorkflowExecutions => Set<WorkflowExecution>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

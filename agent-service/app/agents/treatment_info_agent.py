@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from typing import Any, TypedDict
+from uuid import UUID, uuid4
 
 import httpx
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -25,12 +26,16 @@ from langgraph import graph
 from langgraph.graph import END, StateGraph
 
 from app.schemas import (
+    ToolResult,
     TreatmentInfoAgentRequest,
     TreatmentInfoAgentResponse,
     TreatmentScheduleItem,
     TreatmentScheduleToolOutput,
+    ValidationResult,
+    WorkflowState,
 )
 from app.settings import settings
+from app.state_store import get_state_store
 
 # ---------------------------------------------------------------------------
 # Medical-advice guard
@@ -124,12 +129,44 @@ async def get_treatment_schedule(query: str) -> TreatmentScheduleToolOutput:
 
 
 class TreatmentInfoState(TypedDict):
+    workflow_id: str
     question: str
     search_query: str
     tool_output: dict[str, Any]
     answer: str
     matched_treatment_ids: list[str]
     refused: bool
+
+
+def _jsonable(changes: dict[str, Any]) -> dict[str, Any]:
+    output: dict[str, Any] = {}
+    for key, value in changes.items():
+        if key == "tool_output":
+            continue
+        if isinstance(value, (str, int, float, bool, list)):
+            output[key] = value
+        elif value is not None:
+            output[key] = str(value)
+    return output
+
+
+def _tracked(step: str, node):
+    async def transition(state: TreatmentInfoState) -> TreatmentInfoState:
+        changes = node(state)
+        if hasattr(changes, "__await__"):
+            changes = await changes
+        workflow_id = state.get("workflow_id")
+        if workflow_id:
+            store = get_state_store()
+            current = await store.get(workflow_id)
+            completed = [*(current.completed_steps if current else []), step]
+            tool_results = [*(current.tool_results if current else []), ToolResult(
+                tool=step, succeeded=not bool(changes.get("refused")), output=_jsonable(changes),
+            )]
+            await store.update(workflow_id, completed_steps=completed, tool_results=tool_results)
+        return changes
+
+    return transition
 
 
 def _classify_node(state: TreatmentInfoState) -> TreatmentInfoState:
@@ -249,9 +286,9 @@ def _build_treatment_info_graph():
     """Compile the treatment-info LangGraph."""
     graph = StateGraph(TreatmentInfoState)
 
-    graph.add_node("classify", _classify_node)
-    graph.add_node("search", _search_node)
-    graph.add_node("compose_answer", _answer_node)
+    graph.add_node("classify", _tracked("classify", _classify_node))
+    graph.add_node("search", _tracked("search", _search_node))
+    graph.add_node("compose_answer", _tracked("compose_answer", _answer_node))
     
     graph.set_entry_point("classify")
     graph.add_conditional_edges(
@@ -277,8 +314,21 @@ async def run_treatment_info_agent(
     request: TreatmentInfoAgentRequest,
 ) -> TreatmentInfoAgentResponse:
     """Invoke the treatment-info LangGraph and return a typed response."""
+    workflow_id = str(uuid4())
+    store = get_state_store()
+    objective = request.question.strip() or "Treatment information question"
+    await store.save(
+        WorkflowState(
+            workflow_id=workflow_id,
+            objective=objective,
+            plan=["classify", "search", "compose_answer"],
+            approval_status=None,
+            agent_name="treatment_info",
+        )
+    )
     result = await _GRAPH.ainvoke(
         {
+            "workflow_id": workflow_id,
             "question": request.question,
             "search_query": "",
             "tool_output": {},
@@ -287,8 +337,34 @@ async def run_treatment_info_agent(
             "refused": False,
         }
     )
+    refused = bool(result.get("refused"))
+    matched = result.get("matched_treatment_ids") or []
+    changes: dict[str, Any] = {
+        "final_outcome": "safe_failure" if refused else "success",
+        "completed_steps": ["classify"] if refused else ["classify", "search", "compose_answer"],
+        "validation_results": [
+            ValidationResult(
+                check="medical_advice" if refused else "grounded_catalog",
+                passed=not refused,
+                detail=REFUSAL_MESSAGE if refused else "Answer uses catalog treatments only.",
+            )
+        ],
+    }
+    if refused:
+        changes["errors"] = ["Medical advice questions are refused."]
+    elif matched:
+        related_id = matched[0]
+        try:
+            UUID(related_id)
+        except (ValueError, TypeError):
+            related_id = None
+        if related_id:
+            changes["related_entity_type"] = "Treatment"
+            changes["related_entity_id"] = related_id
+    await store.update(workflow_id, **changes)
     return TreatmentInfoAgentResponse(
         answer=result["answer"],
-        matched_treatment_ids=result.get("matched_treatment_ids") or [],
-        refused=result.get("refused", False),
+        matched_treatment_ids=matched,
+        refused=refused,
+        workflow_id=workflow_id,
     )

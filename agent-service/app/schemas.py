@@ -147,6 +147,9 @@ class WorkflowState(BaseModel):
     errors: list[str] = Field(default_factory=list)
     approval_status: ApprovalStatus | None = ApprovalStatus.PENDING
     final_outcome: str | None = None
+    agent_name: str = "unspecified"
+    related_entity_type: str | None = None
+    related_entity_id: str | None = None
 
     @property
     def pending_steps(self) -> list[str]:
@@ -202,3 +205,4 @@ class TreatmentInfoAgentResponse(BaseModel):
     answer: str
     matched_treatment_ids: list[str] = Field(default_factory=list)
     refused: bool = False
+    workflow_id: str = ""
