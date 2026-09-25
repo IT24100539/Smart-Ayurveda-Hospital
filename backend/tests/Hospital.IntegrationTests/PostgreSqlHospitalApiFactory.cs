@@ -43,19 +43,27 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
 
             await db.Database.OpenConnectionAsync();
 
-            await using var transaction = await db.Database.BeginTransactionAsync();
-
             await db.Database.ExecuteSqlInterpolatedAsync(
-                $"SELECT pg_advisory_xact_lock({DatabaseResetAdvisoryLockKey});");
+                $"SELECT pg_advisory_lock({DatabaseResetAdvisoryLockKey});");
 
-            await db.Database.ExecuteSqlRawAsync("""
-                DROP SCHEMA IF EXISTS public CASCADE;
-                CREATE SCHEMA public;
-                """);
+            try
+            {
+                await using var transaction = await db.Database.BeginTransactionAsync();
 
-            await db.Database.MigrateAsync();
+                await db.Database.ExecuteSqlRawAsync("""
+                    DROP SCHEMA IF EXISTS public CASCADE;
+                    CREATE SCHEMA public;
+                    """);
 
-            await transaction.CommitAsync();
+                await db.Database.MigrateAsync();
+
+                await transaction.CommitAsync();
+            }
+            finally
+            {
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_unlock({DatabaseResetAdvisoryLockKey});");
+            }
         }
         finally
         {
