@@ -155,6 +155,12 @@ public sealed class FeedbackReplyRepository : IFeedbackReplyRepository
             .Include(x => x.Feedback)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public Task<FeedbackReply?> FindLatestAiDraftAsync(Guid feedbackId, CancellationToken cancellationToken) =>
+        _db.FeedbackReplies
+            .Where(x => x.FeedbackId == feedbackId && x.IsAiGenerated && x.Status == FeedbackReplyStatus.Draft)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task AddAsync(FeedbackReply reply, CancellationToken cancellationToken) =>
         await _db.FeedbackReplies.AddAsync(reply, cancellationToken);
 }

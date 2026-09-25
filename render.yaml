@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: smart-ayurveda-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__Secret
+        sync: false
+      - key: Jwt__Issuer
+        value: smart-ayurveda-hospital
+      - key: Jwt__Audience
+        value: smart-ayurveda-staff
+      - key: InternalServiceKey
+        sync: false
+      - key: AllowedOrigins
+        sync: false
+      - key: AgentService__BaseUrl
+        sync: false
+      - key: AgentService__SharedSecret
+        sync: false

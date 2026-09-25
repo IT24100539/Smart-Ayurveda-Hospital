@@ -15,4 +15,8 @@ public interface IAgentClient
     Task<FeedbackSupportAgentResponse> DraftFeedbackSupportAsync(
         FeedbackSupportAgentRequest request,
         CancellationToken cancellationToken);
+
+    Task<CoordinatorAgentResponse> CoordinateAsync(
+        StartAgentWorkflowRequest request,
+        CancellationToken cancellationToken);
 }

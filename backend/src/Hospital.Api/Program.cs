@@ -37,6 +37,20 @@ try
                 .WriteTo.Console());
     }
 
+    // Assignment deploy names. Local appsettings keep Jwt:SigningKey and InternalService:ApiKey.
+    var jwtSecret = builder.Configuration["Jwt:Secret"];
+    if (!string.IsNullOrWhiteSpace(jwtSecret))
+    {
+        builder.Configuration["Jwt:SigningKey"] = jwtSecret;
+    }
+
+    var internalServiceKey = builder.Configuration["InternalServiceKey"];
+    if (!string.IsNullOrWhiteSpace(internalServiceKey))
+    {
+        builder.Configuration["InternalService:ApiKey"] = internalServiceKey;
+        builder.Configuration["InternalService:Key"] = internalServiceKey;
+    }
+
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.Configure<InternalServiceOptions>(builder.Configuration.GetSection(InternalServiceOptions.SectionName));
@@ -101,9 +115,12 @@ try
             }
             else
             {
-                var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                    ?? builder.Configuration.GetSection("Cors:StaffOrigins").Get<string[]>()
-                    ?? new[] { "http://localhost:5173" };
+                var fromEnv = builder.Configuration["AllowedOrigins"];
+                var origins = !string.IsNullOrWhiteSpace(fromEnv)
+                    ? fromEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    : builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                        ?? builder.Configuration.GetSection("Cors:StaffOrigins").Get<string[]>()
+                        ?? new[] { "http://localhost:5173" };
                 policy.WithOrigins(origins);
             }
 
@@ -119,7 +136,7 @@ try
     }
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-    if (app.Environment.IsDevelopment())
+    if (!app.Environment.IsEnvironment("Testing"))
     {
         app.UseSwagger();
         app.UseSwaggerUI();
@@ -129,7 +146,9 @@ try
     // request to HTTPS makes browser requests fail when the ASP.NET development
     // certificate has not been trusted. Keep HTTPS enforcement for non-development
     // environments, where a trusted certificate is expected.
-    if (!app.Environment.IsDevelopment())
+    // Render and Railway set PORT and terminate TLS in front of the container.
+    // Redirecting that plain HTTP traffic breaks the platform health check.
+    if (!app.Environment.IsDevelopment() && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PORT")))
     {
         app.UseHttpsRedirection();
     }

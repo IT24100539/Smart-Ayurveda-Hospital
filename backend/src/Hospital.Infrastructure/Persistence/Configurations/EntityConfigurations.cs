@@ -193,6 +193,30 @@ public sealed class TherapistConfiguration : IEntityTypeConfiguration<Therapist>
 
 
 
+public sealed class WorkflowExecutionConfiguration : IEntityTypeConfiguration<WorkflowExecution>
+{
+    public void Configure(EntityTypeBuilder<WorkflowExecution> builder)
+    {
+        builder.ToTable("workflow_executions");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.AgentName).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.ObjectiveText).HasMaxLength(4000).IsRequired();
+        builder.Property(x => x.PlanJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(x => x.CompletedStepsJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(x => x.ToolResultsJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(x => x.ValidationResultsJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(x => x.ErrorsJson).HasColumnType("jsonb");
+        builder.Property(x => x.ApprovalStatus).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.FinalOutcome).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.RelatedEntityType).HasMaxLength(64);
+        builder.HasIndex(x => x.AgentName).HasDatabaseName("ix_workflow_executions_agent_name");
+        builder.HasIndex(x => x.ApprovalStatus).HasDatabaseName("ix_workflow_executions_approval_status");
+        builder.HasIndex(x => x.CreatedAt).HasDatabaseName("ix_workflow_executions_created_at");
+        builder.HasIndex(x => new { x.RelatedEntityType, x.RelatedEntityId })
+            .HasDatabaseName("ix_workflow_executions_related_entity");
+    }
+}
+
 public sealed class MedicineConfiguration : IEntityTypeConfiguration<Medicine>
 {
     public void Configure(EntityTypeBuilder<Medicine> builder)
