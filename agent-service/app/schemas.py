@@ -159,3 +159,46 @@ class WorkflowState(BaseModel):
             ApprovalStatus.REJECTED,
             ApprovalStatus.REVISION,
         }
+
+
+# ---------------------------------------------------------------------------
+# Treatment Information Agent schemas
+# ---------------------------------------------------------------------------
+
+
+class TreatmentScheduleItem(BaseModel):
+    """One treatment summary as returned by the backend GET /api/treatments."""
+
+    id: str
+    name: str
+    name_sinhala: str = Field(alias="nameSinhala", default="")
+    description: str = ""
+    description_sinhala: str = Field(alias="descriptionSinhala", default="")
+    category: int | str = 0
+    duration_minutes: int = Field(alias="durationMinutes", default=0)
+    unit_price: float = Field(alias="unitPrice", default=0.0)
+    is_active: bool = Field(alias="isActive", default=True)
+    available_days: list[str] = Field(alias="availableDays", default_factory=list)
+
+    model_config = {"populate_by_name": True}
+
+
+class TreatmentScheduleToolOutput(BaseModel):
+    """Typed wrapper for the tool's return value."""
+
+    query: str
+    treatments: list[TreatmentScheduleItem] = Field(default_factory=list)
+
+
+class TreatmentInfoAgentRequest(BaseModel):
+    """Patient-facing question about treatments, services, or schedules."""
+
+    question: str
+
+
+class TreatmentInfoAgentResponse(BaseModel):
+    """Grounded answer to a treatment-information question."""
+
+    answer: str
+    matched_treatment_ids: list[str] = Field(default_factory=list)
+    refused: bool = False

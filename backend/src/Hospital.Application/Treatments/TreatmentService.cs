@@ -73,7 +73,7 @@ public sealed class TreatmentService : ITreatmentService
         {
             foreach (var entry in request.Schedules)
             {
-                EnsureUniqueSlot(treatment, entry.TherapistId, entry.DayOfWeek, entry.StartTime, excludeEntryId: null);
+                EnsureUniqueSlot(treatment, entry.TherapistId, ToSystemDay(entry.DayOfWeek), entry.StartTime, excludeEntryId: null);
                 treatment.Schedules.Add(await BuildScheduleAsync(treatment, entry, cancellationToken));
             }
         }
@@ -121,9 +121,9 @@ public sealed class TreatmentService : ITreatmentService
         var treatment = await _treatments.GetByIdWithScheduleAsync(treatmentId, cancellationToken)
             ?? throw new NotFoundException(nameof(Treatment), treatmentId);
 
-        var weekday = ToWeekday(date.DayOfWeek);
+        var dayOfWeek = date.DayOfWeek;
         var matching = treatment.Schedules
-            .Where(s => s.IsActive && s.DayOfWeek == weekday)
+            .Where(s => s.IsActive && s.DayOfWeek == dayOfWeek)
             .ToList();
 
         var hasSchedule = treatment.IsActive && matching.Count > 0;
@@ -156,8 +156,7 @@ public sealed class TreatmentService : ITreatmentService
             throw new InvalidScheduleException($"Treatment '{treatmentId}' is not active and cannot be booked.");
         }
 
-        var weekday = ToWeekday(date.DayOfWeek);
-        var hasSlot = treatment.Schedules.Any(s => s.IsActive && s.DayOfWeek == weekday);
+        var hasSlot = treatment.Schedules.Any(s => s.IsActive && s.DayOfWeek == date.DayOfWeek);
         if (!hasSlot)
         {
             throw new InvalidScheduleException(treatmentId, date);
@@ -172,7 +171,7 @@ public sealed class TreatmentService : ITreatmentService
         var treatment = await _treatments.GetByIdWithScheduleAsync(treatmentId, cancellationToken)
             ?? throw new NotFoundException(nameof(Treatment), treatmentId);
 
-        EnsureUniqueSlot(treatment, request.TherapistId, request.DayOfWeek, request.StartTime, excludeEntryId: null);
+        EnsureUniqueSlot(treatment, request.TherapistId, ToSystemDay(request.DayOfWeek), request.StartTime, excludeEntryId: null);
 
         var entry = await BuildScheduleAsync(treatment, request, cancellationToken);
         await _treatments.AddScheduleAsync(entry, cancellationToken);
@@ -192,7 +191,7 @@ public sealed class TreatmentService : ITreatmentService
         var entry = treatment.Schedules.FirstOrDefault(s => s.Id == entryId)
             ?? throw new NotFoundException(nameof(TreatmentSchedule), entryId);
 
-        EnsureUniqueSlot(treatment, request.TherapistId, request.DayOfWeek, request.StartTime, entryId);
+        EnsureUniqueSlot(treatment, request.TherapistId, ToSystemDay(request.DayOfWeek), request.StartTime, entryId);
 
         if (request.TherapistId is { } therapistId)
         {
@@ -207,7 +206,7 @@ public sealed class TreatmentService : ITreatmentService
             entry.Therapist = null;
         }
 
-        entry.DayOfWeek = request.DayOfWeek;
+        entry.DayOfWeek = ToSystemDay(request.DayOfWeek);
         entry.StartTime = request.StartTime;
         entry.EndTime = request.EndTime;
         entry.MaxSlotsPerDay = request.MaxSlotsPerDay;
@@ -244,7 +243,7 @@ public sealed class TreatmentService : ITreatmentService
             Treatment = treatment,
             TherapistId = therapist?.Id,
             Therapist = therapist,
-            DayOfWeek = request.DayOfWeek,
+            DayOfWeek = ToSystemDay(request.DayOfWeek),
             StartTime = request.StartTime,
             EndTime = request.EndTime,
             MaxSlotsPerDay = request.MaxSlotsPerDay,
@@ -255,7 +254,7 @@ public sealed class TreatmentService : ITreatmentService
     private static void EnsureUniqueSlot(
         Treatment treatment,
         Guid? therapistId,
-        Weekday day,
+        DayOfWeek day,
         TimeOnly start,
         Guid? excludeEntryId)
     {
@@ -304,7 +303,7 @@ public sealed class TreatmentService : ITreatmentService
         s.TreatmentId == Guid.Empty ? s.Treatment.Id : s.TreatmentId,
         s.TherapistId,
         s.Therapist?.FullName,
-        s.DayOfWeek,
+        ToWeekday(s.DayOfWeek),
         s.StartTime,
         s.EndTime,
         s.MaxSlotsPerDay,
@@ -313,12 +312,12 @@ public sealed class TreatmentService : ITreatmentService
     private static IReadOnlyList<DayOfWeek> AvailableDays(Treatment t) =>
         t.Schedules
             .Where(s => s.IsActive)
-            .Select(s => ToSystemDay(s.DayOfWeek))
+            .Select(s => s.DayOfWeek)
             .Distinct()
             .OrderBy(d => ((int)d + 6) % 7)
             .ToList();
 
-    internal static Weekday ToWeekday(DayOfWeek day) => day switch
+    public static Weekday ToWeekday(DayOfWeek day) => day switch
     {
         DayOfWeek.Monday => Weekday.Monday,
         DayOfWeek.Tuesday => Weekday.Tuesday,
@@ -330,7 +329,7 @@ public sealed class TreatmentService : ITreatmentService
         _ => throw new DomainException($"Unsupported day of week '{day}'.")
     };
 
-    internal static DayOfWeek ToSystemDay(Weekday day) => day switch
+    public static DayOfWeek ToSystemDay(Weekday day) => day switch
     {
         Weekday.Monday => DayOfWeek.Monday,
         Weekday.Tuesday => DayOfWeek.Tuesday,

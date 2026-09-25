@@ -51,14 +51,6 @@ public sealed class TreatmentsController : ControllerBase
     public async Task<ActionResult<TreatmentDetailDto>> Get(Guid id, CancellationToken cancellationToken) =>
         Ok(await _treatments.GetByIdAsync(id, cancellationToken));
 
-    [HttpGet("{id:guid}/availability")]
-    [AllowAnonymous]
-    public async Task<ActionResult<TreatmentAvailabilityDto>> Availability(
-        Guid id,
-        [FromQuery] DateOnly date,
-        CancellationToken cancellationToken) =>
-        Ok(await _treatments.IsAvailableOnAsync(id, date, cancellationToken));
-
     [HttpPost]
     [Authorize(Roles = StaffRoles)]
     public async Task<ActionResult<TreatmentDetailDto>> Create(

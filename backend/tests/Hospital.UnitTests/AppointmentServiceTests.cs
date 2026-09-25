@@ -232,5 +232,29 @@ public sealed class AppointmentServiceTests
         public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(_schedule is not null && _schedule.Id == id ? _schedule : null);
 
+        public Task<Treatment?> GetByIdWithScheduleAsync(Guid id, CancellationToken cancellationToken) =>
+            GetByIdAsync(id, cancellationToken);
+
+        public Task<(IReadOnlyList<Treatment> Items, int Total)> SearchAsync(
+            string? name,
+            TreatmentCategory? category,
+            bool? activeOnly,
+            int page,
+            int pageSize,
+            string? sort,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(((IReadOnlyList<Treatment>)new[] { _treatment }, 1));
+
+        public Task AddAsync(Treatment treatment, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task<TreatmentSchedule?> GetScheduleEntryAsync(Guid treatmentId, Guid entryId, CancellationToken cancellationToken) =>
+            Task.FromResult(_schedule is not null && _schedule.Id == entryId ? _schedule : null);
+
+        public Task AddScheduleAsync(TreatmentSchedule entry, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public void RemoveSchedule(TreatmentSchedule entry) { }
+
+        public Task<Therapist?> GetTherapistByIdAsync(Guid id, CancellationToken cancellationToken) =>
+            Task.FromResult<Therapist?>(null);
     }
 }

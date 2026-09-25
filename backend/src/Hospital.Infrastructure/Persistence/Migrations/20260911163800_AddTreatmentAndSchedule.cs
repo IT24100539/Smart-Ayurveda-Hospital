@@ -62,6 +62,13 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         onDelete: ReferentialAction.SetNull);
                 });
 
+            migrationBuilder.DropForeignKey(
+                name: "FK_appointments_treatment_schedules_ScheduleId",
+                table: "appointments");
+
+            migrationBuilder.DropTable(
+                name: "treatment_schedules");
+
             migrationBuilder.CreateTable(
                 name: "treatment_schedules",
                 columns: table => new
@@ -73,6 +80,8 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     StartTime = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
                     EndTime = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
                     MaxSlotsPerDay = table.Column<int>(type: "integer", nullable: false),
+                    TimeSlot = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false, defaultValue: ""),
+                    MaxPatients = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
@@ -115,13 +124,62 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                 name: "IX_treatment_schedules_TherapistId",
                 table: "treatment_schedules",
                 column: "TherapistId");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_appointments_treatment_schedules_ScheduleId",
+                table: "appointments",
+                column: "ScheduleId",
+                principalTable: "treatment_schedules",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_appointments_treatment_schedules_ScheduleId",
+                table: "appointments");
+
             migrationBuilder.DropTable(
                 name: "treatment_schedules");
+
+            migrationBuilder.CreateTable(
+                name: "treatment_schedules",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TreatmentId = table.Column<Guid>(type: "uuid", nullable: false),
+                    DayOfWeek = table.Column<int>(type: "integer", nullable: false),
+                    TimeSlot = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    MaxPatients = table.Column<int>(type: "integer", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_treatment_schedules", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_treatment_schedules_treatments_TreatmentId",
+                        column: x => x.TreatmentId,
+                        principalTable: "treatments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_treatment_schedules_TreatmentId_DayOfWeek_TimeSlot",
+                table: "treatment_schedules",
+                columns: new[] { "TreatmentId", "DayOfWeek", "TimeSlot" });
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_appointments_treatment_schedules_ScheduleId",
+                table: "appointments",
+                column: "ScheduleId",
+                principalTable: "treatment_schedules",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
 
             migrationBuilder.DropTable(
                 name: "therapists");

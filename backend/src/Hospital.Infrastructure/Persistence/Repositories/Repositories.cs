@@ -106,22 +106,6 @@ public sealed class StaffUserRepository : IStaffUserRepository
             .ToListAsync(cancellationToken);
 }
 
-public sealed class TreatmentRepository : ITreatmentRepository
-{
-    private readonly HospitalDbContext _db;
-
-    public TreatmentRepository(HospitalDbContext db) => _db = db;
-
-    public async Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken) =>
-        await _db.TreatmentSchedules.AsNoTracking().Where(x => x.TreatmentId == treatmentId).ToListAsync(cancellationToken);
-
-    public Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
-        _db.Treatments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-
-    public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
-        _db.TreatmentSchedules.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-}
-
 public sealed class AppointmentRepository : IAppointmentRepository
 {
     private readonly HospitalDbContext _db;
@@ -230,6 +214,12 @@ public sealed class TreatmentRepository : ITreatmentRepository
     private readonly HospitalDbContext _db;
 
     public TreatmentRepository(HospitalDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken) =>
+        await _db.TreatmentSchedules.AsNoTracking().Where(x => x.TreatmentId == treatmentId).ToListAsync(cancellationToken);
+
+    public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        _db.TreatmentSchedules.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
     public Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.Treatments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);

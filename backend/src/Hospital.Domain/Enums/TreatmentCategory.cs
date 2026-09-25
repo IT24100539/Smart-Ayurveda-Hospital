@@ -9,5 +9,7 @@ public enum TreatmentCategory
     Shirodhara = 2,
     HerbalSteam = 3,
     Nasya = 4,
-    General = 5
+    General = 5,
+    Abhyanga = 6,
+    Consultation = 7
 }

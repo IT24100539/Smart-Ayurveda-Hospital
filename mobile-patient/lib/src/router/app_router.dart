@@ -17,6 +17,7 @@ import '../features/feedback/presentation/submit_feedback_screen.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/shell/presentation/home_shell.dart';
+import '../features/treatments/presentation/treatment_detail_screen.dart';
 import '../features/treatments/presentation/treatments_screen.dart';
 import '../features/wards/presentation/ward_availability_screen.dart';
 import 'app_routes.dart';
@@ -47,10 +48,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // patient briefly lands on the login screen.
       if (!authState.isResolved) return AppRoutes.splash;
 
-      final isPublic = AppRoutes.public.contains(location);
+      final isPublic = AppRoutes.public.contains(location) || location.startsWith('/treatments');
       if (!authState.isAuthenticated && !isPublic) return AppRoutes.login;
       if (authState.isAuthenticated && location == AppRoutes.login) {
-        return AppRoutes.home;
+        final returnPath = state.uri.queryParameters['returnPath'];
+        return returnPath ?? AppRoutes.home;
       }
       return null;
     },
@@ -99,6 +101,17 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.treatments,
                 builder: (context, state) => const TreatmentsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) {
+                      final id = state.pathParameters['id']!;
+                      // We will need to import TreatmentDetailScreen
+                      // Return the placeholder for now until we create it
+                      return TreatmentDetailScreen(treatmentId: id);
+                    },
+                  ),
+                ],
               ),
             ],
           ),

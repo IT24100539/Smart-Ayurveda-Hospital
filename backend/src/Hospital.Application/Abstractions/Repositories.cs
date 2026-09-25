@@ -31,8 +31,22 @@ public interface IUserRepository
 public interface ITreatmentRepository
 {
     Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken);
-    Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<Treatment?> GetByIdWithScheduleAsync(Guid id, CancellationToken cancellationToken);
+    Task<(IReadOnlyList<Treatment> Items, int Total)> SearchAsync(
+        string? name,
+        TreatmentCategory? category,
+        bool? activeOnly,
+        int page,
+        int pageSize,
+        string? sort,
+        CancellationToken cancellationToken);
+    Task AddAsync(Treatment treatment, CancellationToken cancellationToken);
+    Task<TreatmentSchedule?> GetScheduleEntryAsync(Guid treatmentId, Guid entryId, CancellationToken cancellationToken);
+    Task AddScheduleAsync(TreatmentSchedule entry, CancellationToken cancellationToken);
+    void RemoveSchedule(TreatmentSchedule entry);
+    Task<Therapist?> GetTherapistByIdAsync(Guid id, CancellationToken cancellationToken);
 }
 
 public interface IWardRepository
@@ -66,25 +80,6 @@ public interface IAppointmentRepository
     Task<int> CountActiveAppointmentsAsync(Guid treatmentId, DateOnly requestedDate, string requestedTimeSlot, CancellationToken cancellationToken);
     Task<bool> TryAddWithinCapacityAsync(Appointment appointment, int maxPatients, CancellationToken cancellationToken);
     Task AddAsync(Appointment appointment, CancellationToken cancellationToken);
-}
-
-public interface ITreatmentRepository
-{
-    Task<Treatment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
-    Task<Treatment?> GetByIdWithScheduleAsync(Guid id, CancellationToken cancellationToken);
-    Task<(IReadOnlyList<Treatment> Items, int Total)> SearchAsync(
-        string? name,
-        TreatmentCategory? category,
-        bool? activeOnly,
-        int page,
-        int pageSize,
-        string? sort,
-        CancellationToken cancellationToken);
-    Task AddAsync(Treatment treatment, CancellationToken cancellationToken);
-    Task<TreatmentSchedule?> GetScheduleEntryAsync(Guid treatmentId, Guid entryId, CancellationToken cancellationToken);
-    Task AddScheduleAsync(TreatmentSchedule entry, CancellationToken cancellationToken);
-    void RemoveSchedule(TreatmentSchedule entry);
-    Task<Therapist?> GetTherapistByIdAsync(Guid id, CancellationToken cancellationToken);
 }
 
 public interface IUnitOfWork

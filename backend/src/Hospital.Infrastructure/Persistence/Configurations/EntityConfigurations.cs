@@ -85,9 +85,24 @@ public sealed class TreatmentScheduleConfiguration : IEntityTypeConfiguration<Tr
     {
         builder.ToTable("treatment_schedules");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.TimeSlot).HasMaxLength(32).IsRequired();
+        builder.Property(x => x.DayOfWeek).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(x => x.StartTime).IsRequired();
+        builder.Property(x => x.EndTime).IsRequired();
+        builder.Property(x => x.TimeSlot).HasMaxLength(32);
+        builder.Property(x => x.MaxSlotsPerDay).IsRequired();
+        builder.Property(x => x.IsActive).IsRequired();
+
+        builder.HasIndex(x => new { x.TreatmentId, x.TherapistId, x.DayOfWeek, x.StartTime })
+            .IsUnique()
+            .HasDatabaseName("ix_schedules_unique_slot");
+        builder.HasIndex(x => new { x.TreatmentId, x.DayOfWeek })
+            .HasDatabaseName("ix_schedules_treatment_day");
+
         builder.HasOne(x => x.Treatment).WithMany(x => x.Schedules).HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(x => new { x.TreatmentId, x.DayOfWeek, x.TimeSlot });
+        builder.HasOne(x => x.Therapist)
+            .WithMany(x => x.Schedules)
+            .HasForeignKey(x => x.TherapistId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
 
@@ -176,30 +191,7 @@ public sealed class TherapistConfiguration : IEntityTypeConfiguration<Therapist>
     }
 }
 
-public sealed class TreatmentScheduleConfiguration : IEntityTypeConfiguration<TreatmentSchedule>
-{
-    public void Configure(EntityTypeBuilder<TreatmentSchedule> builder)
-    {
-        builder.ToTable("treatment_schedules");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.DayOfWeek).HasConversion<string>().HasMaxLength(16).IsRequired();
-        builder.Property(x => x.StartTime).IsRequired();
-        builder.Property(x => x.EndTime).IsRequired();
-        builder.Property(x => x.MaxSlotsPerDay).IsRequired();
-        builder.Property(x => x.IsActive).IsRequired();
 
-        builder.HasIndex(x => new { x.TreatmentId, x.TherapistId, x.DayOfWeek, x.StartTime })
-            .IsUnique()
-            .HasDatabaseName("ix_schedules_unique_slot");
-        builder.HasIndex(x => new { x.TreatmentId, x.DayOfWeek })
-            .HasDatabaseName("ix_schedules_treatment_day");
-
-        builder.HasOne(x => x.Therapist)
-            .WithMany(x => x.Schedules)
-            .HasForeignKey(x => x.TherapistId)
-            .OnDelete(DeleteBehavior.SetNull);
-    }
-}
 
 public sealed class MedicineConfiguration : IEntityTypeConfiguration<Medicine>
 {

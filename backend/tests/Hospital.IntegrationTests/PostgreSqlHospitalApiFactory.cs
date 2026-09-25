@@ -16,6 +16,7 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
     private const string ConnectionStringEnvironmentVariable = "ConnectionStrings__IntegrationTests";
     private const string RequiredDatabaseName = "ayurveda_hospital_test";
     private const string DevelopmentDatabaseName = "ayurveda_hospital";
+    private const long DatabaseResetAdvisoryLockKey = 4815162342;
     private readonly string _connectionString = GetValidatedConnectionString();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -29,12 +30,45 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
         });
     }
 
+    private static readonly SemaphoreSlim DatabaseResetLock = new(1, 1);
+
     public async Task ResetDatabaseAsync()
     {
-        using var scope = Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
-        await db.Database.EnsureDeletedAsync();
-        await db.Database.MigrateAsync();
+        await DatabaseResetLock.WaitAsync();
+
+        try
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+
+            await db.Database.OpenConnectionAsync();
+
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_lock({DatabaseResetAdvisoryLockKey});");
+
+            try
+            {
+                await using var transaction = await db.Database.BeginTransactionAsync();
+
+                await db.Database.ExecuteSqlRawAsync("""
+                    DROP SCHEMA IF EXISTS public CASCADE;
+                    CREATE SCHEMA public;
+                    """);
+
+                await db.Database.MigrateAsync();
+
+                await transaction.CommitAsync();
+            }
+            finally
+            {
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_unlock({DatabaseResetAdvisoryLockKey});");
+            }
+        }
+        finally
+        {
+            DatabaseResetLock.Release();
+        }
     }
 
     private static string GetValidatedConnectionString()
