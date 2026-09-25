@@ -8,7 +8,7 @@ from app.agents.feedback_support_agent import (
 )
 from app.agents.scheduling_bed_agent import run_scheduling_bed_agent
 from app.agents.treatment_info_agent import run_treatment_info_agent
-from app.graph.coordinator import invoke_graph
+from app.graph.coordinator import CoordinatorRequest, CoordinatorResponse, coordinate, invoke_graph
 from app.schemas import (
     SchedulingAgentRequest,
     SchedulingAgentResponse,
@@ -41,6 +41,13 @@ async def require_internal_secret(
           dependencies=[Depends(require_internal_secret)])
 async def scheduling_bed(request: SchedulingAgentRequest) -> SchedulingAgentResponse:
     return await run_scheduling_bed_agent(request)
+
+
+@app.post("/internal/agents/coordinate", response_model=CoordinatorResponse,
+          dependencies=[Depends(require_internal_secret)])
+async def coordinate_workflow(request: CoordinatorRequest) -> CoordinatorResponse:
+    """Single entry for starting an agentic workflow. Specialists are not called directly."""
+    return await coordinate(request)
 
 
 @app.post("/v1/invoke", dependencies=[Depends(require_internal_secret)])

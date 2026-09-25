@@ -7,6 +7,8 @@ using Hospital.Application.Communication;
 using Hospital.Application.Patients;
 using Hospital.Application.Treatments;
 using Hospital.Application.Wards;
+using Hospital.Application.Workflows;
+using Hospital.Application.Agents;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Hospital.Application;
@@ -32,6 +34,8 @@ services.AddScoped<IReactionService, ReactionService>();
 services.AddScoped<IReplyService, ReplyService>();
 services.AddScoped<IComplaintService, ComplaintService>();
 services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IWorkflowExecutionService, WorkflowExecutionService>();
+        services.AddScoped<IAgentWorkflowService, AgentWorkflowService>();
         return services;
     }
 }

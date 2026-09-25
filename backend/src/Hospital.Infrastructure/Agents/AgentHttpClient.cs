@@ -18,7 +18,8 @@ public sealed class AgentHttpClient : IAgentClient
 {
     private static readonly JsonSerializerOptions Json = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
     private readonly HttpClient _http;
@@ -32,9 +33,6 @@ public sealed class AgentHttpClient : IAgentClient
         _logger = logger;
     }
 
-    public Task<AgentInvokeResponse> InvokeAsync(AgentInvokeRequest request, CancellationToken cancellationToken) =>
-        PostAsync<AgentInvokeRequest, AgentInvokeResponse>("/v1/invoke", request, cancellationToken);
-
     public Task<FeedbackSupportAgentResponse> DraftFeedbackSupportAsync(
         FeedbackSupportAgentRequest request,
         CancellationToken cancellationToken) =>
@@ -42,6 +40,30 @@ public sealed class AgentHttpClient : IAgentClient
             "/internal/agents/feedback-support",
             request,
             cancellationToken);
+
+    public Task<CoordinatorAgentResponse> CoordinateAsync(
+        StartAgentWorkflowRequest request,
+        CancellationToken cancellationToken) =>
+        PostAsync<StartAgentWorkflowRequest, CoordinatorAgentResponse>(
+            "/internal/agents/coordinate",
+            request,
+            cancellationToken);
+
+    public async Task<AgentInvokeResponse> InvokeAsync(AgentInvokeRequest request, CancellationToken cancellationToken)
+    {
+        var coordinated = await CoordinateAsync(
+            new StartAgentWorkflowRequest(request.Prompt, request.Context),
+            cancellationToken);
+        return new AgentInvokeResponse(
+            coordinated.DelegatedTo,
+            coordinated.Summary,
+            new Dictionary<string, string>
+            {
+                ["workflowId"] = coordinated.WorkflowId.ToString(),
+                ["approvalStatus"] = coordinated.ApprovalStatus ?? "",
+                ["finalOutcome"] = coordinated.FinalOutcome ?? ""
+            });
+    }
 
     private async Task<TResponse> PostAsync<TRequest, TResponse>(
         string path,
