@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../router/app_routes.dart';
 import '../../../theme/app_theme.dart';
 import '../application/communication_providers.dart';
@@ -26,14 +27,14 @@ class MyComplaintsScreen extends ConsumerWidget {
       ),
       body: complaints.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _ComplaintsMessage(
+        error: (error, _) => ErrorState(
           message: feedbackErrorText(error, l10n),
           actionLabel: l10n.retry,
           onAction: () => ref.invalidate(myComplaintsProvider),
         ),
         data: (items) {
           if (items.isEmpty) {
-            return _ComplaintsMessage(message: l10n.complaintsEmpty);
+            return EmptyState(message: l10n.complaintsEmpty);
           }
           return RefreshIndicator(
             onRefresh: () => ref.refresh(myComplaintsProvider.future),
@@ -134,37 +135,6 @@ class _StatusChip extends StatelessWidget {
           color: color,
           fontSize: 12,
           fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _ComplaintsMessage extends StatelessWidget {
-  const _ComplaintsMessage({
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
-              OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
-            ],
-          ],
         ),
       ),
     );

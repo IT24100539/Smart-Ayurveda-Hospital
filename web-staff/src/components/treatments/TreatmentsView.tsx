@@ -12,6 +12,7 @@ import type {
   TreatmentSummaryDto,
   TreatmentDetailDto
 } from '../../api/treatments';
+import { Badge, Button, Card, EmptyState, LoadingState, PageHeader } from '../ui';
 
 // --- Shared UI SVG Icons ---
 const IconPlus = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>;
@@ -25,6 +26,7 @@ export function TreatmentsView() {
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   const fetchTreatments = async () => {
     setLoading(true);
@@ -50,88 +52,110 @@ export function TreatmentsView() {
     }
   };
 
-  return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Treatments</h1>
-        <button 
-          onClick={() => setDrawerOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          <IconPlus /> New Treatment
-        </button>
-      </div>
+  const needle = query.trim().toLowerCase();
+  const visible = needle
+    ? treatments.filter(
+        (item) =>
+          item.name.toLowerCase().includes(needle) ||
+          item.nameSinhala.toLowerCase().includes(needle)
+      )
+    : treatments;
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b border-gray-200 flex gap-4 bg-gray-50">
+  return (
+    <div className="mx-auto max-w-7xl">
+      <PageHeader
+        kicker="Panchakarma catalogue"
+        title="Treatments"
+        description="Therapies, duration, and the days each treatment is offered."
+        action={
+          <Button onClick={() => setDrawerOpen(true)} className="w-full !bg-white !text-primary-dark hover:!bg-primary-muted sm:w-auto">
+            <IconPlus /> New Treatment
+          </Button>
+        }
+      />
+
+      <img
+        src="/images/herbal-oils.png"
+        alt="Brass bowl of herbal oil with tulsi and neem"
+        className="mb-6 h-44 w-full rounded-2xl object-cover shadow-md"
+      />
+      <Card className="overflow-hidden shadow-sm">
+        <div className="flex gap-4 border-b border-surface-border bg-neutral-50 p-4">
           <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted">
               <IconSearch />
             </div>
-            <input 
-              type="text" 
-              placeholder="Search treatments..." 
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search treatments..."
+              className="min-h-11 w-full rounded-md border border-surface-border bg-surface-raised py-2 pl-10 pr-4 text-ink outline-none ring-primary focus:ring-2"
             />
           </div>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading treatments...</div>
+          <div className="p-4">
+            <LoadingState label="Loading treatments…" />
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="p-4">
+            <EmptyState
+              title={treatments.length === 0 ? "No treatments found." : "No treatments match that search."}
+              description={treatments.length === 0 ? "Add a treatment to build the panchakarma schedule." : "Try another therapy name."}
+            />
+          </div>
         ) : (
-          <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[40rem] border-collapse text-left">
             <thead>
-              <tr className="bg-gray-100 text-gray-600 text-sm">
-                <th className="py-3 px-4 font-semibold border-b">Name</th>
-                <th className="py-3 px-4 font-semibold border-b">Category</th>
-                <th className="py-3 px-4 font-semibold border-b">Status</th>
-                <th className="py-3 px-4 font-semibold border-b text-center">Schedule (S M T W T F S)</th>
-                <th className="py-3 px-4 font-semibold border-b text-right">Actions</th>
+              <tr className="bg-neutral-50 text-sm text-muted">
+                <th className="border-b border-surface-border px-4 py-3 font-semibold">Name</th>
+                <th className="border-b border-surface-border px-4 py-3 font-semibold">Category</th>
+                <th className="border-b border-surface-border px-4 py-3 font-semibold">Status</th>
+                <th className="border-b border-surface-border px-4 py-3 text-center font-semibold">Schedule (S M T W T F S)</th>
+                <th className="border-b border-surface-border px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {treatments.map(t => (
+              {visible.map(t => (
                 <React.Fragment key={t.id}>
                   <tr 
-                    className="border-b hover:bg-gray-50 cursor-pointer transition"
+                    className="cursor-pointer border-b border-surface-border transition hover:bg-neutral-50"
                     onClick={() => setExpandedRow(expandedRow === t.id ? null : t.id)}
                   >
-                    <td className="py-4 px-4">
-                      <div className="font-medium text-gray-900">{t.name}</div>
-                      <div className="text-xs text-gray-500">{t.nameSinhala}</div>
+                    <td className="px-4 py-4">
+                      <div className="font-medium text-ink">{t.name}</div>
+                      <div className="text-xs text-muted">{t.nameSinhala}</div>
                     </td>
-                    <td className="py-4 px-4 text-gray-600">{TreatmentCategory[t.category as unknown as keyof typeof TreatmentCategory]}</td>
-                    <td className="py-4 px-4">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${t.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {t.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                    <td className="px-4 py-4 text-muted">{TreatmentCategory[t.category as unknown as keyof typeof TreatmentCategory]}</td>
+                    <td className="px-4 py-4">
+                      <Badge tone={t.isActive ? "success" : "rejected"}>{t.isActive ? "Active" : "Inactive"}</Badge>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="px-4 py-4">
                       <div className="flex justify-center gap-1">
                         {days.map((_, i) => (
-                          <div 
-                            key={i} 
-                            className={`w-6 h-6 flex items-center justify-center rounded text-xs ${t.availableDays?.includes(i) ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-300'}`}
+                          <div
+                            key={i}
+                            className={`flex h-6 w-6 items-center justify-center rounded text-xs ${t.availableDays?.includes(i) ? "bg-primary-muted font-bold text-primary-dark" : "text-neutral-300"}`}
                           >
-                            {t.availableDays?.includes(i) ? '✓' : '—'}
+                            {t.availableDays?.includes(i) ? "✓" : "—"}
                           </div>
                         ))}
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-right">
+                    <td className="px-4 py-4 text-right">
                       {t.isActive && (
-                        <button 
-                          onClick={(e) => handleDeactivate(t.id, e)}
-                          className="text-red-500 hover:text-red-700 text-sm font-medium"
-                        >
+                        <Button variant="danger" onClick={(e) => handleDeactivate(t.id, e)}>
                           Deactivate
-                        </button>
+                        </Button>
                       )}
                     </td>
                   </tr>
                   {expandedRow === t.id && (
                     <tr>
-                      <td colSpan={5} className="bg-blue-50/50 p-0">
+                      <td colSpan={5} className="bg-primary-muted/40 p-0">
                         <InlineScheduleEditor 
                           treatmentId={t.id} 
                           onSave={() => { setExpandedRow(null); fetchTreatments(); }}
@@ -142,25 +166,21 @@ export function TreatmentsView() {
                   )}
                 </React.Fragment>
               ))}
-              {treatments.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">No treatments found.</td>
-                </tr>
-              )}
             </tbody>
           </table>
+          </div>
         )}
-      </div>
+      </Card>
 
       {drawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/20" onClick={() => setDrawerOpen(false)} />
-          <div className="relative w-96 bg-white shadow-2xl flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-xl font-bold">New Treatment</h2>
-              <button onClick={() => setDrawerOpen(false)} className="text-gray-500 hover:text-gray-800">
+          <div className="absolute inset-0 bg-ink/20" onClick={() => setDrawerOpen(false)} />
+          <div className="relative flex w-full max-w-md flex-col bg-surface-raised shadow-lg">
+            <div className="flex items-center justify-between border-b border-surface-border p-6">
+              <h2 className="font-display text-xl font-semibold text-ink">New Treatment</h2>
+              <Button variant="secondary" className="min-w-11 px-3" aria-label="Close" onClick={() => setDrawerOpen(false)}>
                 <IconClose />
-              </button>
+              </Button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
               <TreatmentForm 
@@ -188,31 +208,31 @@ function TreatmentForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-        <input required type="text" className="w-full border rounded-lg p-2" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+        <label className="mb-1 block text-sm font-medium text-ink">Name</label>
+        <input required type="text" className="min-h-11 w-full rounded-md border border-surface-border p-2" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Name (Sinhala)</label>
-        <input required type="text" className="w-full border rounded-lg p-2" value={formData.nameSinhala} onChange={e => setFormData({...formData, nameSinhala: e.target.value})} />
+        <label className="mb-1 block text-sm font-medium text-ink">Name (Sinhala)</label>
+        <input required type="text" className="min-h-11 w-full rounded-md border border-surface-border p-2" value={formData.nameSinhala} onChange={e => setFormData({...formData, nameSinhala: e.target.value})} />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-        <select className="w-full border rounded-lg p-2" value={formData.category} onChange={e => setFormData({...formData, category: Number(e.target.value) as TreatmentCategory})}>
+        <label className="mb-1 block text-sm font-medium text-ink">Category</label>
+        <select className="min-h-11 w-full rounded-md border border-surface-border p-2" value={formData.category} onChange={e => setFormData({...formData, category: Number(e.target.value) as TreatmentCategory})}>
           {Object.entries(TreatmentCategory).filter(([k]) => isNaN(Number(k))).map(([k, v]) => (
             <option key={String(v)} value={Number(v)}>{k}</option>
           ))}
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-        <textarea className="w-full border rounded-lg p-2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+        <label className="mb-1 block text-sm font-medium text-ink">Description</label>
+        <textarea className="w-full rounded-md border border-surface-border p-2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description (Sinhala)</label>
-        <textarea className="w-full border rounded-lg p-2" value={formData.descriptionSinhala} onChange={e => setFormData({...formData, descriptionSinhala: e.target.value})} />
+        <label className="mb-1 block text-sm font-medium text-ink">Description (Sinhala)</label>
+        <textarea className="w-full rounded-md border border-surface-border p-2" value={formData.descriptionSinhala} onChange={e => setFormData({...formData, descriptionSinhala: e.target.value})} />
       </div>
       <div className="pt-4">
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium">Create Treatment</button>
+        <Button type="submit" className="w-full">Create Treatment</Button>
       </div>
     </form>
   );
@@ -241,7 +261,7 @@ function InlineScheduleEditor({ treatmentId, onSave, onCancel }: { treatmentId: 
     });
   }, [treatmentId]);
 
-  if (!detail) return <div className="p-8 text-center text-sm text-gray-500">Loading schedule...</div>;
+  if (!detail) return <div className="p-4"><LoadingState label="Loading schedule…" /></div>;
 
   const handleSave = async () => {
     setSaving(true);
@@ -271,39 +291,39 @@ function InlineScheduleEditor({ treatmentId, onSave, onCancel }: { treatmentId: 
   };
 
   return (
-    <div className="p-6 bg-white border-y border-blue-100 shadow-inner" onClick={e => e.stopPropagation()}>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-gray-800">Edit Schedule for {detail.name}</h3>
+    <div className="border-y border-primary-muted bg-surface-raised p-4 sm:p-6" onClick={e => e.stopPropagation()}>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="font-display font-semibold text-ink">Edit Schedule for {detail.name}</h3>
       </div>
-      <div className="grid grid-cols-7 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
         {days.map((dayName, i) => {
           const state = editedDays[i];
           if (!state) return null;
           
           return (
-            <div key={i} className={`p-3 rounded-xl border transition-colors ${state.enabled ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50 opacity-70'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <input 
-                  type="checkbox" 
+            <div key={i} className={`rounded-xl border p-3 transition-colors ${state.enabled ? "border-primary bg-primary-muted" : "border-surface-border bg-neutral-50 opacity-70"}`}>
+              <div className="mb-3 flex min-h-11 items-center gap-2">
+                <input
+                  type="checkbox"
                   checked={state.enabled}
                   onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, enabled: e.target.checked}}))}
-                  className="w-4 h-4 text-blue-600 rounded"
+                  className="h-5 w-5 rounded text-primary"
                 />
                 <span className="font-semibold text-sm">{dayName}</span>
               </div>
               
               <div className={`space-y-2 transition-all ${state.enabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
                 <div>
-                  <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Start</label>
-                  <input type="time" className="w-full text-xs p-1 border rounded" value={state.startTime.substring(0, 5)} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, startTime: e.target.value + ':00'}}))} />
+                  <label className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Start</label>
+                  <input type="time" className="min-h-11 w-full rounded-md border border-surface-border p-1 text-xs" value={state.startTime.substring(0, 5)} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, startTime: e.target.value + ':00'}}))} />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">End</label>
-                  <input type="time" className="w-full text-xs p-1 border rounded" value={state.endTime.substring(0, 5)} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, endTime: e.target.value + ':00'}}))} />
+                  <label className="mb-1 block text-[10px] uppercase tracking-wider text-muted">End</label>
+                  <input type="time" className="min-h-11 w-full rounded-md border border-surface-border p-1 text-xs" value={state.endTime.substring(0, 5)} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, endTime: e.target.value + ':00'}}))} />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Slots</label>
-                  <input type="number" min="1" className="w-full text-xs p-1 border rounded" value={state.maxSlots} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, maxSlots: parseInt(e.target.value) || 0}}))} />
+                  <label className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Slots</label>
+                  <input type="number" min="1" className="min-h-11 w-full rounded-md border border-surface-border p-1 text-xs" value={state.maxSlots} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, maxSlots: parseInt(e.target.value) || 0}}))} />
                 </div>
               </div>
             </div>
@@ -311,10 +331,10 @@ function InlineScheduleEditor({ treatmentId, onSave, onCancel }: { treatmentId: 
         })}
       </div>
       <div className="flex justify-end gap-3">
-        <button onClick={onCancel} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium">Cancel</button>
-        <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-          {saving ? 'Saving...' : 'Save Schedule'}
-        </button>
+        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save Schedule"}
+        </Button>
       </div>
     </div>
   );

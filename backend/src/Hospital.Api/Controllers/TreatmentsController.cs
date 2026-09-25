@@ -11,7 +11,7 @@ namespace Hospital.Api.Controllers;
 [Route("api/treatments")]
 public sealed class TreatmentsController : ControllerBase
 {
-    private const string StaffRoles = "Admin,FrontDeskStaff";
+    private const string StaffRoles = "Admin,Doctor,FrontDeskStaff";
 
     private readonly ITreatmentService _treatments;
     private readonly IValidator<TreatmentSearchQuery> _searchValidator;
@@ -74,7 +74,7 @@ public sealed class TreatmentsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/deactivate")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<ActionResult<TreatmentDetailDto>> Deactivate(Guid id, CancellationToken cancellationToken) =>
         Ok(await _treatments.DeactivateAsync(id, cancellationToken));
 

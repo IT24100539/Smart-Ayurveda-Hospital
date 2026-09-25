@@ -95,11 +95,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 onPressed: authState.isResolved ? _continue : null,
                 child: authState.isResolved
                     ? Text(l10n.continueLabel)
-                    : const SizedBox.square(
+                    : SizedBox.square(
                         dimension: 22,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: theme.colorScheme.onPrimary,
                         ),
                       ),
               ),

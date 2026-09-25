@@ -28,7 +28,7 @@ public sealed class AppointmentActionsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/decision")]
-    [Authorize(Roles = "Staff,Admin,Doctor")]
+    [Authorize(Roles = "FrontDeskStaff,Admin,Doctor")]
     public async Task<ActionResult<AppointmentDto>> Decide(Guid id, AppointmentDecisionRequest request, CancellationToken cancellationToken)
     {
         // Map to existing UpdateAppointmentStatusRequest

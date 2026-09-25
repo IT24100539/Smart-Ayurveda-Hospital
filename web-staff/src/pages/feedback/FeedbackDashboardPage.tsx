@@ -562,9 +562,9 @@ export function FeedbackDashboardPage() {
       ) : null}
 
       {!loading && !error && visibleItems.length > 0 ? (
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-surface-border bg-surface-raised">
+        <div className="mt-6 overflow-x-auto rounded-3xl border border-white/70 bg-surface-raised/95 shadow-[0_10px_30px_rgba(26,46,45,0.06)]">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-surface-border text-xs uppercase tracking-wide text-muted">
+            <thead className="border-b border-surface-border bg-surface text-xs uppercase tracking-[0.14em] text-muted">
               <tr>
                 <th className="px-4 py-3 font-semibold" scope="col">
                   Patient
@@ -747,7 +747,7 @@ function FeedbackRow({
 
   return (
     <>
-      <tr className="border-b border-surface-border align-top">
+      <tr className="border-b border-surface-border/80 align-top transition hover:bg-primary-muted/40">
         <td className="px-4 py-3 font-medium text-ink">{name}</td>
         <td className="px-4 py-3 text-ink">
           <span aria-label={`Rating ${item.rating} out of 5`}>{item.rating} / 5</span>
@@ -762,7 +762,9 @@ function FeedbackRow({
             {categoryLabel(item.category)}
           </span>
         </td>
-        <td className="max-w-xs px-4 py-3 text-ink">{commentSnippet(item.comment)}</td>
+        <td className="min-w-[16rem] px-4 py-3">
+          <p className="text-sm leading-6 text-ink">{commentSnippet(item.comment)}</p>
+        </td>
         <td className="px-4 py-3">
           <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusTone(item.status)}`}>
             {feedbackStatusLabel(item.status)}
@@ -784,7 +786,9 @@ function FeedbackRow({
       {expanded ? (
         <tr className="border-b border-surface-border bg-surface/60">
           <td id={panelId} className="px-4 py-4" colSpan={7}>
-            <p className="whitespace-pre-wrap text-sm text-ink">{item.comment}</p>
+            <blockquote className="whitespace-pre-wrap rounded-xl border-l-4 border-amber-300 bg-white px-4 py-3 font-display text-base leading-7 text-ink">
+              {item.comment}
+            </blockquote>
             <div className="mt-3">
               <span className="group relative inline-flex">
                 <button
@@ -827,12 +831,12 @@ function FeedbackRow({
               {showActions && history.length > 0 ? (
                 <ul className="space-y-2" aria-label="Replies">
                   {history.map((reply) => (
-                    <li key={reply.id} className="rounded-lg border border-surface-border bg-white px-3 py-2">
+                    <li key={reply.id} className="rounded-xl border border-surface-border bg-white px-4 py-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        {reply.isAiGenerated ? <AiBadge /> : <span className="text-xs font-semibold text-muted">Staff</span>}
+                        {reply.isAiGenerated ? <AiBadge /> : <span className="text-xs font-semibold text-primary-dark">Care team</span>}
                         <span className="text-xs text-muted">{replyStatusLabel(reply.status)}</span>
                       </div>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{reply.reply}</p>
+                      <p className="mt-2 whitespace-pre-wrap font-display text-[15px] leading-6 text-ink">{reply.reply}</p>
                     </li>
                   ))}
                 </ul>

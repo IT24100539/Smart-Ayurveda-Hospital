@@ -41,7 +41,7 @@ public sealed class AgentWorkflowsController : ControllerBase
         Ok(await _workflows.GetAsync(id, cancellationToken));
 
     [HttpPatch("{id:guid}/approve")]
-    [Authorize(Roles = "Staff,Admin,FrontDeskStaff,Doctor")]
+    [Authorize(Roles = "Admin,FrontDeskStaff,Doctor")]
     public async Task<ActionResult<WorkflowExecutionDto>> Approve(
         Guid id,
         ApproveAgentWorkflowRequest request,

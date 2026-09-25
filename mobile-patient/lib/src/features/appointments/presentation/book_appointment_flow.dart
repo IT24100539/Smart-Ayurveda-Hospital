@@ -312,11 +312,11 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
                 key: BookAppointmentKeys.submit,
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox.square(
+                    ? SizedBox.square(
                         dimension: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       )
                     : Text(copy.requestAppointment),

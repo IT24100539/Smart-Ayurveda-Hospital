@@ -155,7 +155,7 @@ public sealed class AppointmentService : IAppointmentService
         appointment.Status = request.Status;
         if (request.Status is AppointmentStatus.Approved or AppointmentStatus.Rejected)
         {
-            appointment.DecidedBy = request.DecidedBy;
+            appointment.DecidedById = request.DecidedBy;
             appointment.DecidedAt = _clock.UtcNow;
         }
 
@@ -175,6 +175,6 @@ public sealed class AppointmentService : IAppointmentService
         a.RequestedDate,
         a.RequestedTimeSlot,
         a.Status,
-        a.DecidedBy,
+        a.DecidedById,
         a.DecidedAt);
 }

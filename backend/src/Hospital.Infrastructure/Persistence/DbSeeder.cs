@@ -452,7 +452,7 @@ public static class DbSeeder
                 PreferredDate = date,
                 Status = AdmissionRequestStatus.Approved,
                 RequestedByAgent = byAgent,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt
             };
 
@@ -479,7 +479,7 @@ public static class DbSeeder
                 PreferredDate = new DateOnly(2026, 9, 4),
                 Status = AdmissionRequestStatus.Rejected,
                 RequestedByAgent = false,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt.AddDays(-2)
             });
     }
@@ -522,7 +522,7 @@ public static class DbSeeder
                 RequestedDate = new DateOnly(2026, 9, 15),
                 RequestedTimeSlot = "14:00-15:00",
                 Status = AppointmentStatus.Approved,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt
             },
             new Appointment
@@ -532,7 +532,7 @@ public static class DbSeeder
                 RequestedDate = new DateOnly(2026, 9, 10),
                 RequestedTimeSlot = "08:00-08:30",
                 Status = AppointmentStatus.Rejected,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt.AddHours(-20)
             },
             new Appointment
@@ -542,7 +542,7 @@ public static class DbSeeder
                 RequestedDate = new DateOnly(2026, 9, 8),
                 RequestedTimeSlot = "09:00-10:00",
                 Status = AppointmentStatus.Completed,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt.AddDays(-1)
             },
             new Appointment
@@ -588,7 +588,7 @@ public static class DbSeeder
                 RequestedDate = requestedDate,
                 RequestedTimeSlot = "09:00-10:00",
                 Status = AppointmentStatus.Completed,
-                DecidedBy = doctorUser.Id,
+                DecidedById = doctorUser.Id,
                 DecidedAt = DateTimeOffset.UtcNow.AddDays(-5)
             };
             db.Appointments.Add(appointment);
@@ -635,7 +635,7 @@ public static class DbSeeder
             Sentiment = FeedbackSentiment.Negative,
             Category = FeedbackCategory.StaffService,
             Status = FeedbackStatus.Hidden,
-            ModeratedBy = adminStaff.Id,
+            ModeratedById = adminStaff.Id,
             ModeratedAt = moderatedAt
         };
 
@@ -720,7 +720,7 @@ public static class DbSeeder
             Description = "The therapist dismissed questions about rest after shirodhara. Please review staff seva training.",
             Priority = ComplaintPriority.High,
             Status = ComplaintStatus.Escalated,
-            AssignedTo = adminStaff.Id,
+            AssignedToId = adminStaff.Id,
             EscalatedAt = now.AddHours(-6)
         };
 

@@ -20,7 +20,7 @@ public sealed class WardsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Staff,Admin")]
+    [Authorize(Roles = "FrontDeskStaff,Doctor,Admin")]
     public async Task<ActionResult<WardOccupancyDto>> Get(Guid id, CancellationToken cancellationToken)
     {
         // staff sees bed-level detail

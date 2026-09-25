@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/feature_localizations.dart';
+import '../../../shared/widgets/section_banner.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../../router/app_routes.dart';
 
@@ -14,7 +15,6 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final featureCopy = FeatureLocalizations.of(context);
-    final theme = Theme.of(context);
     final user = ref.watch(authControllerProvider).user;
     final firstName = user?.firstName ?? '';
 
@@ -23,22 +23,23 @@ class HomeScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
-          Text(
-            firstName.isEmpty
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset(
+              'assets/images/ayurveda-courtyard.png',
+              height: 160,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SectionBanner(
+            kicker: featureCopy.text('Hospital', 'රෝහල'),
+            title: firstName.isEmpty
                 ? l10n.homeGreetingGeneric
                 : l10n.homeGreeting(firstName),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            body: l10n.homeSubtitle,
           ),
-          const SizedBox(height: 8),
-          Text(
-            l10n.homeSubtitle,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 24),
           _HomeCard(
             icon: Icons.event_available_outlined,
             title: l10n.navAppointments,

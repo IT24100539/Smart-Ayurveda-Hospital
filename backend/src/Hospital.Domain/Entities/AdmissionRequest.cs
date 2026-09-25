@@ -23,7 +23,7 @@ public class AdmissionRequest : BaseEntity
     /// <summary>True when raised via the Scheduling &amp; Bed Agent rather than directly by staff.</summary>
     public bool RequestedByAgent { get; set; }
 
-    public Guid? DecidedBy { get; set; }
+    public Guid? DecidedById { get; set; }
     public User? DecidedByUser { get; set; }
     public DateTimeOffset? DecidedAt { get; set; }
 }

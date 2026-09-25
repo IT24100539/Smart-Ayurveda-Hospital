@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/section_banner.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../../l10n/feature_localizations.dart';
 import '../data/ward_repository.dart';
@@ -37,31 +39,26 @@ class _WardAvailabilityScreenState
         onRefresh: () => ref.refresh(wardsProvider.future),
         child: wards.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => ListView(
-            children: [
-              const SizedBox(height: 120),
-              const Icon(Icons.cloud_off_outlined, size: 48),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  copy.wardLoadError(error),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
+          error: (error, _) =>
+              ErrorState(message: copy.wardLoadError(error), scrollable: true),
           data: (items) => ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             children: [
-              Text(
-                copy.currentAvailability,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  'assets/images/ayurveda-ward.png',
+                  height: 150,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(copy.privacyNote),
               const SizedBox(height: 16),
+              SectionBanner(
+                kicker: copy.text('In-patient care', 'ඇතුළත රෝගී සත්කාර'),
+                title: copy.wardAvailability,
+                body: copy.privacyNote,
+              ),
               ...items.map(
                 (ward) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -167,11 +164,11 @@ class _WardAvailabilityScreenState
         FilledButton(
           onPressed: _sending ? null : _submit,
           child: _sending
-              ? const SizedBox.square(
+              ? SizedBox.square(
                   dimension: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                 )
               : Text(FeatureLocalizations.of(context).sendAdmissionRequest),

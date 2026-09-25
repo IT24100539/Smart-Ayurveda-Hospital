@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/feature_localizations.dart';
 import '../../../router/app_routes.dart';
 import '../../appointments/presentation/appointments_screen.dart';
 import '../../appointments/domain/appointment_models.dart';
 import '../../auth/application/auth_controller.dart';
 import '../data/communication_repository.dart';
+import 'feedback_banner.dart';
 import 'feedback_keys.dart';
 import 'feedback_messages.dart';
 import 'star_rating.dart';
@@ -142,6 +144,7 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final copy = FeatureLocalizations.of(context);
     final theme = Theme.of(context);
     final fullName = ref.watch(authControllerProvider).user?.fullName.trim();
     final previewName = (fullName == null || fullName.isEmpty)
@@ -152,9 +155,18 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
       appBar: AppBar(title: Text(l10n.submitFeedbackTitle)),
       body: Form(
         key: _formKey,
-        child: ListView(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+            FeedbackBanner(
+              imageAsset: 'assets/images/feedback-note.png',
+              kicker: copy.text('After the visit', 'පැමිණීමෙන් පසු'),
+              title: l10n.submitFeedbackTitle,
+              body: l10n.commentHint,
+            ),
+            const SizedBox(height: 16),
             if (_linkedFromRoute)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
@@ -249,7 +261,8 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
                     )
                   : Text(l10n.submitFeedback),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
