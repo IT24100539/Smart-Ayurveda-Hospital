@@ -124,11 +124,6 @@ async def _call(tool, **kwargs) -> ToolResult:
 def build_graph(request: SchedulingAgentRequest):
     """Build an isolated graph bound to validated input, without a new state type."""
     request = SchedulingAgentRequest.model_validate(request.model_dump())
-    # TODO(integration): The current store is in-memory and is NOT sufficient
-    # for the final integrated assignment architecture. Wire state_store to
-    # durable PostgreSQL persistence through a backend endpoint and a new
-    # WorkflowExecutions table so workflow state and approval history survive
-    # service restarts. No table or migration is implemented in this step.
     store = get_state_store()
 
     def persisted(name, node):
@@ -196,7 +191,8 @@ def build_graph(request: SchedulingAgentRequest):
                 raise ValueError("Admission context mismatch")
         except ValueError:
             return {**update, **_failure(state, "Admission response was invalid; outcome is unknown. Reconcile before resubmitting.")}
-        return {**update, "approval_status": ApprovalStatus.PENDING, "final_outcome": "awaiting_approval"}
+        return {**update, "approval_status": ApprovalStatus.PENDING, "final_outcome": "awaiting_approval",
+                "related_entity_type": "AdmissionRequest", "related_entity_id": str(output.admission_request_id)}
 
     graph = StateGraph(WorkflowState)
     # LangGraph 0.2 forbids a node named like a state field (WorkflowState.plan).
@@ -220,7 +216,11 @@ def build_graph(request: SchedulingAgentRequest):
 async def run_scheduling_bed_agent(request: SchedulingAgentRequest) -> SchedulingAgentResponse:
     """Single callable for future coordinator integration; never resumes approval."""
     graph = build_graph(request)
-    state = WorkflowState.model_validate(await graph.ainvoke(WorkflowState(objective=request.objective_text)))
+    state = WorkflowState.model_validate(await graph.ainvoke(WorkflowState(
+        objective=request.objective_text,
+        agent_name="scheduling_bed",
+        related_entity_type="AdmissionRequest",
+    )))
     admission_id = None
     if state.final_outcome == "awaiting_approval":
         admission_id = AdmissionOutput.model_validate(state.tool_results[-1].output).admission_request_id

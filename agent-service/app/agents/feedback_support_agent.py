@@ -11,12 +11,12 @@ import functools
 import inspect
 import logging
 from typing import TypedDict
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
-from app.schemas import ApprovalStatus, WorkflowState
+from app.schemas import ApprovalStatus, ToolResult, WorkflowState
 from app.state_store import get_state_store
 from app.tools.tools import (
     FeedbackCategory,
@@ -225,13 +225,40 @@ def _summary(
     )
 
 
+def _jsonable(changes: dict) -> dict:
+    output: dict = {}
+    for key, value in changes.items():
+        if isinstance(value, (str, int, float, bool)):
+            output[key] = value
+        elif value is not None:
+            output[key] = str(value)
+    return output
+
+
+def _tracked(step: str, node):
+    async def transition(state: FeedbackGraphState) -> dict:
+        changes = await node(state)
+        workflow_id = state.get("workflow_id")
+        if workflow_id:
+            store = get_state_store()
+            current = await store.get(workflow_id)
+            completed = [*(current.completed_steps if current else []), step]
+            tool_results = [*(current.tool_results if current else []), ToolResult(
+                tool=step, succeeded=True, output=_jsonable(changes),
+            )]
+            await store.update(workflow_id, completed_steps=completed, tool_results=tool_results)
+        return changes
+
+    return transition
+
+
 def build_feedback_support_graph():
     graph = StateGraph(FeedbackGraphState)
-    graph.add_node("analyze", analyze_node)
-    graph.add_node("check_similar", check_similar_node)
-    graph.add_node("flag", flag_node)
-    graph.add_node("draft", draft_node)
-    graph.add_node("awaiting_review", awaiting_review_node)
+    graph.add_node("analyze", _tracked("analyze", analyze_node))
+    graph.add_node("check_similar", _tracked("check_similar", check_similar_node))
+    graph.add_node("flag", _tracked("flag", flag_node))
+    graph.add_node("draft", _tracked("draft", draft_node))
+    graph.add_node("awaiting_review", _tracked("awaiting_review", awaiting_review_node))
     graph.set_entry_point("analyze")
     graph.add_edge("analyze", "check_similar")
     graph.add_edge("check_similar", "flag")
@@ -281,12 +308,20 @@ def _response(state: FeedbackGraphState) -> FeedbackAgentResponse:
 async def run_feedback_support(request: FeedbackAgentRequest) -> FeedbackAgentResponse:
     workflow_id = str(uuid4())
     store = get_state_store()
+    related_id = request.feedback_id
+    try:
+        UUID(related_id)
+    except ValueError:
+        related_id = None
     await store.save(
         WorkflowState(
             workflow_id=workflow_id,
             objective=f"Review feedback {request.feedback_id} and leave a draft for staff.",
             plan=list(_PLAN),
             approval_status=ApprovalStatus.PENDING,
+            agent_name="feedback_support",
+            related_entity_type="Feedback" if related_id else None,
+            related_entity_id=related_id,
         )
     )
     reason = injection_reason(request.comment_text)

@@ -52,6 +52,7 @@ public sealed record FeedbackStatRow(
 public interface IFeedbackReplyRepository
 {
     Task<FeedbackReply?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<FeedbackReply?> FindLatestAiDraftAsync(Guid feedbackId, CancellationToken cancellationToken);
     Task AddAsync(FeedbackReply reply, CancellationToken cancellationToken);
 }
 

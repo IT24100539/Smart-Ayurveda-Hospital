@@ -239,6 +239,14 @@ internal sealed class FeedbackHarness
                 "awaiting_review",
                 ImmediateDashboardAlert));
         }
+
+        public Task<CoordinatorAgentResponse> CoordinateAsync(
+            StartAgentWorkflowRequest request,
+            CancellationToken cancellationToken)
+        {
+            Calls++;
+            return Task.FromResult(new CoordinatorAgentResponse(Guid.NewGuid(), "feedback_support", Reply, "pending", "awaiting_review"));
+        }
     }
 
     internal sealed class FakeFeedbackRepository : IFeedbackRepository
@@ -330,6 +338,12 @@ internal sealed class FeedbackHarness
 
         public Task<FeedbackReply?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(Items.FirstOrDefault(x => x.Id == id));
+
+        public Task<FeedbackReply?> FindLatestAiDraftAsync(Guid feedbackId, CancellationToken cancellationToken) =>
+            Task.FromResult(Items
+                .Where(x => x.FeedbackId == feedbackId && x.IsAiGenerated && x.Status == FeedbackReplyStatus.Draft)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefault());
 
         public Task AddAsync(FeedbackReply reply, CancellationToken cancellationToken)
         {
