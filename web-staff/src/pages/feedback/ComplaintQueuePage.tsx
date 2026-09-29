@@ -35,9 +35,19 @@ function statusTone(status: ComplaintStatus): string {
   return "bg-surface text-ink";
 }
 
+type QueueChip = "all" | ComplaintStatus | "overdue";
+
+const CHIPS: { id: QueueChip; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "Open", label: "Open" },
+  { id: "InProgress", label: "In progress" },
+  { id: "Escalated", label: "Escalated" },
+  { id: "Resolved", label: "Resolved" },
+  { id: "overdue", label: "Overdue" }
+];
+
 export function ComplaintQueuePage() {
-  const [overdueOnly, setOverdueOnly] = useState(false);
-  const [status, setStatus] = useState<ComplaintStatus | "">("");
+  const [chip, setChip] = useState<QueueChip>("all");
   const [priority, setPriority] = useState<ComplaintPriority | "">("");
   const [assignees, setAssignees] = useState<StaffAssignee[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
@@ -55,12 +65,13 @@ export function ComplaintQueuePage() {
     setActionError(null);
     setItems([]);
 
-    listComplaints({ overdue: overdueOnly, status, priority })
+    listComplaints({ overdue: false, status: "", priority: "" })
       .then((complaints) => {
         if (requestId !== generation.current) {
           return;
         }
-        setItems(complaints);
+        const newestFirst = [...complaints].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setItems(newestFirst);
         setPhase("ready");
       })
       .catch((err: unknown) => {
@@ -71,7 +82,7 @@ export function ComplaintQueuePage() {
         setLoadError(errorMessage(err, "Unable to load complaints."));
         setPhase("error");
       });
-  }, [overdueOnly, status, priority, reloadKey]);
+  }, [reloadKey]);
 
   useEffect(() => {
     listAssignees()
@@ -93,9 +104,6 @@ export function ComplaintQueuePage() {
         return;
       }
       setItems((current) => {
-        if (overdueOnly && !updated.isOverdue) {
-          return current.filter((item) => item.id !== updated.id);
-        }
         return current.map((item) => (item.id === updated.id ? updated : item));
       });
     } catch (err: unknown) {
@@ -109,6 +117,28 @@ export function ComplaintQueuePage() {
     }
   }
 
+  const counts: Record<QueueChip, number> = {
+    all: items.length,
+    Open: items.filter((item) => item.status === "Open").length,
+    InProgress: items.filter((item) => item.status === "InProgress").length,
+    Escalated: items.filter((item) => item.status === "Escalated").length,
+    Resolved: items.filter((item) => item.status === "Resolved").length,
+    overdue: items.filter((item) => item.isOverdue).length
+  };
+
+  const visible = items.filter((item) => {
+    if (priority && item.priority !== priority) {
+      return false;
+    }
+    if (chip === "all") {
+      return true;
+    }
+    if (chip === "overdue") {
+      return item.isOverdue;
+    }
+    return item.status === chip;
+  });
+
   return (
     <section aria-labelledby="complaint-queue-heading">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -117,57 +147,42 @@ export function ComplaintQueuePage() {
             Complaint queue
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Open complaints older than 5 days are overdue and ready to escalate.
+            Newest complaints are listed first. Overdue means an open complaint older than 5 days.
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="block text-sm font-semibold" htmlFor="complaint-status-filter">
-            Status
-            <select
-              id="complaint-status-filter"
-              className={fieldClass}
-              value={status}
-              disabled={overdueOnly}
-              onChange={(event) => setStatus(event.target.value as ComplaintStatus | "")}
-            >
-              <option value="">Any status</option>
-              {COMPLAINT_STATUSES.map((item) => (
-                <option key={item} value={item}>
-                  {complaintStatusLabel(item)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm font-semibold" htmlFor="complaint-priority-filter">
-            Priority
-            <select
-              id="complaint-priority-filter"
-              className={fieldClass}
-              value={priority}
-              disabled={overdueOnly}
-              onChange={(event) => setPriority(event.target.value as ComplaintPriority | "")}
-            >
-              <option value="">Any priority</option>
-              {COMPLAINT_PRIORITIES.map((item) => (
-                <option key={item} value={item}>
-                  {priorityLabel(item)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            className={
-              overdueOnly
-                ? "rounded-lg bg-amber-700 px-3 py-1.5 text-sm font-semibold text-white"
-                : secondaryButton
-            }
-            aria-pressed={overdueOnly}
-            onClick={() => setOverdueOnly((current) => !current)}
+        <label className="block text-sm font-semibold" htmlFor="complaint-priority-filter">
+          Priority
+          <select
+            id="complaint-priority-filter"
+            className={fieldClass}
+            value={priority}
+            onChange={(event) => setPriority(event.target.value as ComplaintPriority | "")}
           >
-            Overdue
+            <option value="">Any priority</option>
+            {COMPLAINT_PRIORITIES.map((item) => (
+              <option key={item} value={item}>
+                {priorityLabel(item)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Complaint filters">
+        {CHIPS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={chip === item.id}
+            className={
+              chip === item.id
+                ? "rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-white"
+                : "rounded-full border border-surface-border bg-white px-3 py-1.5 text-sm font-medium text-ink hover:bg-primary-muted"
+            }
+            onClick={() => setChip(item.id)}
+          >
+            {item.label} ({counts[item.id]})
           </button>
-        </div>
+        ))}
       </div>
 
       {phase === "loading" ? (
@@ -191,15 +206,15 @@ export function ComplaintQueuePage() {
         </p>
       ) : null}
 
-      {phase === "ready" && items.length === 0 ? (
+      {phase === "ready" && visible.length === 0 ? (
         <p className="mt-6 rounded-xl border border-dashed border-surface-border bg-surface-raised p-6 text-sm text-muted" role="status">
-          {overdueOnly ? "No overdue complaints." : "No complaints in the queue."}
+          {chip === "overdue" ? "No overdue complaints." : "No complaints in the queue."}
         </p>
       ) : null}
 
-      {phase === "ready" && items.length > 0 ? (
+      {phase === "ready" && visible.length > 0 ? (
         <ul className="mt-4 space-y-3" aria-label="Complaints">
-          {items.map((complaint) => (
+          {visible.map((complaint) => (
             <li
               key={complaint.id}
               className={

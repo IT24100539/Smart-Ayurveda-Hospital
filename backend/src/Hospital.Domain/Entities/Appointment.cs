@@ -18,10 +18,9 @@ public class Appointment : BaseEntity
     public string RequestedTimeSlot { get; set; } = string.Empty;
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
 
-    public Guid? DecidedBy { get; set; }
+    public Guid? DecidedById { get; set; }
     public User? DecidedByUser { get; set; }
     public DateTimeOffset? DecidedAt { get; set; }
 
-    public Consultation? Consultation { get; set; }
     public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }

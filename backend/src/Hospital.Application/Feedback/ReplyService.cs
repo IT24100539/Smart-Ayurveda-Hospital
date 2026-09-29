@@ -1,3 +1,4 @@
+using System.Net;
 using Hospital.Application.Abstractions;
 using Hospital.Application.Agents;
 using Hospital.Application.Agents.Dtos;
@@ -5,18 +6,23 @@ using Hospital.Application.Communication.Dtos;
 using Hospital.Domain.Entities;
 using Hospital.Domain.Enums;
 using Hospital.Domain.Exceptions;
+using Microsoft.Extensions.Logging;
 
 namespace Hospital.Application.Communication;
 
 public sealed class ReplyService : IReplyService
 {
+    public const string AiUnavailableMessage = "AI service unavailable - reply manually";
+
     private readonly IFeedbackRepository _feedback;
     private readonly IFeedbackReplyRepository _replies;
     private readonly INotificationRepository _notifications;
     private readonly IActorContext _actors;
     private readonly IAgentClient _agents;
     private readonly IStaffUserRepository _staffUsers;
+    private readonly IWorkflowExecutionRepository _workflows;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<ReplyService> _logger;
 
     public ReplyService(
         IFeedbackRepository feedback,
@@ -25,7 +31,9 @@ public sealed class ReplyService : IReplyService
         IActorContext actors,
         IAgentClient agents,
         IStaffUserRepository staffUsers,
-        IUnitOfWork unitOfWork)
+        IWorkflowExecutionRepository workflows,
+        IUnitOfWork unitOfWork,
+        ILogger<ReplyService> logger)
     {
         _feedback = feedback;
         _replies = replies;
@@ -33,7 +41,9 @@ public sealed class ReplyService : IReplyService
         _actors = actors;
         _agents = agents;
         _staffUsers = staffUsers;
+        _workflows = workflows;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<ReplyDto> CreateManualReplyAsync(
@@ -45,6 +55,7 @@ public sealed class ReplyService : IReplyService
         await _actors.RequireStaffAsync(cancellationToken);
         var feedback = await _feedback.GetByIdAsync(feedbackId, cancellationToken)
             ?? throw new NotFoundException(nameof(Feedback), feedbackId);
+        EnsureRepliesOpen(feedback);
 
         var reply = new FeedbackReply
         {
@@ -71,6 +82,7 @@ public sealed class ReplyService : IReplyService
         await _actors.RequirePatientAsync(cancellationToken);
         var feedback = await _feedback.GetByIdAsync(feedbackId, cancellationToken)
             ?? throw new NotFoundException(nameof(Feedback), feedbackId);
+        EnsureRepliesOpen(feedback);
         if (feedback.Status != FeedbackStatus.Visible)
         {
             throw new DomainException("Replies are only allowed on visible feedback.");
@@ -95,17 +107,33 @@ public sealed class ReplyService : IReplyService
     {
         try
         {
-            var response = await CallAgentAsync(feedback, cancellationToken);
-            await StoreAnalysisAsync(feedback, response, requireDraft: false, cancellationToken);
+            await RunAnalysisAsync(feedback, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
-        catch (Exception)
+        catch (DomainException)
         {
-            // Submission already succeeded. Staff can still moderate and reply by hand.
+            // CallAgentAsync already logged the agent exception and HTTP status.
+            // The feedback row is already saved.
         }
+        catch (Exception ex)
+        {
+            LogAgentFailure(ex);
+        }
+    }
+
+    public async Task CaptureAnalysisAsync(Feedback feedback, CancellationToken cancellationToken)
+    {
+        await _actors.RequireStaffAsync(cancellationToken);
+        await RunAnalysisAsync(feedback, cancellationToken);
+    }
+
+    private async Task RunAnalysisAsync(Feedback feedback, CancellationToken cancellationToken)
+    {
+        var response = await CallAgentAsync(feedback, cancellationToken);
+        await StoreAnalysisAsync(feedback, response, requireDraft: false, cancellationToken);
     }
 
     public async Task<ReplyDto> RequestAiDraftAsync(Guid feedbackId, CancellationToken cancellationToken)
@@ -113,6 +141,7 @@ public sealed class ReplyService : IReplyService
         await _actors.RequireStaffAsync(cancellationToken);
         var feedback = await _feedback.GetByIdAsync(feedbackId, cancellationToken)
             ?? throw new NotFoundException(nameof(Feedback), feedbackId);
+        EnsureRepliesOpen(feedback);
 
         // The feedback row is already stored. If this call fails, that comment stays.
         var response = await CallAgentAsync(feedback, cancellationToken);
@@ -137,6 +166,7 @@ public sealed class ReplyService : IReplyService
             reply.Status = FeedbackReplyStatus.Rejected;
             reply.UserId = user.Id;
             reply.UserRole = FeedbackReplyUserRole.Staff;
+            await SyncRelatedWorkflowsAsync(reply, WorkflowApprovalStatus.Rejected, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return FeedbackMapper.ToReply(reply);
         }
@@ -175,7 +205,33 @@ public sealed class ReplyService : IReplyService
         }
 
         await PublishAsync(reply, user.Id, cancellationToken);
+        await SyncRelatedWorkflowsAsync(reply, WorkflowApprovalStatus.Approved, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return FeedbackMapper.ToReply(reply);
+    }
+
+    private async Task SyncRelatedWorkflowsAsync(
+        FeedbackReply reply,
+        WorkflowApprovalStatus status,
+        CancellationToken cancellationToken)
+    {
+        var relatedIds = new HashSet<Guid> { reply.Id, reply.FeedbackId };
+        foreach (var relatedId in relatedIds)
+        {
+            var pending = await _workflows.ListPendingByRelatedAsync(relatedId, cancellationToken);
+            foreach (var execution in pending)
+            {
+                execution.ApprovalStatus = status;
+            }
+        }
+    }
+
+    private static void EnsureRepliesOpen(Feedback feedback)
+    {
+        if (feedback.Status == FeedbackStatus.Withdrawn)
+        {
+            throw new DomainException("This feedback was withdrawn. Replies are closed.");
+        }
     }
 
     private async Task<FeedbackSupportAgentResponse> CallAgentAsync(Feedback feedback, CancellationToken cancellationToken)
@@ -190,11 +246,37 @@ public sealed class ReplyService : IReplyService
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            throw new DomainException(
-                "The support agent is unavailable. This feedback stays on record, and you can reply manually.");
+            LogAgentFailure(ex);
+            throw new DomainException(AiUnavailableMessage, ex);
         }
+    }
+
+    /// <summary>
+    /// Logs the exception type and HTTP status only. The shared secret and request headers are not written.
+    /// </summary>
+    private void LogAgentFailure(Exception exception)
+    {
+        var status = HttpStatus(exception);
+        _logger.LogWarning(
+            exception,
+            "Feedback agent call failed. ExceptionType={ExceptionType} HttpStatus={HttpStatus}",
+            exception.GetType().Name,
+            status?.ToString() ?? "none");
+    }
+
+    private static int? HttpStatus(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is HttpRequestException http && http.StatusCode is HttpStatusCode code)
+            {
+                return (int)code;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -228,6 +310,11 @@ public sealed class ReplyService : IReplyService
                 IsAiGenerated = true,
                 Status = FeedbackReplyStatus.Draft
             };
+            if (!feedback.Replies.Contains(draft))
+            {
+                feedback.Replies.Add(draft);
+            }
+
             await _replies.AddAsync(draft, cancellationToken);
         }
 
@@ -240,6 +327,11 @@ public sealed class ReplyService : IReplyService
 
         if (requireDraft && draft is null)
         {
+            if (string.Equals(response.ClassifiedBy, "rules", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new DomainException(AiUnavailableMessage);
+            }
+
             throw new DomainException(
                 "The support agent completed its review but did not produce a reply draft. The feedback stays on record.");
         }

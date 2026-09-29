@@ -23,6 +23,12 @@ abstract final class AyurvedaColors {
   static const inkMuted = Color(0xFF5D6F6E);
 
   static const danger = Color(0xFFA84832);
+  static const dangerMuted = Color(0xFFF4D6D2);
+
+  static const info = Color(0xFF205477);
+  static const infoMuted = Color(0xFFD8E7F3);
+  static const neutralChip = Color(0xFFE3E3E3);
+  static const neutralChipInk = Color(0xFF555555);
 }
 
 abstract final class AppTheme {
@@ -63,6 +69,27 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: AyurvedaColors.ink,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AyurvedaColors.forest,
+        foregroundColor: Colors.white,
+        elevation: 1,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AyurvedaColors.forest,
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(52),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
       ),
       textTheme: base.textTheme.apply(
         bodyColor: AyurvedaColors.ink,
@@ -71,12 +98,13 @@ abstract final class AppTheme {
       cardTheme: CardThemeData(
         color: AyurvedaColors.creamRaised,
         surfaceTintColor: Colors.transparent,
-        elevation: 0,
+        elevation: 1,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(22),
           side: const BorderSide(color: AyurvedaColors.border),
         ),
+        shadowColor: const Color(0x141A2E2D),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -119,8 +147,8 @@ abstract final class AppTheme {
         backgroundColor: AyurvedaColors.creamRaised,
         indicatorColor: AyurvedaColors.sageMuted,
         surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        height: 68,
+        elevation: 3,
+        height: 72,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(

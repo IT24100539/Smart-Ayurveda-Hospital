@@ -23,22 +23,22 @@ public sealed class NotificationService : INotificationService
 
     public async Task<IReadOnlyList<NotificationDto>> GetForPatient(Guid patientId, CancellationToken cancellationToken)
     {
-        var patient = await _actors.RequirePatientAsync(cancellationToken);
-        if (patient.Id != patientId)
+        var chartId = await _actors.RequirePatientIdAsync(cancellationToken);
+        if (chartId != patientId)
         {
             throw new ForbiddenException("You can only read your own notifications.");
         }
 
-        var items = await _notifications.ListForPatientAsync(patient.Id, cancellationToken);
+        var items = await _notifications.ListForPatientAsync(chartId, cancellationToken);
         return items.Select(Map).ToList();
     }
 
     public async Task<NotificationDto> MarkReadAsync(Guid id, CancellationToken cancellationToken)
     {
-        var patient = await _actors.RequirePatientAsync(cancellationToken);
+        var chartId = await _actors.RequirePatientIdAsync(cancellationToken);
         var notification = await _notifications.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException(nameof(Notification), id);
-        if (notification.PatientId != patient.Id || notification.StaffUserId is not null)
+        if (notification.PatientId != chartId || notification.StaffUserId is not null)
         {
             throw new ForbiddenException("You can only update your own notifications.");
         }
@@ -50,8 +50,8 @@ public sealed class NotificationService : INotificationService
 
     public async Task<MarkAllReadResult> MarkAllReadAsync(CancellationToken cancellationToken)
     {
-        var patient = await _actors.RequirePatientAsync(cancellationToken);
-        var updated = await _notifications.MarkAllReadForPatientAsync(patient.Id, cancellationToken);
+        var chartId = await _actors.RequirePatientIdAsync(cancellationToken);
+        var updated = await _notifications.MarkAllReadForPatientAsync(chartId, cancellationToken);
         if (updated > 0)
         {
             await _unitOfWork.SaveChangesAsync(cancellationToken);

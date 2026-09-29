@@ -127,6 +127,11 @@ public sealed class FeedbackService : IFeedbackService
             throw new DomainException("Feedback can only be edited or withdrawn within 24 hours of submission.");
         }
 
+        if (feedback.Status == FeedbackStatus.Withdrawn)
+        {
+            throw new DomainException("This feedback is already withdrawn.");
+        }
+
         var hasChange = request.Withdraw || request.Rating is not null || request.Comment is not null || request.IsAnonymous is not null;
         if (!hasChange)
         {
@@ -161,12 +166,12 @@ public sealed class FeedbackService : IFeedbackService
 
         if (request.Withdraw)
         {
-            feedback.Status = FeedbackStatus.Hidden;
+            feedback.Status = FeedbackStatus.Withdrawn;
         }
         else
         {
             feedback.Status = FeedbackStatus.PendingModeration;
-            feedback.ModeratedBy = null;
+            feedback.ModeratedById = null;
             feedback.ModeratedAt = null;
         }
 
@@ -212,6 +217,15 @@ public sealed class FeedbackService : IFeedbackService
         return FeedbackMapper.ToDetail(feedback, includeUnpostedReplies: true);
     }
 
+    public async Task<FeedbackDetailDto> AnalyseAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await _actors.RequireStaffAsync(cancellationToken);
+        var feedback = await _feedback.GetByIdAsync(id, cancellationToken)
+            ?? throw new NotFoundException(nameof(Feedback), id);
+        await _replies.CaptureAnalysisAsync(feedback, cancellationToken);
+        return FeedbackMapper.ToDetail(feedback, includeUnpostedReplies: true);
+    }
+
     public async Task<FeedbackDetailDto> ModerateAsync(
         Guid id,
         FeedbackModerationAction action,
@@ -226,10 +240,15 @@ public sealed class FeedbackService : IFeedbackService
         var feedback = await _feedback.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException(nameof(Feedback), id);
 
+        if (feedback.Status == FeedbackStatus.Withdrawn)
+        {
+            throw new DomainException("Withdrawn feedback stays withdrawn.");
+        }
+
         feedback.Status = action == FeedbackModerationAction.Hide
             ? FeedbackStatus.Hidden
             : FeedbackStatus.Visible;
-        feedback.ModeratedBy = staff.Id;
+        feedback.ModeratedById = staff.Id;
         feedback.ModeratedAt = _clock.UtcNow;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -244,8 +263,8 @@ public sealed class FeedbackService : IFeedbackService
 
     public async Task<IReadOnlyList<PatientFeedbackDto>> ListMineAsync(CancellationToken cancellationToken)
     {
-        var patient = await _actors.RequirePatientAsync(cancellationToken);
-        var items = await _feedback.ListForPatientAsync(patient.Id, cancellationToken);
+        var chartId = await _actors.RequirePatientIdAsync(cancellationToken);
+        var items = await _feedback.ListForPatientAsync(chartId, cancellationToken);
         return items.Select(item => new PatientFeedbackDto(
             item.Id,
             item.AppointmentId,
@@ -257,13 +276,20 @@ public sealed class FeedbackService : IFeedbackService
             item.Category,
             item.Status,
             item.CreatedAt,
-            _clock.UtcNow <= item.CreatedAt.Add(EditWindow))).ToList();
+            item.Status != FeedbackStatus.Withdrawn && _clock.UtcNow <= item.CreatedAt.Add(EditWindow),
+            item.Replies
+                .Where(reply => reply.Status == FeedbackReplyStatus.Posted)
+                .OrderBy(reply => reply.CreatedAt)
+                .Select(reply => new PublicReplyDto(reply.Id, reply.UserRole, reply.Reply, reply.CreatedAt))
+                .ToList())).ToList();
     }
 
     public async Task<FeedbackStatsDto> GetStatsAsync(CancellationToken cancellationToken)
     {
         await _actors.RequireStaffAsync(cancellationToken);
-        var rows = await _feedback.ListForStatsAsync(cancellationToken);
+        var rows = (await _feedback.ListForStatsAsync(cancellationToken))
+            .Where(x => x.Status != FeedbackStatus.Withdrawn)
+            .ToList();
         var total = rows.Count;
         var average = total == 0 ? 0 : Math.Round(rows.Average(x => x.Rating), 2);
         return new FeedbackStatsDto(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/section_banner.dart';
 import '../../../theme/app_theme.dart';
 import '../../../l10n/feature_localizations.dart';
 import '../../../router/app_routes.dart';
@@ -14,19 +16,19 @@ final myAppointmentsProvider = FutureProvider.autoDispose<List<Appointment>>(
 
 abstract final class AppointmentStatusColors {
   static Color background(AppointmentStatus status) => switch (status) {
-    AppointmentStatus.pending => const Color(0xFFFFE7B3),
-    AppointmentStatus.approved => const Color(0xFFD9EAD3),
-    AppointmentStatus.rejected => const Color(0xFFF4D6D2),
-    AppointmentStatus.completed => const Color(0xFFD8E7F3),
-    AppointmentStatus.cancelled => const Color(0xFFE3E3E3),
+    AppointmentStatus.pending => AyurvedaColors.goldMuted,
+    AppointmentStatus.approved => AyurvedaColors.sageMuted,
+    AppointmentStatus.rejected => AyurvedaColors.dangerMuted,
+    AppointmentStatus.completed => AyurvedaColors.infoMuted,
+    AppointmentStatus.cancelled => AyurvedaColors.neutralChip,
   };
 
   static Color foreground(AppointmentStatus status) => switch (status) {
-    AppointmentStatus.pending => const Color(0xFF7A5100),
+    AppointmentStatus.pending => AyurvedaColors.forestDark,
     AppointmentStatus.approved => AyurvedaColors.forest,
     AppointmentStatus.rejected => AyurvedaColors.danger,
-    AppointmentStatus.completed => const Color(0xFF205477),
-    AppointmentStatus.cancelled => const Color(0xFF555555),
+    AppointmentStatus.completed => AyurvedaColors.info,
+    AppointmentStatus.cancelled => AyurvedaColors.neutralChipInk,
   };
 }
 
@@ -61,56 +63,61 @@ class MyAppointmentsScreen extends ConsumerWidget {
         onRefresh: () => ref.refresh(myAppointmentsProvider.future),
         child: appointments.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => ListView(
-            children: [
-              const SizedBox(height: 120),
-              const Icon(Icons.cloud_off_outlined, size: 48),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  copy.loadAppointmentsError(error),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: FilledButton(
-                  onPressed: () => ref.invalidate(myAppointmentsProvider),
-                  child: Text(copy.tryAgain),
-                ),
-              ),
-            ],
+          error: (error, _) => ErrorState(
+            message: copy.loadAppointmentsError(error),
+            actionLabel: copy.tryAgain,
+            onAction: () => ref.invalidate(myAppointmentsProvider),
+            scrollable: true,
           ),
           data: (items) => items.isEmpty
-              ? ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  children: [
-                    const SizedBox(height: 130),
-                    const Icon(Icons.event_note_outlined, size: 56),
-                    const SizedBox(height: 12),
-                    Text(copy.noAppointments, textAlign: TextAlign.center),
-                    const SizedBox(height: 8),
-                    Text(
-                      copy.chooseTreatmentFirst,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    FilledButton.icon(
-                      key: const ValueKey('empty-book-appointment'),
-                      onPressed: () => context.go(AppRoutes.treatments),
-                      icon: const Icon(Icons.add),
-                      label: Text(copy.bookNewAppointment),
-                    ),
-                  ],
+              ? EmptyState(
+                  message: copy.noAppointments,
+                  detail: copy.chooseTreatmentFirst,
+                  icon: Icons.event_note_outlined,
+                  actionLabel: copy.bookNewAppointment,
+                  onAction: () => context.go(AppRoutes.treatments),
+                  useFilledAction: true,
+                  actionKey: const ValueKey('empty-book-appointment'),
+                  scrollable: true,
                 )
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                  itemCount: items.length,
+                  itemCount: items.length + 1,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) => _AppointmentCard(
-                    appointment: items[index],
-                    onTap: () => _showDetails(context, ref, items[index]),
-                  ),
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Image.asset(
+                              'assets/images/consultation-desk.png',
+                              height: 140,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SectionBanner(
+                            kicker: copy.text('Care schedule', 'සත්කාර කාලසටහන'),
+                            title: copy.text(
+                              'Requested visits',
+                              'ඉල්ලා ඇති හමුවීම්',
+                            ),
+                            body: copy.text(
+                              'Pending requests stay here until the hospital confirms the slot.',
+                              'රෝහල වේලාව තහවුරු කරන තුරු ඉල්ලීම් මෙහි පවතී.',
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return _AppointmentCard(
+                      appointment: items[index - 1],
+                      onTap: () => _showDetails(context, ref, items[index - 1]),
+                    );
+                  },
                 ),
         ),
       ),

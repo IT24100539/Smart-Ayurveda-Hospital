@@ -56,6 +56,12 @@ public sealed class AppointmentsController : ControllerBase
     public async Task<ActionResult<AppointmentDto>> Create(CreateAppointmentRequest request, CancellationToken cancellationToken)
     {
         await _createValidator.ValidateAndThrowAsync(request, cancellationToken);
+        if (User.IsInRole("Patient"))
+        {
+            var patient = await _actors.RequirePatientAsync(cancellationToken);
+            request = request with { PatientId = patient.Id };
+        }
+
         var created = await _appointments.CreateAsync(request, cancellationToken);
         return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
     }

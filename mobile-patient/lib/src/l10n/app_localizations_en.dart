@@ -55,6 +55,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get phoneNumberLabel => 'Phone number';
 
   @override
+  String get dateOfBirthLabel => 'Date of birth';
+
+  @override
+  String get dateOfBirthRequired => 'Please enter your date of birth';
+
+  @override
+  String get genderLabel => 'Gender';
+
+  @override
+  String get genderRequired => 'Please select a gender';
+
+  @override
+  String get genderFemale => 'Female';
+
+  @override
+  String get genderMale => 'Male';
+
+  @override
+  String get genderOther => 'Other';
+
+  @override
+  String get genderUnspecified => 'Unspecified';
+
+  @override
   String get passwordLabel => 'Password';
 
   @override
@@ -132,6 +156,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Book consultations, follow your panchakarma plan, and track your herbal medicines.';
 
   @override
+  String get homeHospitalName => 'Smart Ayurveda Hospital';
+
+  @override
+  String get homeHospitalAddress => 'Pallekele, Kundasale 20168';
+
+  @override
+  String get homeHospitalPhone => '+94 81 242 0541';
+
+  @override
+  String get homeHospitalHours => 'Mon-Fri 8:00 AM - 5:30 PM';
+
+  @override
+  String get homeLoadError => 'Could not load hospital information. Try again.';
+
+  @override
   String get comingSoonTitle => 'Coming soon';
 
   @override
@@ -200,8 +239,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkedVisit => 'Linked to this completed visit';
 
   @override
-  String get feedbackNeedsLink =>
-      'Open this from a completed appointment so the visit can be attached.';
+  String get feedbackNeedsLink => 'Choose a completed visit or a treatment.';
+
+  @override
+  String get writeFeedback => 'Write feedback';
+
+  @override
+  String get hubCommunity => 'Community';
+
+  @override
+  String get hubMine => 'My feedback';
+
+  @override
+  String get hubComplaints => 'Complaints';
+
+  @override
+  String get hubNotifications => 'Notifications';
+
+  @override
+  String get linkToVisit => 'Completed visit';
+
+  @override
+  String get linkToTreatment => 'Treatment';
+
+  @override
+  String get chooseTreatment => 'Choose a treatment';
+
+  @override
+  String editTimeRemaining(int hours, int minutes) {
+    return '${hours}h ${minutes}m left to edit or withdraw';
+  }
+
+  @override
+  String get feedbackStatusPending => 'Pending review';
+
+  @override
+  String get feedbackStatusVisible => 'Visible';
+
+  @override
+  String get feedbackStatusHidden => 'Hidden';
+
+  @override
+  String get feedbackStatusWithdrawn => 'Withdrawn';
 
   @override
   String get publicFeedTitle => 'Patient feedback';
@@ -352,7 +431,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noCompletedVisit =>
-      'No completed visit is available for feedback yet.';
+      'No completed visit yet. You can still write about a treatment.';
 
   @override
   String get escalatedOn => 'Escalated';

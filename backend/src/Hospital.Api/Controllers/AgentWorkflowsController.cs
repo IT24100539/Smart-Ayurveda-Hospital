@@ -15,15 +15,18 @@ public sealed class AgentWorkflowsController : ControllerBase
     private readonly IAgentWorkflowService _workflows;
     private readonly IValidator<StartAgentWorkflowRequest> _startValidator;
     private readonly IValidator<ApproveAgentWorkflowRequest> _approveValidator;
+    private readonly IValidator<AskTreatmentInfoRequest> _askValidator;
 
     public AgentWorkflowsController(
         IAgentWorkflowService workflows,
         IValidator<StartAgentWorkflowRequest> startValidator,
-        IValidator<ApproveAgentWorkflowRequest> approveValidator)
+        IValidator<ApproveAgentWorkflowRequest> approveValidator,
+        IValidator<AskTreatmentInfoRequest> askValidator)
     {
         _workflows = workflows;
         _startValidator = startValidator;
         _approveValidator = approveValidator;
+        _askValidator = askValidator;
     }
 
     [HttpPost("start")]
@@ -36,12 +39,26 @@ public sealed class AgentWorkflowsController : ControllerBase
         return Ok(started);
     }
 
+    /// <summary>
+    /// Patient ask for the treatment-info agent (listed therapies, days, fees).
+    /// Medical-advice questions come back refused. The agent does not invent catalogue rows.
+    /// </summary>
+    [HttpPost("ask-treatment")]
+    [Authorize(Roles = "Patient")]
+    public async Task<ActionResult<AskTreatmentInfoResponse>> AskTreatment(
+        AskTreatmentInfoRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _askValidator.ValidateAndThrowAsync(request, cancellationToken);
+        return Ok(await _workflows.AskTreatmentAsync(request, cancellationToken));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<WorkflowExecutionDto>> Get(Guid id, CancellationToken cancellationToken) =>
         Ok(await _workflows.GetAsync(id, cancellationToken));
 
     [HttpPatch("{id:guid}/approve")]
-    [Authorize(Roles = "Staff,Admin,FrontDeskStaff,Doctor")]
+    [Authorize(Roles = "Admin,FrontDeskStaff,Doctor")]
     public async Task<ActionResult<WorkflowExecutionDto>> Approve(
         Guid id,
         ApproveAgentWorkflowRequest request,

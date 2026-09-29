@@ -29,7 +29,7 @@ class ApiAppointmentRepository implements AppointmentRepository {
   ) async {
     try {
       final response = await _dio.get<dynamic>(
-        '/treatments/$treatmentId/availability',
+        '/treatments/$treatmentId/slots',
         queryParameters: {'date': DateFormat('yyyy-MM-dd').format(date)},
       );
       return TreatmentAvailability.fromJson(response.data);
@@ -84,7 +84,10 @@ class ApiAppointmentRepository implements AppointmentRepository {
   @override
   Future<void> cancel(String appointmentId) async {
     try {
-      await _dio.patch<void>('/appointments/$appointmentId/cancel');
+      await _dio.patch<void>(
+        '/appointments/$appointmentId/cancel',
+        options: Options(responseType: ResponseType.plain),
+      );
     } on DioException catch (error) {
       throw ApiException.fromDioException(error);
     }

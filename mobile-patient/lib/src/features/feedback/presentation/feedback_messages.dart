@@ -10,6 +10,16 @@ String feedbackErrorText(Object error, AppLocalizations l10n) {
   return l10n.genericErrorMessage;
 }
 
+String feedbackStatusLabel(AppLocalizations l10n, String status) {
+  return switch (status) {
+    'Visible' => l10n.feedbackStatusVisible,
+    'Hidden' => l10n.feedbackStatusHidden,
+    'PendingModeration' => l10n.feedbackStatusPending,
+    'Withdrawn' => l10n.feedbackStatusWithdrawn,
+    _ => status,
+  };
+}
+
 String complaintStatusLabel(AppLocalizations l10n, ComplaintStatus status) {
   return switch (status) {
     ComplaintStatus.open => l10n.statusOpen,

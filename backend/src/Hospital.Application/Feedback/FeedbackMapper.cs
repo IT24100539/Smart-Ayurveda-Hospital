@@ -65,7 +65,7 @@ public static class FeedbackMapper
         feedback.Sentiment,
         feedback.Category,
         feedback.Status,
-        feedback.ModeratedBy,
+        feedback.ModeratedById,
         feedback.ModeratedAt,
         Count(feedback, FeedbackReactionType.Like),
         Count(feedback, FeedbackReactionType.Dislike),

@@ -20,7 +20,7 @@ Set these on the Render service. Do not commit real values.
 | `Jwt__Secret` | HMAC signing key, at least 32 characters. Overrides the dev key baked into `appsettings.json`. |
 | `Jwt__Issuer` | `smart-ayurveda-hospital` |
 | `Jwt__Audience` | `smart-ayurveda-staff` |
-| `InternalServiceKey` | Shared secret for `X-Internal-Service-Key`. The agent process must send the same value. |
+| `INTERNAL_SERVICE_KEY` | Shared secret for `X-Internal-Service-Key`. The agent process reads the same variable. |
 | `AllowedOrigins` | Comma-separated browser origins. Include the deployed staff portal, for example `https://smart-ayurveda-staff.vercel.app`. No trailing slash. |
 
 `ASPNETCORE_ENVIRONMENT` is `Production` in `render.yaml`.

@@ -1,43 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/language_switcher.dart';
-import '../../../router/app_routes.dart';
 import '../../../theme/app_theme.dart';
 import '../application/auth_controller.dart';
 
-/// Entry screen: picks up any stored session and lets the patient choose a
-/// language before signing in.
-class SplashScreen extends ConsumerStatefulWidget {
+/// Shown while the stored session is restored. The router moves on once
+/// [AuthState.isResolved] is true.
+class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
 
   @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends ConsumerState<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Deferred: reading secure storage touches a platform channel, which must
-    // not run during the first build.
-    Future.microtask(
-      () => ref.read(authControllerProvider.notifier).restoreSession(),
-    );
-  }
-
-  void _continue() {
-    final isAuthenticated = ref.read(authControllerProvider).isAuthenticated;
-    context.go(isAuthenticated ? AppRoutes.home : AppRoutes.login);
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final authState = ref.watch(authControllerProvider);
+    ref.watch(authControllerProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -89,19 +67,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               const SizedBox(height: 12),
               const Center(child: LanguageSwitcher()),
               const SizedBox(height: 32),
-              FilledButton(
-                // Disabled until the stored token has been read, so tapping
-                // through cannot race the session restore.
-                onPressed: authState.isResolved ? _continue : null,
-                child: authState.isResolved
-                    ? Text(l10n.continueLabel)
-                    : const SizedBox.square(
-                        dimension: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      ),
+              const Center(
+                child: SizedBox.square(
+                  dimension: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
               const SizedBox(height: 28),
             ],

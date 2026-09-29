@@ -8,6 +8,7 @@ using Hospital.Application.Communication;
 using Hospital.Domain.Entities;
 using Hospital.Domain.Enums;
 using Hospital.Domain.Exceptions;
+using Microsoft.Extensions.Logging;
 
 namespace Hospital.UnitTests;
 
@@ -62,9 +63,11 @@ internal sealed class FeedbackHarness
         Agents = new FakeAgentClient();
         var unitOfWork = new FakeUnitOfWork();
         var staffRepo = new FakeStaffRepository(Staff);
+        AgentLog = new ListLogger<ReplyService>();
 
         Reactions = new ReactionService(FeedbackStore, ReactionStore, actors, unitOfWork);
-        Replies = new ReplyService(FeedbackStore, ReplyStore, NotificationStore, actors, Agents, staffRepo, unitOfWork);
+        Replies = new ReplyService(
+            FeedbackStore, ReplyStore, NotificationStore, actors, Agents, staffRepo, new FakeWorkflowExecutionRepository(), unitOfWork, AgentLog);
         Feedback = new FeedbackService(FeedbackStore, Appointments, Treatments, actors, unitOfWork, Clock, Replies);
         Complaints = new ComplaintService(
             ComplaintStore,
@@ -90,6 +93,7 @@ internal sealed class FeedbackHarness
     public FakeAppointmentService Appointments { get; }
     public FakeTreatmentCatalog Treatments { get; }
     public FakeAgentClient Agents { get; }
+    public ListLogger<ReplyService> AgentLog { get; }
     public FeedbackService Feedback { get; }
     public ReactionService Reactions { get; }
     public ReplyService Replies { get; }
@@ -144,6 +148,32 @@ internal sealed class FeedbackHarness
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken) => Task.FromResult(1);
+    }
+
+    private sealed class FakeWorkflowExecutionRepository : IWorkflowExecutionRepository
+    {
+        public Task<WorkflowExecution?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+            Task.FromResult<WorkflowExecution?>(null);
+
+        public Task AddAsync(WorkflowExecution execution, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task<IReadOnlyList<WorkflowExecution>> ListPendingByRelatedAsync(
+            Guid relatedEntityId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<WorkflowExecution>>([]);
+
+        public Task<(IReadOnlyList<WorkflowExecution> Items, int Total)> SearchAsync(
+            string? agentName,
+            WorkflowApprovalStatus? approvalStatus,
+            DateTimeOffset? from,
+            DateTimeOffset? to,
+            string? search,
+            string? sort,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(((IReadOnlyList<WorkflowExecution>)[], 0));
     }
 
     private sealed class FakeActors : IActorContext
@@ -209,6 +239,7 @@ internal sealed class FeedbackHarness
         public string? Priority { get; set; } = "Normal";
         public bool ImmediateDashboardAlert { get; set; }
         public bool DraftSkipped { get; set; }
+        public string? ClassifiedBy { get; set; }
         public Exception? Failure { get; set; }
         public int Calls { get; private set; }
 
@@ -237,7 +268,8 @@ internal sealed class FeedbackHarness
                 DraftSkipped,
                 "wf-test",
                 "awaiting_review",
-                ImmediateDashboardAlert));
+                ImmediateDashboardAlert,
+                ClassifiedBy));
         }
 
         public Task<CoordinatorAgentResponse> CoordinateAsync(
@@ -246,6 +278,19 @@ internal sealed class FeedbackHarness
         {
             Calls++;
             return Task.FromResult(new CoordinatorAgentResponse(Guid.NewGuid(), "feedback_support", Reply, "pending", "awaiting_review"));
+        }
+
+        public Task<TreatmentInfoAgentResponse> AskTreatmentInfoAsync(
+            TreatmentInfoAgentRequest request,
+            CancellationToken cancellationToken)
+        {
+            Calls++;
+            if (Failure is not null)
+            {
+                throw Failure;
+            }
+
+            return Task.FromResult(new TreatmentInfoAgentResponse(Reply, [], false, Guid.NewGuid().ToString()));
         }
     }
 
@@ -421,6 +466,25 @@ internal sealed class FeedbackHarness
         {
             Items.Add(notification);
             return Task.CompletedTask;
+        }
+    }
+
+    internal sealed class ListLogger<T> : ILogger<T>
+    {
+        public List<(string Message, Exception? Exception)> Entries { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add((formatter(state, exception), exception));
         }
     }
 

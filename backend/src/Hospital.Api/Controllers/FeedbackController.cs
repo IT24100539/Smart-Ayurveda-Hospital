@@ -139,6 +139,11 @@ public sealed class FeedbackController : ControllerBase
         return Created($"/api/replies/{created.Id}", created);
     }
 
+    [HttpPost("{id:guid}/analyse")]
+    [Authorize(Roles = StaffRoles)]
+    public async Task<ActionResult<FeedbackDetailDto>> Analyse(Guid id, CancellationToken cancellationToken) =>
+        Ok(await _feedback.AnalyseAsync(id, cancellationToken));
+
     [HttpPost("{id:guid}/replies/ai-draft")]
     [Authorize(Roles = StaffRoles)]
     public async Task<ActionResult<ReplyDto>> RequestAiDraft(Guid id, CancellationToken cancellationToken)

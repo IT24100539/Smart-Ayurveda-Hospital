@@ -48,7 +48,8 @@ services.AddScoped<ITreatmentCatalog, TreatmentCatalog>();
         services.AddHttpClient<IAgentClient, AgentHttpClient>(client =>
         {
             client.BaseAddress = new Uri(agentOptions.BaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(60);
+            // llama3.1 classifies, then drafts. A cold model load plus those calls exceeds 60s.
+            client.Timeout = TimeSpan.FromSeconds(180);
         });
 
         return services;

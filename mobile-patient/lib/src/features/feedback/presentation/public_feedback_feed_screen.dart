@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/feature_localizations.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../router/app_routes.dart';
 import '../../../theme/app_theme.dart';
 import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
 import '../domain/communication_models.dart';
+import 'feedback_banner.dart';
+import 'feedback_keys.dart';
 import 'feedback_messages.dart';
 
 class _ReactionView {
@@ -23,7 +27,10 @@ class _ReactionView {
 }
 
 class PublicFeedbackFeedScreen extends ConsumerStatefulWidget {
-  const PublicFeedbackFeedScreen({super.key});
+  const PublicFeedbackFeedScreen({this.embedded = false, super.key});
+
+  /// Shown inside the feedback hub, without a second app bar.
+  final bool embedded;
 
   @override
   ConsumerState<PublicFeedbackFeedScreen> createState() =>
@@ -92,6 +99,7 @@ class _PublicFeedbackFeedScreenState
           .read(communicationRepositoryProvider)
           .replyToFeedback(item.id, text);
       ref.invalidate(publicFeedProvider);
+      ref.invalidate(myFeedbackProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -116,49 +124,95 @@ class _PublicFeedbackFeedScreenState
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.publicFeedTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.myFeedbackTitle,
-            onPressed: () => context.push(AppRoutes.myFeedback),
-            icon: const Icon(Icons.rate_review_outlined),
-          ),
-          IconButton(
-            tooltip: l10n.complaintsTitle,
-            onPressed: () => context.push(AppRoutes.complaints),
-            icon: const Icon(Icons.report_outlined),
-          ),
-          IconButton(
-            tooltip: l10n.notificationsTitle,
-            onPressed: () => context.push(AppRoutes.notifications),
-            icon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text('$unread'),
-              child: const Icon(Icons.notifications_outlined),
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              title: Text(l10n.publicFeedTitle),
+              actions: [
+                IconButton(
+                  tooltip: l10n.myFeedbackTitle,
+                  onPressed: () => context.push(AppRoutes.myFeedback),
+                  icon: const Icon(Icons.rate_review_outlined),
+                ),
+                IconButton(
+                  tooltip: l10n.complaintsTitle,
+                  onPressed: () => context.push(AppRoutes.complaints),
+                  icon: const Icon(Icons.report_outlined),
+                ),
+                IconButton(
+                  tooltip: l10n.notificationsTitle,
+                  onPressed: () => context.push(AppRoutes.notifications),
+                  icon: Badge(
+                    isLabelVisible: unread > 0,
+                    label: Text('$unread'),
+                    child: const Icon(Icons.notifications_outlined),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
       body: feed.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _MessagePane(
+        error: (error, _) => ErrorState(
           message: feedbackErrorText(error, l10n),
           actionLabel: l10n.retry,
           onAction: () => ref.invalidate(publicFeedProvider),
         ),
         data: (items) {
-          if (items.isEmpty) {
-            return _MessagePane(message: l10n.publicFeedEmpty);
-          }
+          final copy = FeatureLocalizations.of(context);
+          final average = items.isEmpty
+              ? 0.0
+              : items.map((item) => item.rating).reduce((a, b) => a + b) /
+                    items.length;
           return RefreshIndicator(
             onRefresh: () => ref.refresh(publicFeedProvider.future),
             child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-              itemCount: items.length,
+              itemCount: items.isEmpty ? 2 : items.length + 1,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final item = items[index];
+                if (index == 0) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FeedbackBanner(
+                    imageAsset: 'assets/images/feedback-note.png',
+                    kicker: copy.text('After the visit', 'පැමිණීමෙන් පසු'),
+                    title: l10n.publicFeedTitle,
+                    body: copy.text(
+                      'Notes from other patients appear here after the care team reviews them.',
+                      'රෝගීන්ගේ සටහන් සත්කාර කණ්ඩායම සමාලෝචනය කළ පසු මෙහි පෙනේ.',
+                    ),
+                    trailing: items.isEmpty
+                        ? null
+                        : copy.text(
+                            '${items.length} notes · ${average.toStringAsFixed(1)} / 5',
+                            'සටහන් ${items.length} · ${average.toStringAsFixed(1)} / 5',
+                          ),
+                  ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        key: FeedbackKeys.writeFeedback,
+                        onPressed: () => context.push(AppRoutes.submitFeedback),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: Text(l10n.writeFeedback),
+                      ),
+                    ],
+                  );
+                }
+                if (items.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 28),
+                    child: Text(
+                      l10n.publicFeedEmpty,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  );
+                }
+                final item = items[index - 1];
                 final reaction = _reactions[item.id];
                 return _FeedbackCard(
                   item: item,
@@ -243,8 +297,22 @@ class _FeedbackCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(item.comment),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: const BoxDecoration(
+                color: AyurvedaColors.cream,
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+                border: Border(
+                  left: BorderSide(color: AyurvedaColors.gold, width: 3),
+                ),
+              ),
+              child: Text(
+                item.comment,
+                style: theme.textTheme.bodyLarge?.copyWith(height: 1.45),
+              ),
+            ),
             const SizedBox(height: 4),
             Row(
               children: [
@@ -402,8 +470,13 @@ class _ReplyTile extends StatelessWidget {
     final theme = Theme.of(context);
     final fromStaff = reply.role == ReplyRole.staff;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AyurvedaColors.cream,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -428,33 +501,6 @@ class _ReplyTile extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _MessagePane extends StatelessWidget {
-  const _MessagePane({required this.message, this.actionLabel, this.onAction});
-
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
-              OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
-            ],
-          ],
-        ),
       ),
     );
   }

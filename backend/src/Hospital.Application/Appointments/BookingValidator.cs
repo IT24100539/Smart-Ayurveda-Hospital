@@ -19,7 +19,7 @@ public sealed class BookingValidator : IBookingValidator
             throw new DomainException("Requested date does not match schedule day of week.");
         }
 
-        if (!string.Equals(schedule.TimeSlot?.Trim(), requestedTimeSlot?.Trim(), StringComparison.Ordinal))
+        if (!string.Equals(schedule.SlotLabel, requestedTimeSlot?.Trim(), StringComparison.Ordinal))
         {
             throw new DomainException("Requested time slot does not match schedule time slot.");
         }

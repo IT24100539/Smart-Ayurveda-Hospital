@@ -67,10 +67,12 @@ flutter:
   # Generates AppLocalizations from the ARB files in lib/src/l10n (see l10n.yaml).
   generate: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/images/ayurveda-courtyard.png
+    - assets/images/herbal-oils.png
+    - assets/images/ayurveda-ward.png
+    - assets/images/feedback-note.png
+    - assets/images/consultation-desk.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

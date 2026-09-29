@@ -1,9 +1,8 @@
 Internal Scheduling & Bed Agent endpoints
 =========================================
 
-Configure `InternalService__Key` in the backend environment (or `InternalService:Key`
-in a secret configuration provider). Set the Python agent's `INTERNAL_SERVICE_KEY`
-to the same secret. No default secret is supplied; missing configuration fails closed.
+Set `INTERNAL_SERVICE_KEY` on the API and on the agent. The API copies that value
+onto `InternalService:ApiKey` and `InternalService:Key`. An empty value fails closed.
 Send the key in `X-Internal-Service-Key`. JWTs alone cannot access these routes,
 and the service key grants no access to public Staff/Admin/Patient routes.
 
