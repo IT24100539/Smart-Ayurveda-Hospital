@@ -42,6 +42,32 @@ public sealed class AgentWorkflowService : IAgentWorkflowService
     public Task<CoordinatorAgentResponse> StartAsync(StartAgentWorkflowRequest request, CancellationToken cancellationToken) =>
         _agents.CoordinateAsync(request.Normalized(), cancellationToken);
 
+    public async Task<AskTreatmentInfoResponse> AskTreatmentAsync(
+        AskTreatmentInfoRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _actors.RequirePatientAsync(cancellationToken);
+        var response = await _agents.AskTreatmentInfoAsync(
+            new TreatmentInfoAgentRequest(request.Question.Trim()),
+            cancellationToken);
+
+        var matched = new List<Guid>();
+        foreach (var id in response.MatchedTreatmentIds ?? [])
+        {
+            if (Guid.TryParse(id, out var parsed))
+            {
+                matched.Add(parsed);
+            }
+        }
+
+        Guid.TryParse(response.WorkflowId, out var workflowId);
+        return new AskTreatmentInfoResponse(
+            response.Answer ?? "",
+            matched,
+            response.Refused,
+            workflowId);
+    }
+
     public async Task<WorkflowExecutionDto> GetAsync(Guid id, CancellationToken cancellationToken)
     {
         var execution = await _executions.GetByIdAsync(id, cancellationToken)
@@ -67,6 +93,8 @@ public sealed class AgentWorkflowService : IAgentWorkflowService
 
         if (execution.RelatedEntityId is null)
         {
+            execution.ApprovalStatus = WorkflowApprovalStatus.NotRequired;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             throw new DomainException("This workflow has no related record to approve.");
         }
 
@@ -82,8 +110,15 @@ public sealed class AgentWorkflowService : IAgentWorkflowService
             var replyId = execution.RelatedEntityId.Value;
             if (execution.RelatedEntityType == "Feedback")
             {
-                var draft = await _replyRecords.FindLatestAiDraftAsync(replyId, cancellationToken)
-                    ?? throw new NotFoundException(nameof(FeedbackReply), replyId);
+                var draft = await _replyRecords.FindLatestAiDraftAsync(replyId, cancellationToken);
+                if (draft is null)
+                {
+                    execution.ApprovalStatus = WorkflowApprovalStatus.NotRequired;
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    throw new DomainException(
+                        "No AI reply draft is waiting for this feedback. Request a draft from the Feedback page first.");
+                }
+
                 replyId = draft.Id;
             }
             await _replies.DecideDraftAsync(
@@ -93,7 +128,10 @@ public sealed class AgentWorkflowService : IAgentWorkflowService
         }
         else
         {
-            throw new DomainException($"Approval is not defined for {execution.RelatedEntityType}.");
+            execution.ApprovalStatus = WorkflowApprovalStatus.NotRequired;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            throw new DomainException(
+                $"Approval is not defined for {execution.RelatedEntityType}. Filter AI approvals to Pending bed or feedback plans.");
         }
 
         execution.ApprovalStatus = request.Approve

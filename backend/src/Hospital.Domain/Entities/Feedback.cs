@@ -32,7 +32,7 @@ public class Feedback : BaseEntity
 
     public FeedbackStatus Status { get; set; } = FeedbackStatus.PendingModeration;
 
-    public Guid? ModeratedBy { get; set; }
+    public Guid? ModeratedById { get; set; }
     public StaffUser? Moderator { get; set; }
     public DateTimeOffset? ModeratedAt { get; set; }
 

@@ -11,8 +11,8 @@ const defaultLocale = Locale('si');
 
 /// The active locale.
 ///
-/// Switched from the splash screen today, and from the Profile tab once that
-/// screen is built out. Not persisted yet, so it resets on a cold start.
+/// Switched from the login screen, the splash screen, and the Profile tab.
+/// Not persisted yet, so it resets on a cold start.
 class LocaleController extends Notifier<Locale> {
   @override
   Locale build() => defaultLocale;

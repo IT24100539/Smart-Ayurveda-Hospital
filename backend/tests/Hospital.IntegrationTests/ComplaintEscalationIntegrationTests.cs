@@ -36,7 +36,7 @@ public sealed class ComplaintEscalationIntegrationTests
 
             var unassigned = NewOpenComplaint(patient.Id, unassignedSubject);
             var assigned = NewOpenComplaint(patient.Id, assignedSubject);
-            assigned.AssignedTo = doctorStaffId;
+            assigned.AssignedToId = doctorStaffId;
             var recent = NewOpenComplaint(patient.Id, recentSubject);
             db.Complaints.AddRange(unassigned, assigned, recent);
             await db.SaveChangesAsync();
@@ -69,12 +69,12 @@ public sealed class ComplaintEscalationIntegrationTests
         var escalatedUnassigned = await verifyDb.Complaints.AsNoTracking().SingleAsync(x => x.Id == unassignedId);
         escalatedUnassigned.Status.Should().Be(ComplaintStatus.Escalated);
         escalatedUnassigned.Priority.Should().Be(ComplaintPriority.High);
-        escalatedUnassigned.AssignedTo.Should().Be(adminStaffId);
+        escalatedUnassigned.AssignedToId.Should().Be(adminStaffId);
         escalatedUnassigned.EscalatedAt.Should().NotBeNull();
 
         var escalatedAssigned = await verifyDb.Complaints.AsNoTracking().SingleAsync(x => x.Id == assignedId);
         escalatedAssigned.Status.Should().Be(ComplaintStatus.Escalated);
-        escalatedAssigned.AssignedTo.Should().Be(doctorStaffId);
+        escalatedAssigned.AssignedToId.Should().Be(doctorStaffId);
 
         var stillOpen = await verifyDb.Complaints.AsNoTracking().SingleAsync(x => x.Id == recentId);
         stillOpen.Status.Should().Be(ComplaintStatus.Open);

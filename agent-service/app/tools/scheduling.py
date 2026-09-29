@@ -32,6 +32,7 @@ from pydantic import (
 
 from app.schemas import SchedulingAgentRequest, ToolResult
 from app.settings import settings
+from app.tools.tools import _internal_headers
 
 __all__ = [
     "check_treatment_schedule", "check_ward_availability", "create_admission_request",
@@ -98,14 +99,14 @@ async def _request(
     tool: str, method: str, path: str, response_model: type[_Response],
     context: dict, *, params: dict | None = None, body: dict | None = None,
 ) -> ToolResult:
-    key = settings.internal_service_key.get_secret_value()
-    if not key.strip():
+    headers = _internal_headers()
+    if not headers["X-Internal-Service-Key"].strip():
         return ToolFailure(tool=tool, error_code="configuration_error",
                            error="Backend service authentication is not configured.")
     # No staff JWT, redirects, proxy environment, or implicit transport retries.
     async with httpx.AsyncClient(
         base_url=str(settings.backend_base_url),
-        headers={"X-Internal-Service-Key": key},
+        headers=headers,
         timeout=httpx.Timeout(15.0), follow_redirects=False, trust_env=False,
     ) as client:
         attempts = 2 if method == "GET" else 1

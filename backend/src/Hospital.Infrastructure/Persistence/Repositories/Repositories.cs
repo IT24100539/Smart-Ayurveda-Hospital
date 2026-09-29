@@ -216,7 +216,10 @@ public sealed class TreatmentRepository : ITreatmentRepository
     public TreatmentRepository(HospitalDbContext db) => _db = db;
 
     public async Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken) =>
-        await _db.TreatmentSchedules.AsNoTracking().Where(x => x.TreatmentId == treatmentId).ToListAsync(cancellationToken);
+        await _db.TreatmentSchedules.AsNoTracking()
+            .Include(x => x.Therapist)
+            .Where(x => x.TreatmentId == treatmentId)
+            .ToListAsync(cancellationToken);
 
     public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.TreatmentSchedules.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -393,7 +396,7 @@ public sealed class WardRepository : IWardRepository
         freeBed.IsOccupied = true;
         req.BedId = freeBed.Id;
         req.Status = AdmissionRequestStatus.Approved;
-        req.DecidedBy = decidedBy;
+        req.DecidedById = decidedBy;
         req.DecidedAt = decidedAt;
 
         await _db.SaveChangesAsync(cancellationToken);

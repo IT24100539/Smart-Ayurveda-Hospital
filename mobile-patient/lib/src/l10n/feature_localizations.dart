@@ -51,8 +51,10 @@ class FeatureLocalizations {
   );
   String get appointmentRequested =>
       text('Appointment requested', 'හමුවීම ඉල්ලා ඇත');
-  String get pendingApproval =>
-      text('Pending staff approval', 'කාර්ය මණ්ඩල අනුමැතිය බලාපොරොත්තුවෙන්');
+  String get pendingApproval => text(
+    'Request sent - pending staff approval',
+    'ඉල්ලීම යවා ඇත - කාර්ය මණ්ඩල අනුමැතිය බලාපොරොත්තුවෙන්',
+  );
   String get pendingExplanation => text(
     'Your request was sent successfully. It is not confirmed yet; you can track its status in My appointments.',
     'ඔබගේ ඉල්ලීම සාර්ථකව යවා ඇත. එය තවම තහවුරු කර නැත; මගේ හමුවීම් තුළ එහි තත්ත්වය බලන්න.',
@@ -142,5 +144,30 @@ class FeatureLocalizations {
   String occupied(int occupied, int total) => text(
     '$occupied of $total beds occupied',
     'ඇඳන් $total න් $occupied ක් භාවිතයේ ඇත',
+  );
+
+  String get askAboutTreatments =>
+      text('Ask about treatments', 'ප්‍රතිකාර ගැන අසන්න');
+  String get askAboutTreatmentsHint => text(
+    'Ask when a therapy is offered or what it costs. Answers come from the catalogue only and are not medical advice.',
+    'ප්‍රතිකාරයක් ලබා දෙන දින හෝ ගාස්තු ගැන අසන්න. පිළිතුරු ලැයිස්තුවෙන් පමණක් ලැබෙන අතර වෛද්‍ය උපදෙස් නොවේ.',
+  );
+  String get askQuestionLabel => text('Your question', 'ඔබේ ප්‍රශ්නය');
+  String get askQuestionPlaceholder => text(
+    'Example: When is Panchakarma available and what is the fee?',
+    'උදාහරණය: පංචකර්ම ලබා දෙන්නේ කවදාද සහ ගාස්තුව කීයද?',
+  );
+  String get askButton => text('Ask', 'අසන්න');
+  String get asking => text('Asking…', 'අසමින්…');
+  String get askSignInRequired => text(
+    'Sign in to ask about therapies, days, and fees.',
+    'ප්‍රතිකාර, දින සහ ගාස්තු ගැන අසන්නට පුරනය වන්න.',
+  );
+  String get askSignIn => text('Sign in', 'පුරනය වන්න');
+  String get medicalAdviceRefused =>
+      text('Medical advice refused', 'වෛද්‍ය උපදෙස් ප්‍රතික්ෂේපයි');
+  String get askUnavailable => text(
+    'The treatment information assistant is unavailable. Please try again.',
+    'ප්‍රතිකාර තොරතුරු සහායකයා ලබාගත නොහැක. නැවත උත්සාහ කරන්න.',
   );
 }

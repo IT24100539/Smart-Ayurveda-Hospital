@@ -54,6 +54,30 @@ class AppLocalizationsSi extends AppLocalizations {
   String get phoneNumberLabel => 'දුරකථන අංකය';
 
   @override
+  String get dateOfBirthLabel => 'උපන් දිනය';
+
+  @override
+  String get dateOfBirthRequired => 'ඔබේ උපන් දිනය ඇතුළත් කරන්න';
+
+  @override
+  String get genderLabel => 'ස්ත්‍රී පුරුෂ භාවය';
+
+  @override
+  String get genderRequired => 'ස්ත්‍රී පුරුෂ භාවය තෝරන්න';
+
+  @override
+  String get genderFemale => 'ස්ත්‍රී';
+
+  @override
+  String get genderMale => 'පුරුෂ';
+
+  @override
+  String get genderOther => 'වෙනත්';
+
+  @override
+  String get genderUnspecified => 'නිශ්චිත නොවේ';
+
+  @override
   String get passwordLabel => 'රහස් පදය';
 
   @override
@@ -131,6 +155,22 @@ class AppLocalizationsSi extends AppLocalizations {
       'උපදේශන වෙන් කරවා ගන්න, ඔබේ පංචකර්ම සැලසුම අනුගමනය කරන්න, සහ ඔබේ ඔසු පිළිබඳ තොරතුරු බලන්න.';
 
   @override
+  String get homeHospitalName => 'ස්මාර්ට් ආයුර්වේද රෝහල';
+
+  @override
+  String get homeHospitalAddress => 'පල්ලෙකැලේ, කුණ්ඩසාලේ 20168';
+
+  @override
+  String get homeHospitalPhone => '+94 81 242 0541';
+
+  @override
+  String get homeHospitalHours => 'සඳු-සිකු 8:00 පෙ.ව. - 5:30 ප.ව.';
+
+  @override
+  String get homeLoadError =>
+      'රෝහල් තොරතුරු පූරණය කළ නොහැක. නැවත උත්සාහ කරන්න.';
+
+  @override
   String get comingSoonTitle => 'ඉක්මනින් පැමිණේ';
 
   @override
@@ -201,7 +241,48 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get feedbackNeedsLink =>
-      'පැමිණීම සම්බන්ධ කිරීමට සම්පූර්ණ වූ වෙන්කිරීමකින් මෙය විවෘත කරන්න.';
+      'සම්පූර්ණ වූ පැමිණීමක් හෝ ප්‍රතිකාරයක් තෝරන්න.';
+
+  @override
+  String get writeFeedback => 'ප්‍රතිචාරයක් ලියන්න';
+
+  @override
+  String get hubCommunity => 'ප්‍රජාව';
+
+  @override
+  String get hubMine => 'මගේ ප්‍රතිචාර';
+
+  @override
+  String get hubComplaints => 'පැමිණිලි';
+
+  @override
+  String get hubNotifications => 'දැනුම්දීම්';
+
+  @override
+  String get linkToVisit => 'සම්පූර්ණ වූ පැමිණීම';
+
+  @override
+  String get linkToTreatment => 'ප්‍රතිකාරය';
+
+  @override
+  String get chooseTreatment => 'ප්‍රතිකාරයක් තෝරන්න';
+
+  @override
+  String editTimeRemaining(int hours, int minutes) {
+    return 'සංස්කරණයට හෝ ඉවත් කිරීමට පැය $hoursයි මිනිත්තු $minutesක් ඉතිරිය';
+  }
+
+  @override
+  String get feedbackStatusPending => 'සමාලෝචනය බලාපොරොත්තුවෙන්';
+
+  @override
+  String get feedbackStatusVisible => 'පෙනේ';
+
+  @override
+  String get feedbackStatusHidden => 'සඟවා ඇත';
+
+  @override
+  String get feedbackStatusWithdrawn => 'ඉවත් කරන ලදි';
 
   @override
   String get publicFeedTitle => 'රෝගී ප්‍රතිචාර';
@@ -351,7 +432,7 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get noCompletedVisit =>
-      'ප්‍රතිචාරය සඳහා සම්පූර්ණ වූ පැමිණීමක් තවම නැත.';
+      'සම්පූර්ණ වූ පැමිණීමක් තවම නැත. ඔබට ප්‍රතිකාරයක් ගැන ලිවිය හැක.';
 
   @override
   String get escalatedOn => 'ඉහළ නංවා ඇත';

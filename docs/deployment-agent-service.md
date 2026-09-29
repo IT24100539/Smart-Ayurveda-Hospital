@@ -23,10 +23,10 @@ pip install -r requirements.txt
 python run.py
 ```
 
-It listens on `127.0.0.1:8100`. Confirm:
+It listens on `127.0.0.1:8001`. Confirm:
 
 ```bash
-curl http://127.0.0.1:8100/health
+curl http://127.0.0.1:8001/health
 ```
 
 3. Point it at the API you are actually running. For the local demo the defaults are enough when the API is on `http://127.0.0.1:5080`. Otherwise set:
@@ -35,18 +35,18 @@ curl http://127.0.0.1:8100/health
 | --- | --- |
 | `AGENT_HOSPITAL_API_BASE_URL` | API origin for workflow persistence, no `/api` suffix, for example `http://127.0.0.1:5000`. |
 | `AGENT_BACKEND_BASE_URL` | Same origin. Scheduling tools call this host, not `AGENT_HOSPITAL_API_BASE_URL`. |
-| `AGENT_INTERNAL_SERVICE_KEY` | Same value as the API's `InternalServiceKey`. |
+| `INTERNAL_SERVICE_KEY` | Same value the API reads. Header `X-Internal-Service-Key`. |
 | `AGENT_SHARED_SECRET` | Same value as the API's `AgentService:SharedSecret` (`X-Internal-Secret`). |
 | `AGENT_OLLAMA_BASE_URL` | Default `http://127.0.0.1:11434`. |
 
-4. Confirm the API can reach the agent: `AgentService:BaseUrl` in the API must be `http://127.0.0.1:8100` when both processes are on the same machine.
+4. Confirm the API can reach the agent: `AgentService:BaseUrl` in the API must be `http://127.0.0.1:8001` when both processes are on the same machine.
 
 ## Fallback: cloud API, agent on a laptop
 
 Only for a short demo window, and only if the laptop and the people calling it can reach the tunnel.
 
 1. Start Ollama and `python run.py` as above.
-2. In another terminal: `ngrok http 8100`
+2. In another terminal: `ngrok http 8001`
 3. On the Render service set `AgentService__BaseUrl` to the ngrok `https` origin (no path) and `AgentService__SharedSecret` to the same value as `AGENT_SHARED_SECRET`.
 4. On the laptop set `AGENT_HOSPITAL_API_BASE_URL` and `AGENT_BACKEND_BASE_URL` to the Render origin (no `/api` suffix) and `AGENT_INTERNAL_SERVICE_KEY` to the Render `InternalServiceKey`.
 5. Stop ngrok when the demo ends. Do not leave the agent on a public URL.

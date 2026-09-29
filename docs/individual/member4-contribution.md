@@ -81,16 +81,22 @@ From `git log member4/feedback-communication --oneline`.
 
 | Date | Tool | Task | What I kept | What I changed or rejected |
 | --- | --- | --- | --- | --- |
-|  |  |  |  |  |
-|  |  |  |  |  |
-|  |  |  |  |  |
+| 2026-09-25 | Cursor | Close the feedback widget gap and record this contribution from the source tree | The five-node feedback graph, draft-until-staff-post rule, and injection guard already in `feedback_support_agent.py` | No invented earlier tool sessions. The log above this row was empty in the repo. |
 
 ## Reflection
 
 ### What I did myself
 
+Feedback, complaints, replies, reactions, and notifications are implemented on `Hospital.Api`. A patient submits a rating and comment for a completed visit. Staff moderate visibility, post replies, and escalate complaints. An agent draft stays unpublished until staff approve it.
+
 ### Where AI helped
+
+The 2026-09-25 pass used Cursor to compare the Flutter feedback form with `feedback_widgets_test.dart` and to fill this record from the files already in the branch.
 
 ### Difficulties
 
+The name preview was below the test viewport, so the anonymous switch did not receive the tap until the test scrolled it into view. Sentiment from the local model is noisy, so a repeated category is flagged High even when a single comment is Neutral.
+
 ### What I would do differently
+
+Keep the feedback form in a scroll view that still builds every field, and scroll widget tests to the control they tap.

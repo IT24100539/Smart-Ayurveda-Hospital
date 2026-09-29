@@ -16,7 +16,7 @@ public class Complaint : BaseEntity
     public ComplaintPriority Priority { get; set; } = ComplaintPriority.Normal;
     public ComplaintStatus Status { get; set; } = ComplaintStatus.Open;
 
-    public Guid? AssignedTo { get; set; }
+    public Guid? AssignedToId { get; set; }
     public StaffUser? Assignee { get; set; }
     public DateTimeOffset? EscalatedAt { get; set; }
 }

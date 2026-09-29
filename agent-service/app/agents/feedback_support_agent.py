@@ -17,17 +17,19 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from app.schemas import ApprovalStatus, ToolResult, WorkflowState
-from app.state_store import get_state_store
+from app.state_store import get_state_store, persist, persistence_warning, reset_persistence_warning
 from app.tools.tools import (
     FeedbackCategory,
     FeedbackPriority,
     FeedbackSentiment,
     FeedbackSummary,
-    HospitalApiError,
     PromptInjectionError,
+    _is_timeout,
     analyze_sentiment as _analyze_sentiment,
+    reconcile_sentiment,
     categorize as _categorize,
     check_similar_feedback as _check_similar_feedback,
+    classify_by_rules,
     draft_reply as _draft_reply,
     flag_priority as _flag_priority,
     get_feedback as _get_feedback,
@@ -71,7 +73,14 @@ def _allowed(fn):
         @functools.wraps(fn)
         async def async_wrapper(*args, **kwargs):
             require_allowed_tool(name)
-            return await fn(*args, **kwargs)
+            try:
+                return await fn(*args, **kwargs)
+            except Exception as exc:
+                if _is_timeout(exc):
+                    logger.exception("Tool %s timed out.", name)
+                else:
+                    logger.exception("Tool %s failed.", name)
+                raise
 
         return async_wrapper
 
@@ -108,6 +117,8 @@ class FeedbackAgentResponse(BaseModel):
     status: str = "awaiting_review"
     immediate_dashboard_alert: bool = False
     refusal_reason: str | None = None
+    classified_by: str | None = None
+    warning: str | None = None
 
 
 class FeedbackGraphState(TypedDict, total=False):
@@ -124,6 +135,8 @@ class FeedbackGraphState(TypedDict, total=False):
     immediate_dashboard_alert: bool
     suggested_reply: str | None
     draft_skipped: bool
+    manual_review_reason: str
+    classified_by: str | None
     status: str
 
 
@@ -136,21 +149,84 @@ def _optional_enum(enum_type: type[FeedbackSentiment] | type[FeedbackCategory], 
         return None
 
 
+def _log_analysis_failure(label: str, exc: BaseException) -> str:
+    """Log the real traceback. The returned sentence is safe to show to callers."""
+    message = f"{label} timed out." if _is_timeout(exc) else f"{label} failed."
+    if not isinstance(exc, Exception):
+        raise exc
+    try:
+        raise exc
+    except Exception:
+        logger.exception(message)
+    return message
+
+
+def _review_reason(current: str | None, extra: str) -> str:
+    extra = extra.strip()
+    if not current:
+        return f"Needs manual review. {extra}"
+    if extra in current:
+        return current
+    return f"{current} {extra}"
+
+
 async def analyze_node(state: FeedbackGraphState) -> dict:
     """Classify sentiment and category together, and load hospital context when it is available."""
     text = state["comment_text"]
-    sentiment, category, record = await asyncio.gather(
+    sentiment_result, category_result, record_result = await asyncio.gather(
         analyze_sentiment(text),
         categorize(text),
         get_feedback(state["feedback_id"]),
+        return_exceptions=True,
     )
+    reasons: list[str] = []
+    sentiment = None if isinstance(sentiment_result, BaseException) else sentiment_result
+    category = None if isinstance(category_result, BaseException) else category_result
+    record = record_result
+    if isinstance(sentiment_result, BaseException):
+        reasons.append(_log_analysis_failure("Sentiment analysis", sentiment_result))
+    if isinstance(category_result, BaseException):
+        reasons.append(_log_analysis_failure("Category analysis", category_result))
+    if isinstance(record_result, BaseException):
+        reasons.append(_log_analysis_failure("Feedback lookup", record_result))
+        record = None
+
+    # None from the tools means the model was unavailable or timed out. Rules fill only that gap.
+    model_missing = (
+        (sentiment is None and not isinstance(sentiment_result, BaseException))
+        or (category is None and not isinstance(category_result, BaseException))
+    )
+    classified_by = None
+    if model_missing:
+        rule_sentiment, rule_category = classify_by_rules(text)
+        if sentiment is None and not isinstance(sentiment_result, BaseException):
+            sentiment = rule_sentiment
+        if category is None and not isinstance(category_result, BaseException):
+            category = rule_category
+        classified_by = "rules"
+        logger.info("Classification used keyword rules because the model was unavailable or timed out.")
+    elif sentiment is not None and category is not None:
+        classified_by = "model"
+
+    rating = None if record is None or isinstance(record, BaseException) else record.rating
+    if sentiment is not None:
+        sentiment = reconcile_sentiment(text, sentiment, rating)
+
+    if sentiment is None and not isinstance(sentiment_result, BaseException):
+        reasons.append("Sentiment analysis failed.")
+    if category is None and not isinstance(category_result, BaseException):
+        reasons.append("Category analysis failed.")
+
     updates: dict = {
         "sentiment": None if sentiment is None else sentiment.value,
         "category": None if category is None else category.value,
+        "classified_by": classified_by,
     }
     if record is not None:
         updates["rating"] = record.rating
         updates["is_anonymous"] = record.is_anonymous
+    if reasons:
+        updates["manual_review_reason"] = _review_reason(state.get("manual_review_reason"), " ".join(reasons))
     return updates
 
 
@@ -160,9 +236,12 @@ async def check_similar_node(state: FeedbackGraphState) -> dict:
         return {"similar_feedback_count": None}
     try:
         count = await check_similar_feedback(state["patient_id"], category)
-    except HospitalApiError:
-        logger.warning("Similar-feedback lookup failed; continuing without a count.")
-        return {"similar_feedback_count": None}
+    except Exception as exc:
+        detail = _log_analysis_failure("Similar-feedback lookup", exc)
+        return {
+            "similar_feedback_count": None,
+            "manual_review_reason": _review_reason(state.get("manual_review_reason"), detail),
+        }
     return {"similar_feedback_count": count}
 
 
@@ -173,6 +252,9 @@ async def flag_node(state: FeedbackGraphState) -> dict:
     immediate_dashboard_alert distinctly for High priority if that surface is
     not already covered. This agent only sets the flag; it does not publish it.
     """
+    if state.get("manual_review_reason"):
+        return {"priority": FeedbackPriority.HIGH.value, "immediate_dashboard_alert": True}
+
     sentiment = _optional_enum(FeedbackSentiment, state.get("sentiment"))
     category = _optional_enum(FeedbackCategory, state.get("category"))
     count = state.get("similar_feedback_count")
@@ -189,6 +271,9 @@ async def flag_node(state: FeedbackGraphState) -> dict:
 
 async def draft_node(state: FeedbackGraphState) -> dict:
     """Optional reply. A model failure skips the draft and leaves the earlier results in place."""
+    if state.get("manual_review_reason"):
+        return {"suggested_reply": None, "draft_skipped": True}
+
     sentiment = _optional_enum(FeedbackSentiment, state.get("sentiment"))
     category = _optional_enum(FeedbackCategory, state.get("category"))
     if sentiment is None or category is None:
@@ -202,8 +287,10 @@ async def draft_node(state: FeedbackGraphState) -> dict:
     return {"suggested_reply": reply, "draft_skipped": False}
 
 
-async def awaiting_review_node(_state: FeedbackGraphState) -> dict:
+async def awaiting_review_node(state: FeedbackGraphState) -> dict:
     """Terminal state. The caller stores any draft. This agent never posts a reply."""
+    if state.get("manual_review_reason"):
+        return {"status": "needs_manual_review"}
     return {"status": "awaiting_review"}
 
 
@@ -241,12 +328,12 @@ def _tracked(step: str, node):
         workflow_id = state.get("workflow_id")
         if workflow_id:
             store = get_state_store()
-            current = await store.get(workflow_id)
+            current = await persist(store.get(workflow_id))
             completed = [*(current.completed_steps if current else []), step]
             tool_results = [*(current.tool_results if current else []), ToolResult(
                 tool=step, succeeded=True, output=_jsonable(changes),
             )]
-            await store.update(workflow_id, completed_steps=completed, tool_results=tool_results)
+            await persist(store.update(workflow_id, completed_steps=completed, tool_results=tool_results))
         return changes
 
     return transition
@@ -284,6 +371,7 @@ def _refused(workflow_id: str, reason: str) -> FeedbackAgentResponse:
         status="awaiting_review",
         immediate_dashboard_alert=False,
         refusal_reason=reason,
+        classified_by=None,
     )
 
 
@@ -302,10 +390,20 @@ def _response(state: FeedbackGraphState) -> FeedbackAgentResponse:
         workflow_id=state["workflow_id"],
         status=state.get("status") or "awaiting_review",
         immediate_dashboard_alert=bool(state.get("immediate_dashboard_alert")),
+        refusal_reason=state.get("manual_review_reason"),
+        classified_by=state.get("classified_by"),
     )
 
 
+def _with_warning(response: FeedbackAgentResponse) -> FeedbackAgentResponse:
+    warning = persistence_warning()
+    if warning:
+        response.warning = warning
+    return response
+
+
 async def run_feedback_support(request: FeedbackAgentRequest) -> FeedbackAgentResponse:
+    reset_persistence_warning()
     workflow_id = str(uuid4())
     store = get_state_store()
     related_id = request.feedback_id
@@ -313,7 +411,7 @@ async def run_feedback_support(request: FeedbackAgentRequest) -> FeedbackAgentRe
         UUID(related_id)
     except ValueError:
         related_id = None
-    await store.save(
+    await persist(store.save(
         WorkflowState(
             workflow_id=workflow_id,
             objective=f"Review feedback {request.feedback_id} and leave a draft for staff.",
@@ -323,7 +421,7 @@ async def run_feedback_support(request: FeedbackAgentRequest) -> FeedbackAgentRe
             related_entity_type="Feedback" if related_id else None,
             related_entity_id=related_id,
         )
-    )
+    ))
     reason = injection_reason(request.comment_text)
     if reason:
         logger.warning(
@@ -331,8 +429,13 @@ async def run_feedback_support(request: FeedbackAgentRequest) -> FeedbackAgentRe
             request.feedback_id,
             reason,
         )
-        await store.update(workflow_id, errors=[reason], final_outcome=reason)
-        return _refused(workflow_id, reason)
+        await persist(store.update(
+            workflow_id,
+            errors=[reason],
+            final_outcome=reason,
+            approval_status=None,
+        ))
+        return _with_warning(_refused(workflow_id, reason))
     try:
         result = await _GRAPH.ainvoke(
             {
@@ -349,6 +452,7 @@ async def run_feedback_support(request: FeedbackAgentRequest) -> FeedbackAgentRe
                 "immediate_dashboard_alert": False,
                 "suggested_reply": None,
                 "draft_skipped": False,
+                "classified_by": None,
                 "status": "",
             }
         )
@@ -358,11 +462,21 @@ async def run_feedback_support(request: FeedbackAgentRequest) -> FeedbackAgentRe
             request.feedback_id,
             exc.reason,
         )
-        await store.update(workflow_id, errors=[exc.reason], final_outcome=exc.reason)
-        return _refused(workflow_id, exc.reason)
-    await store.update(
+        await persist(store.update(
+            workflow_id,
+            errors=[exc.reason],
+            final_outcome=exc.reason,
+            approval_status=None,
+        ))
+        return _with_warning(_refused(workflow_id, exc.reason))
+    reason = result.get("manual_review_reason")
+    draft_text = (result.get("suggested_reply") or "").strip()
+    draft_skipped = bool(result.get("draft_skipped")) or not draft_text
+    await persist(store.update(
         workflow_id,
         completed_steps=list(_PLAN),
-        final_outcome="awaiting_review",
-    )
-    return _response(result)
+        errors=[reason] if reason else [],
+        final_outcome="needs_manual_review" if reason else "awaiting_review",
+        approval_status=None if draft_skipped else ApprovalStatus.PENDING,
+    ))
+    return _with_warning(_response(result))

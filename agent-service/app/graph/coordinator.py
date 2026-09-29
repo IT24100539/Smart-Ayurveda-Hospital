@@ -26,7 +26,7 @@ from app.schemas import (
     WorkflowState,
 )
 from app.settings import settings
-from app.state_store import get_state_store
+from app.state_store import get_state_store, persist, reset_persistence_warning
 
 # Feedback replies are not drafted here. That workflow is
 # POST /internal/agents/feedback-support (feedback_support_agent).
@@ -233,9 +233,10 @@ async def delegate_node(state: CoordinatorState) -> dict[str, Any]:
             "approval_status": None,
             "final_outcome": "safe_failure" if result.refused else "success",
         }
+    reset_persistence_warning()
     workflow_id = str(uuid4())
     summary = run_intake_agent(objective, context)
-    await get_state_store().save(WorkflowState(
+    await persist(get_state_store().save(WorkflowState(
         workflow_id=workflow_id,
         objective=objective,
         agent_name="patient_info",
@@ -243,7 +244,7 @@ async def delegate_node(state: CoordinatorState) -> dict[str, Any]:
         completed_steps=["intake"],
         approval_status=None,
         final_outcome="success",
-    ))
+    )))
     return {
         "workflow_id": workflow_id,
         "summary": summary,

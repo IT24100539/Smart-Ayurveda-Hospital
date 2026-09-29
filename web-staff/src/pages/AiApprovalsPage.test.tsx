@@ -52,16 +52,17 @@ afterEach(() => {
 });
 
 describe("AiApprovalsPage", () => {
-  it("shows the plan on the left and the log with decisions on the right", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes("/workflow-executions")) return json(pageOf([workflow()]));
-        if (url.includes(`/agent-workflows/${workflowId}`) && !url.includes("approve")) return json(workflow());
-        throw new Error(`Unexpected request ${url}`);
-      })
-    );
+  it("defaults to pending and shows the plan with decisions", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/workflow-executions")) {
+        expect(url).toContain("approvalStatus=Pending");
+        return json(pageOf([workflow()]));
+      }
+      if (url.includes(`/agent-workflows/${workflowId}`) && !url.includes("approve")) return json(workflow());
+      throw new Error(`Unexpected request ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     render(<AiApprovalsPage />);
 
@@ -72,6 +73,32 @@ describe("AiApprovalsPage", () => {
     expect(screen.getByText("Fail: schedule")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Request revision" })).toBeEnabled();
+  });
+
+  it("disables approve when a pending run has nothing related to decide", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const item = workflow({
+          agentName: "treatment_info",
+          relatedEntityType: "Treatment",
+          relatedEntityId: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+          approvalStatus: "Pending"
+        });
+        if (url.includes("/workflow-executions")) return json(pageOf([item]));
+        if (url.includes(`/agent-workflows/${workflowId}`)) return json(item);
+        throw new Error(`Unexpected request ${url}`);
+      })
+    );
+
+    render(<AiApprovalsPage />);
+
+    expect(await screen.findByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+    expect(
+      screen.getByText(/no bed request or reply draft to approve/i)
+    ).toBeInTheDocument();
   });
 
   it("refetches after approve and shows the bed allocation", async () => {

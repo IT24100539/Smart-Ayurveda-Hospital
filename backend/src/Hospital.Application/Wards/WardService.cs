@@ -98,7 +98,7 @@ public sealed class WardService : IWardService
 
         var admission2 = await _wards.GetAdmissionRequestByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Admission request not found");
         admission2.Status = AdmissionRequestStatus.Rejected;
-        admission2.DecidedBy = request.DecidedBy;
+        admission2.DecidedById = request.DecidedBy;
         admission2.DecidedAt = decidedAt;
         await _uow.SaveChangesAsync(cancellationToken);
         return true;
@@ -114,6 +114,6 @@ public sealed class WardService : IWardService
         a.PreferredDate,
         a.Status.ToString(),
         a.RequestedByAgent,
-        a.DecidedBy,
+        a.DecidedById,
         a.DecidedAt);
 }

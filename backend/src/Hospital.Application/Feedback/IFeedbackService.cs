@@ -15,6 +15,9 @@ public interface IFeedbackService
     /// <summary>Staff detail, including unposted AI drafts and who last moderated the comment.</summary>
     Task<FeedbackDetailDto> GetForStaffAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Staff re-runs sentiment and category analysis. The comment stays saved if the agent is down.</summary>
+    Task<FeedbackDetailDto> AnalyseAsync(Guid id, CancellationToken cancellationToken);
+
     /// <summary>Staff or admin shows or hides a comment and records who moderated it.</summary>
     Task<FeedbackDetailDto> ModerateAsync(Guid id, FeedbackModerationAction action, CancellationToken cancellationToken);
 

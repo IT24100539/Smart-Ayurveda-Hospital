@@ -46,7 +46,8 @@ public sealed record PatientFeedbackDto(
     FeedbackCategory? Category,
     FeedbackStatus Status,
     DateTimeOffset CreatedAt,
-    bool CanEdit);
+    bool CanEdit,
+    IReadOnlyList<PublicReplyDto> Replies);
 
 public sealed record FeedbackCountDto(string Key, int Count);
 

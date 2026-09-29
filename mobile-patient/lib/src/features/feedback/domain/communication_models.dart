@@ -76,6 +76,14 @@ enum NotificationKind {
   final String wireName;
 
   static NotificationKind fromWire(Object? value) {
+    if (value is num) {
+      return switch (value.toInt()) {
+        1 => NotificationKind.reply,
+        2 => NotificationKind.statusChange,
+        3 => NotificationKind.escalation,
+        _ => NotificationKind.general,
+      };
+    }
     return NotificationKind.values.firstWhere(
       (kind) => kind.wireName == value,
       orElse: () => NotificationKind.general,
@@ -190,6 +198,7 @@ class PatientFeedback {
     required this.canEdit,
     this.appointmentId,
     this.treatmentId,
+    this.replies = const [],
   });
 
   final String id;
@@ -201,6 +210,7 @@ class PatientFeedback {
   final bool canEdit;
   final String? appointmentId;
   final String? treatmentId;
+  final List<PublicReply> replies;
 
   factory PatientFeedback.fromJson(Map<String, dynamic> json) {
     return PatientFeedback(
@@ -213,6 +223,7 @@ class PatientFeedback {
       canEdit: json['canEdit'] as bool? ?? false,
       appointmentId: json['appointmentId'] as String?,
       treatmentId: json['treatmentId'] as String?,
+      replies: _list(json['replies'], PublicReply.fromJson),
     );
   }
 }

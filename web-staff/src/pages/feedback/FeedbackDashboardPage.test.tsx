@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FeedbackDetail, FeedbackSummary, PagedResult, Reply } from "../../api/feedback";
 import { useAuthStore } from "../../store/authStore";
@@ -163,14 +163,14 @@ describe("FeedbackDashboardPage", () => {
     render(<FeedbackDashboardPage />);
     await screen.findByText(/abhyanga wait ran long/i);
     fireEvent.click(screen.getByRole("button", { name: /expand feedback from anonymous patient/i }));
-    fireEvent.click(await screen.findByRole("button", { name: "Generate Reply" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Generate AI reply" }));
 
     expect(await screen.findByRole("button", { name: /generating reply/i })).toBeDisabled();
 
     gate.resolve(json(draft, 201));
 
     expect(await screen.findByDisplayValue(draft.reply)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save edit" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve & Post" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
     expect(screen.getByText("AI")).toBeInTheDocument();
@@ -219,7 +219,7 @@ describe("FeedbackDashboardPage", () => {
     render(<FeedbackDashboardPage />);
     await screen.findByText(/nadi pariksha/i);
     fireEvent.click(screen.getByRole("button", { name: /expand feedback from anonymous patient/i }));
-    fireEvent.click(await screen.findByRole("button", { name: "Generate Reply" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Generate AI reply" }));
     fireEvent.click(await screen.findByRole("button", { name: "Reject" }));
 
     expect(await screen.findByText("Rejected")).toBeInTheDocument();
@@ -228,6 +228,110 @@ describe("FeedbackDashboardPage", () => {
       expect(decision?.method).toBe("PATCH");
       expect(decision?.body).toEqual({ decision: "Reject" });
     });
+    expect(screen.queryByRole("button", { name: "Approve & Post" })).not.toBeInTheDocument();
+  });
+
+  it("shows sentiment and category as text badges", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/feedback/staff")) {
+          return json(pageOf([summary()]));
+        }
+        if (url.includes(`/feedback/${feedbackId}`)) {
+          return json(detailFor(summary()));
+        }
+        throw new Error(`Unexpected request ${url}`);
+      })
+    );
+
+    render(<FeedbackDashboardPage />);
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByText("Negative")).toBeInTheDocument();
+    expect(within(table).getByText("Facility issue")).toBeInTheDocument();
+    expect(within(table).queryByText("Not analysed yet")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /expand feedback from anonymous patient/i }));
+    expect(await screen.findAllByText("The shirodhara room was cold after the therapy.")).toHaveLength(2);
+    const panel = document.getElementById(`feedback-panel-${feedbackId}`);
+    expect(panel).not.toBeNull();
+    expect(within(panel as HTMLElement).getByText("Negative")).toBeInTheDocument();
+    expect(within(panel as HTMLElement).getByText("Facility issue")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Loading replies…")).not.toBeInTheDocument();
+    });
+  });
+
+  it("re-analyses when sentiment and category are missing", async () => {
+    const item = summary({
+      sentiment: null,
+      category: null,
+      comment: "The queue for abhyanga ran long."
+    });
+    const calls: { url: string; method: string }[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = (init?.method ?? "GET").toUpperCase();
+        calls.push({ url, method });
+        if (url.includes("/feedback/staff")) {
+          return json(pageOf([item]));
+        }
+        if (method === "POST" && url.includes(`/feedback/${feedbackId}/analyse`)) {
+          return json(detailFor({ ...item, sentiment: "Negative", category: "WaitingTime" }));
+        }
+        throw new Error(`Unexpected request ${method} ${url}`);
+      })
+    );
+
+    render(<FeedbackDashboardPage />);
+    expect(await screen.findAllByText("Not analysed yet")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Re-analyse" }));
+
+    const table = await screen.findByRole("table");
+    expect(await within(table).findByText("Negative")).toBeInTheDocument();
+    expect(within(table).getByText("Waiting time")).toBeInTheDocument();
+    expect(within(table).queryByText("Not analysed yet")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Re-analyse" })).not.toBeInTheDocument();
+    expect(calls.some((call) => call.method === "POST" && call.url.includes(`/feedback/${feedbackId}/analyse`))).toBe(
+      true
+    );
+  });
+
+  it("shows the agent-down message when a draft cannot be generated", async () => {
+    const item = summary({ comment: "The shirodhara room stayed cold." });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = (init?.method ?? "GET").toUpperCase();
+        if (url.includes("/feedback/staff")) {
+          return json(pageOf([item]));
+        }
+        if (url.includes("/replies/ai-draft")) {
+          return json(
+            { title: "Bad Request", status: 400, detail: "AI service unavailable - reply manually" },
+            400
+          );
+        }
+        if (method === "GET" && url.includes(`/feedback/${feedbackId}`)) {
+          return json(detailFor(item));
+        }
+        throw new Error(`Unexpected request ${method} ${url}`);
+      })
+    );
+
+    render(<FeedbackDashboardPage />);
+    await screen.findByText(/shirodhara room stayed cold/i);
+    fireEvent.click(screen.getByRole("button", { name: /expand feedback from anonymous patient/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Generate AI reply" }));
+
+    expect(await screen.findByText("AI service unavailable - reply manually")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Approve & Post" })).not.toBeInTheDocument();
   });
 });

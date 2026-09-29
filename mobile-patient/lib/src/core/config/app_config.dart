@@ -7,15 +7,18 @@ abstract final class AppConfig {
   /// Override per environment, e.g.
   /// `flutter run --dart-define=API_BASE_URL=http://192.168.1.5:5080/api`.
   ///
-  /// With no override, Chrome uses the API on this machine. The Android
-  /// emulator reaches that same port through `10.0.2.2`
+  /// With no override, this machine (Chrome, Windows, iOS simulator) calls
+  /// `http://localhost:5080/api`. Only the Android emulator uses `10.0.2.2`,
+  /// which is that emulator's alias for the host loopback
   /// (see `backend/src/Hospital.Api/Properties/launchSettings.json`).
   static const configuredApiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   static String get apiBaseUrl {
     if (configuredApiBaseUrl.isNotEmpty) return configuredApiBaseUrl;
-    if (kIsWeb) return 'http://localhost:5080/api';
-    return 'http://10.0.2.2:5080/api';
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:5080/api';
+    }
+    return 'http://localhost:5080/api';
   }
 
   static const connectTimeout = Duration(seconds: 15);

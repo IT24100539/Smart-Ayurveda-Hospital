@@ -10,4 +10,11 @@ abstract final class FeedbackKeys {
   static const comment = Key('feedback_comment');
   static const submit = Key('feedback_submit');
   static const leaveFeedback = Key('leave_feedback_button');
+  static const writeFeedback = Key('write_feedback_button');
+  static const linkVisit = Key('feedback_link_visit');
+  static const linkTreatment = Key('feedback_link_treatment');
+  static const hubCommunity = Key('feedback_hub_community');
+  static const hubMine = Key('feedback_hub_mine');
+  static const hubComplaints = Key('feedback_hub_complaints');
+  static const hubNotifications = Key('feedback_hub_notifications');
 }

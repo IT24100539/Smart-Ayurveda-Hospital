@@ -31,13 +31,15 @@ class ApiException implements Exception {
   }
 
   /// Best available human-readable message, or `null` to let the UI fall back
-  /// to a localized default.
+  /// to a localized default. Field errors win over the generic ProblemDetails
+  /// title ("One or more validation errors occurred.").
   String? get message {
-    if (detail != null) return detail;
     for (final messages in fieldErrors.values) {
       if (messages.isNotEmpty) return messages.first;
     }
-    return null;
+    final text = detail?.trim();
+    if (text == null || text.isEmpty) return null;
+    return text;
   }
 
   factory ApiException.fromDioException(DioException error) {

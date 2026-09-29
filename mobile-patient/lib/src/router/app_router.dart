@@ -8,10 +8,10 @@ import '../features/appointments/domain/appointment_models.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
+import '../features/feedback/presentation/feedback_hub_screen.dart';
 import '../features/feedback/presentation/my_complaints_screen.dart';
 import '../features/feedback/presentation/my_feedback_screen.dart';
 import '../features/feedback/presentation/notifications_screen.dart';
-import '../features/feedback/presentation/public_feedback_feed_screen.dart';
 import '../features/feedback/presentation/submit_complaint_screen.dart';
 import '../features/feedback/presentation/submit_feedback_screen.dart';
 import '../features/home/presentation/home_screen.dart';
@@ -22,10 +22,10 @@ import '../features/treatments/presentation/treatments_screen.dart';
 import '../features/wards/presentation/ward_availability_screen.dart';
 import 'app_routes.dart';
 
+/// One [GoRouter] for the process. Auth changes notify [refreshListenable]
+/// instead of rebuilding this provider, which would reset navigation.
 final routerProvider = Provider<GoRouter>((ref) {
-  // Bridges Riverpod's auth state onto the Listenable that GoRouter refreshes
-  // from, so a sign-in, sign-out or 401 re-runs the redirect below.
-  final authListenable = ValueNotifier<AuthStatus>(AuthStatus.unknown);
+  final authListenable = ValueNotifier<AuthStatus>(AuthStatus.loading);
   ref.listen<AuthState>(
     authControllerProvider,
     (_, next) => authListenable.value = next.status,
@@ -39,22 +39,34 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authControllerProvider);
       final location = state.matchedLocation;
+      final fullPath = '${state.uri.path}${state.uri.hasQuery ? '?${state.uri.query}' : ''}';
 
-      // The splash screen is what performs the session restore, so it is never
-      // redirected away from; it routes onwards itself.
-      if (location == AppRoutes.splash) return null;
-
-      // Hold off until the stored token has been read, otherwise a returning
-      // patient briefly lands on the login screen.
-      if (!authState.isResolved) return AppRoutes.splash;
-
-      final isPublic = AppRoutes.public.contains(location) || location.startsWith('/treatments');
-      if (!authState.isAuthenticated && !isPublic) return AppRoutes.login;
-      if (authState.isAuthenticated && location == AppRoutes.login) {
-        final returnPath = state.uri.queryParameters['returnPath'];
-        return returnPath ?? AppRoutes.home;
+      if (!authState.isResolved) {
+        if (location == AppRoutes.splash) return null;
+        return Uri(
+          path: AppRoutes.splash,
+          queryParameters: {'from': fullPath},
+        ).toString();
       }
-      return null;
+
+      final pendingFrom = AppRoutes.sanitizeReturnPath(
+        state.uri.queryParameters['from'] ?? state.uri.queryParameters['returnPath'],
+      );
+
+      if (authState.isAuthenticated) {
+        if (location == AppRoutes.login || location == AppRoutes.splash) {
+          return pendingFrom ?? AppRoutes.home;
+        }
+        return null;
+      }
+
+      if (location == AppRoutes.splash) {
+        return pendingFrom == null
+            ? AppRoutes.login
+            : AppRoutes.loginWithReturn(pendingFrom);
+      }
+      if (AppRoutes.isPublic(location)) return null;
+      return AppRoutes.loginWithReturn(fullPath);
     },
     routes: [
       GoRoute(
@@ -106,8 +118,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: ':id',
                     builder: (context, state) {
                       final id = state.pathParameters['id']!;
-                      // We will need to import TreatmentDetailScreen
-                      // Return the placeholder for now until we create it
                       return TreatmentDetailScreen(treatmentId: id);
                     },
                   ),
@@ -127,7 +137,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.feedback,
-                builder: (context, state) => const PublicFeedbackFeedScreen(),
+                builder: (context, state) => FeedbackHubScreen(
+                  section: feedbackSectionIndex(
+                    state.uri.queryParameters['section'],
+                  ),
+                ),
                 routes: [
                   GoRoute(
                     path: 'mine',

@@ -35,7 +35,7 @@ from app.schemas import (
     WorkflowState,
 )
 from app.settings import settings
-from app.state_store import get_state_store
+from app.state_store import get_state_store, persist, reset_persistence_warning
 
 # ---------------------------------------------------------------------------
 # Medical-advice guard
@@ -158,12 +158,12 @@ def _tracked(step: str, node):
         workflow_id = state.get("workflow_id")
         if workflow_id:
             store = get_state_store()
-            current = await store.get(workflow_id)
+            current = await persist(store.get(workflow_id))
             completed = [*(current.completed_steps if current else []), step]
             tool_results = [*(current.tool_results if current else []), ToolResult(
                 tool=step, succeeded=not bool(changes.get("refused")), output=_jsonable(changes),
             )]
-            await store.update(workflow_id, completed_steps=completed, tool_results=tool_results)
+            await persist(store.update(workflow_id, completed_steps=completed, tool_results=tool_results))
         return changes
 
     return transition
@@ -314,10 +314,11 @@ async def run_treatment_info_agent(
     request: TreatmentInfoAgentRequest,
 ) -> TreatmentInfoAgentResponse:
     """Invoke the treatment-info LangGraph and return a typed response."""
+    reset_persistence_warning()
     workflow_id = str(uuid4())
     store = get_state_store()
     objective = request.question.strip() or "Treatment information question"
-    await store.save(
+    await persist(store.save(
         WorkflowState(
             workflow_id=workflow_id,
             objective=objective,
@@ -325,7 +326,7 @@ async def run_treatment_info_agent(
             approval_status=None,
             agent_name="treatment_info",
         )
-    )
+    ))
     result = await _GRAPH.ainvoke(
         {
             "workflow_id": workflow_id,
@@ -361,7 +362,7 @@ async def run_treatment_info_agent(
         if related_id:
             changes["related_entity_type"] = "Treatment"
             changes["related_entity_id"] = related_id
-    await store.update(workflow_id, **changes)
+    await persist(store.update(workflow_id, **changes))
     return TreatmentInfoAgentResponse(
         answer=result["answer"],
         matched_treatment_ids=matched,

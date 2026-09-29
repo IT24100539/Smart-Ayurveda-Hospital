@@ -98,18 +98,11 @@ public static class DbSeeder
 
         await SeedTreatmentsInformationAsync(db, cancellationToken);
 
-        if (!await db.Medicines.AnyAsync(cancellationToken))
-        {
-            db.Medicines.AddRange(
-                new Medicine { Name = "Triphala Churna", Form = MedicineForm.Churna, DosageGuidelines = "3-6 g at bedtime with warm water.", UnitPrice = 180 },
-                new Medicine { Name = "Ashwagandha", Form = MedicineForm.Churna, DosageGuidelines = "3 g twice daily with milk.", UnitPrice = 240 },
-                new Medicine { Name = "Dashamoola Kashayam", Form = MedicineForm.Kashayam, DosageGuidelines = "15 ml twice daily after food.", UnitPrice = 210 });
-        }
-
         await db.SaveChangesAsync(cancellationToken);
 
         await SeedPatientsAsync(db, cancellationToken);
         await SeedTreatmentSchedulesAsync(db, cancellationToken);
+        await EnsureBookableScheduleSlotsAsync(db, cancellationToken);
         await SeedWardsAndBedsAsync(db, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -118,6 +111,7 @@ public static class DbSeeder
         await db.SaveChangesAsync(cancellationToken);
 
         await SeedFeedbackAndCommunicationAsync(db, cancellationToken);
+        await EnsureCompletedVisitPerPatientAsync(db, cancellationToken);
         logger.LogInformation("Database schema ready and seed data applied.");
     }
 
@@ -379,6 +373,56 @@ public static class DbSeeder
         }
     }
 
+    /// <summary>
+    /// Each seeded treatment needs a bookable weekday in the coming weeks.
+    /// Staff-created rows stored start and end times only, so TimeSlot stayed
+    /// blank and the patient date list looked fully unavailable. Idempotent:
+    /// blank labels are filled, and a treatment with no active day gets
+    /// Monday, Wednesday, and Friday.
+    /// </summary>
+    private static async Task EnsureBookableScheduleSlotsAsync(HospitalDbContext db, CancellationToken cancellationToken)
+    {
+        var blank = await db.TreatmentSchedules
+            .Where(schedule => schedule.TimeSlot == "")
+            .ToListAsync(cancellationToken);
+        foreach (var schedule in blank)
+        {
+            schedule.TimeSlot = TreatmentSchedule.FormatSlot(schedule.StartTime, schedule.EndTime);
+            if (schedule.MaxPatients <= 0 && schedule.MaxSlotsPerDay > 0)
+            {
+                schedule.MaxPatients = schedule.MaxSlotsPerDay;
+            }
+        }
+
+        var treatments = await db.Treatments
+            .Include(treatment => treatment.Schedules)
+            .ToListAsync(cancellationToken);
+        foreach (var treatment in treatments.Where(treatment => treatment.IsActive))
+        {
+            if (treatment.Schedules.Any(schedule => schedule.IsActive && !string.IsNullOrWhiteSpace(schedule.TimeSlot)))
+            {
+                continue;
+            }
+
+            foreach (var day in new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday })
+            {
+                var start = new TimeOnly(9, 0);
+                var end = new TimeOnly(10, 0);
+                db.TreatmentSchedules.Add(new TreatmentSchedule
+                {
+                    TreatmentId = treatment.Id,
+                    DayOfWeek = day,
+                    StartTime = start,
+                    EndTime = end,
+                    TimeSlot = TreatmentSchedule.FormatSlot(start, end),
+                    MaxSlotsPerDay = 8,
+                    MaxPatients = 8,
+                    IsActive = true
+                });
+            }
+        }
+    }
+
     private static async Task SeedWardsAndBedsAsync(HospitalDbContext db, CancellationToken cancellationToken)
     {
         if (await db.Wards.AnyAsync(cancellationToken))
@@ -452,7 +496,7 @@ public static class DbSeeder
                 PreferredDate = date,
                 Status = AdmissionRequestStatus.Approved,
                 RequestedByAgent = byAgent,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt
             };
 
@@ -479,7 +523,7 @@ public static class DbSeeder
                 PreferredDate = new DateOnly(2026, 9, 4),
                 Status = AdmissionRequestStatus.Rejected,
                 RequestedByAgent = false,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt.AddDays(-2)
             });
     }
@@ -522,7 +566,7 @@ public static class DbSeeder
                 RequestedDate = new DateOnly(2026, 9, 15),
                 RequestedTimeSlot = "14:00-15:00",
                 Status = AppointmentStatus.Approved,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt
             },
             new Appointment
@@ -532,7 +576,7 @@ public static class DbSeeder
                 RequestedDate = new DateOnly(2026, 9, 10),
                 RequestedTimeSlot = "08:00-08:30",
                 Status = AppointmentStatus.Rejected,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt.AddHours(-20)
             },
             new Appointment
@@ -542,7 +586,7 @@ public static class DbSeeder
                 RequestedDate = new DateOnly(2026, 9, 8),
                 RequestedTimeSlot = "09:00-10:00",
                 Status = AppointmentStatus.Completed,
-                DecidedBy = doctor.Id,
+                DecidedById = doctor.Id,
                 DecidedAt = decidedAt.AddDays(-1)
             },
             new Appointment
@@ -588,7 +632,7 @@ public static class DbSeeder
                 RequestedDate = requestedDate,
                 RequestedTimeSlot = "09:00-10:00",
                 Status = AppointmentStatus.Completed,
-                DecidedBy = doctorUser.Id,
+                DecidedById = doctorUser.Id,
                 DecidedAt = DateTimeOffset.UtcNow.AddDays(-5)
             };
             db.Appointments.Add(appointment);
@@ -635,7 +679,7 @@ public static class DbSeeder
             Sentiment = FeedbackSentiment.Negative,
             Category = FeedbackCategory.StaffService,
             Status = FeedbackStatus.Hidden,
-            ModeratedBy = adminStaff.Id,
+            ModeratedById = adminStaff.Id,
             ModeratedAt = moderatedAt
         };
 
@@ -720,7 +764,7 @@ public static class DbSeeder
             Description = "The therapist dismissed questions about rest after shirodhara. Please review staff seva training.",
             Priority = ComplaintPriority.High,
             Status = ComplaintStatus.Escalated,
-            AssignedTo = adminStaff.Id,
+            AssignedToId = adminStaff.Id,
             EscalatedAt = now.AddHours(-6)
         };
 
@@ -759,6 +803,54 @@ public static class DbSeeder
                 Type = NotificationType.General,
                 IsRead = false
             });
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Feedback linked to a visit is accepted only after that visit is Completed.
+    /// Every seeded patient gets one completed Abhyanga (or first treatment) visit
+    /// so that path can be tried. Idempotent: a patient who already has a
+    /// completed appointment is left unchanged.
+    /// </summary>
+    private static async Task EnsureCompletedVisitPerPatientAsync(HospitalDbContext db, CancellationToken cancellationToken)
+    {
+        var treatment = await db.Treatments.FirstOrDefaultAsync(
+                item => item.Name == "Abhyanga",
+                cancellationToken)
+            ?? await db.Treatments.OrderBy(item => item.Name).FirstOrDefaultAsync(cancellationToken);
+        if (treatment is null)
+        {
+            return;
+        }
+
+        var completedPatientIds = await db.Appointments
+            .Where(appointment => appointment.Status == AppointmentStatus.Completed)
+            .Select(appointment => appointment.PatientId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var missing = await db.Patients
+            .Where(patient => !completedPatientIds.Contains(patient.Id))
+            .ToListAsync(cancellationToken);
+        if (missing.Count == 0)
+        {
+            return;
+        }
+
+        var requestedDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7));
+        var decidedAt = DateTimeOffset.UtcNow.AddDays(-7);
+        foreach (var patient in missing)
+        {
+            db.Appointments.Add(new Appointment
+            {
+                PatientId = patient.Id,
+                TreatmentId = treatment.Id,
+                RequestedDate = requestedDate,
+                RequestedTimeSlot = "09:00-10:00",
+                Status = AppointmentStatus.Completed,
+                DecidedAt = decidedAt
+            });
+        }
 
         await db.SaveChangesAsync(cancellationToken);
     }

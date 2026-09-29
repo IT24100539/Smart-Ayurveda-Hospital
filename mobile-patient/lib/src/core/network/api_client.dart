@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_config.dart';
@@ -30,7 +31,7 @@ class AuthHeaderInterceptor extends Interceptor {
 ///
 /// Auth endpoints are exempt: `POST /auth/login` answers 401 for bad
 /// credentials, which is a form validation failure rather than an expired
-/// session.
+/// session. 403 and network failures never end the session.
 class UnauthorizedInterceptor extends Interceptor {
   UnauthorizedInterceptor({
     required TokenStorage tokenStorage,
@@ -46,13 +47,37 @@ class UnauthorizedInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
+    final status = err.response?.statusCode;
+    final path = err.requestOptions.uri.toString();
+    final method = err.requestOptions.method;
     final isAuthEndpoint = err.requestOptions.path.contains('/auth/');
-    if (err.response?.statusCode == 401 && !isAuthEndpoint) {
+    final hadToken = _hadBearerToken(err.requestOptions);
+
+    if (kDebugMode && (status == 401 || status == 403)) {
+      debugPrint('API $status $method $path hadToken=$hadToken');
+    }
+
+    final shouldLogout =
+        status == 401 && hadToken && !isAuthEndpoint && !err.type.isNetwork;
+    if (shouldLogout) {
       await _tokenStorage.clear();
       await _onUnauthorized();
     }
     handler.next(err);
   }
+
+  static bool _hadBearerToken(RequestOptions options) {
+    final header = options.headers['Authorization']?.toString();
+    return header != null && header.startsWith('Bearer ');
+  }
+}
+
+extension on DioExceptionType {
+  bool get isNetwork =>
+      this == DioExceptionType.connectionTimeout ||
+      this == DioExceptionType.sendTimeout ||
+      this == DioExceptionType.receiveTimeout ||
+      this == DioExceptionType.connectionError;
 }
 
 const _skipAuthHeaderKey = 'skipAuthHeader';

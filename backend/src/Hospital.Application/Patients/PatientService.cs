@@ -27,6 +27,15 @@ public sealed class PatientService : IPatientService
             throw new ConflictException($"A patient with phone '{request.Phone}' already exists ({existing.Uhid}).");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var byEmail = await _patients.GetByEmailAsync(request.Email, cancellationToken);
+            if (byEmail is not null)
+            {
+                throw new ConflictException($"A patient with email '{request.Email.Trim()}' already exists ({byEmail.Uhid}).");
+            }
+        }
+
         var patient = new Patient
         {
             Uhid = await _uhid.NextAsync(cancellationToken),

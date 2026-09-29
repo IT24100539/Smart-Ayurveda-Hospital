@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 
@@ -21,11 +22,25 @@ public sealed class HospitalApiFactory : WebApplicationFactory<Program>
 {
     private readonly InMemoryDatabaseRoot _root = new();
 
+    public const string InternalServiceKey = "dev-internal-service-key";
+
     public AgentHttpStub Agent { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        // Last source wins, including over Development user-secrets, so these tests
+        // send a known key and a wrong key is rejected.
+        builder.ConfigureAppConfiguration((_, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["INTERNAL_SERVICE_KEY"] = InternalServiceKey,
+                ["InternalServiceKey"] = InternalServiceKey,
+                ["InternalService:ApiKey"] = InternalServiceKey,
+                ["InternalService:Key"] = InternalServiceKey,
+            });
+        });
         builder.ConfigureServices(services =>
         {
             var descriptor = services.Single(d => d.ServiceType == typeof(DbContextOptions<HospitalDbContext>));
@@ -34,7 +49,7 @@ public sealed class HospitalApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<HospitalDbContext>(options =>
                 options.UseInMemoryDatabase("hospital-tests", _root));
 
-            // Replace the outbound handler for the typed agent client so tests never dial 127.0.0.1:8100.
+            // Replace the outbound handler for the typed agent client so tests never dial 127.0.0.1:8001.
             services.Configure<HttpClientFactoryOptions>("IAgentClient", options =>
             {
                 options.HttpMessageHandlerBuilderActions.Add(handlerBuilder =>

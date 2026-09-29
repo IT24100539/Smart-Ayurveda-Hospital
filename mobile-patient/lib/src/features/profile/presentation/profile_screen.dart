@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/feature_localizations.dart';
 import '../../../l10n/language_switcher.dart';
+import '../../../shared/widgets/section_banner.dart';
 import '../../auth/application/auth_controller.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -11,6 +13,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final copy = FeatureLocalizations.of(context);
     final theme = Theme.of(context);
     final user = ref.watch(authControllerProvider).user;
 
@@ -19,6 +22,14 @@ class ProfileScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
+          SectionBanner(
+            kicker: copy.text('Your record', 'ඔබේ වාර්තාව'),
+            title: user?.fullName ?? l10n.navProfile,
+            body: copy.text(
+              'Prakriti, contact details, and the language of this app.',
+              'ප්‍රකෘතිය, සම්බන්ධතා විස්තර සහ මෙම යෙදුමේ භාෂාව.',
+            ),
+          ),
           if (user != null)
             Card(
               child: Padding(

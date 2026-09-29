@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ApiError, api } from "../api/client";
+import { PageHeader } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
 
 type AppointmentStatus = "Pending" | "Approved" | "Rejected" | "Cancelled" | "Completed";
@@ -109,13 +110,18 @@ export function AppointmentsPage() {
   }
 
   return (
-    <section className="space-y-5">
+    <section className="mx-auto max-w-7xl space-y-5">
+      <PageHeader
+        kicker="Care schedule"
+        title="Appointment calendar"
+        description="Review the working week and action pending requests."
+      />
+      <img
+        src="/images/consultation-desk.png"
+        alt="Consultation desk with an appointment book and tulsi"
+        className="h-44 w-full rounded-2xl object-cover shadow-md"
+      />
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Care schedule</p>
-          <h1>Appointment calendar</h1>
-          <p className="mt-1 text-sm text-muted">Review the working week and action pending requests.</p>
-        </div>
         <label className="text-sm font-medium text-ink">
           Treatment
           <select
