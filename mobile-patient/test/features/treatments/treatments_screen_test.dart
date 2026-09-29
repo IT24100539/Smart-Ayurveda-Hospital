@@ -33,24 +33,17 @@ class _UnauthenticatedAuth extends AuthController {
 }
 
 class _FakeTreatmentsRepository implements TreatmentsRepository {
-  _FakeTreatmentsRepository({this.askResult, this.askError});
-
-  final TreatmentAskResult? askResult;
-  final Object? askError;
   String? lastQuestion;
 
   @override
   Future<TreatmentAskResult> askTreatmentInfo(String question) async {
     lastQuestion = question;
-    final error = askError;
-    if (error != null) throw error;
-    return askResult ??
-        const TreatmentAskResult(
-          answer: 'Abhyanga is listed on Monday and Wednesday.',
-          matchedTreatmentIds: ['1'],
-          refused: false,
-          workflowId: 'wf-1',
-        );
+    return const TreatmentAskResult(
+      answer: 'Abhyanga is listed on Monday and Wednesday.',
+      matchedTreatmentIds: ['1'],
+      refused: false,
+      workflowId: 'wf-1',
+    );
   }
 
   @override

@@ -17,7 +17,6 @@ import type {
   TreatmentCategory,
   WeekdayName
 } from '../../api/treatments';
-import { askTreatmentInfo, type AskTreatmentInfoResponse } from '../../api/workflows';
 import { ApiError } from '../../api/client';
 import { Badge, Button, Card, EmptyState, LoadingState, PageHeader } from '../ui';
 
@@ -43,10 +42,6 @@ export function TreatmentsView() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [askQuestion, setAskQuestion] = useState('');
-  const [askBusy, setAskBusy] = useState(false);
-  const [askError, setAskError] = useState<string | null>(null);
-  const [askResult, setAskResult] = useState<AskTreatmentInfoResponse | null>(null);
 
   const fetchTreatments = async () => {
     setLoading(true);
@@ -69,23 +64,6 @@ export function TreatmentsView() {
     if (confirm('Are you sure you want to deactivate this treatment?')) {
       await deactivateTreatment(id);
       fetchTreatments();
-    }
-  };
-
-  const handleAsk = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const question = askQuestion.trim();
-    if (!question || askBusy) return;
-
-    setAskBusy(true);
-    setAskError(null);
-    setAskResult(null);
-    try {
-      setAskResult(await askTreatmentInfo(question));
-    } catch (caught) {
-      setAskError(errorMessage(caught, 'The treatment information agent is unavailable.'));
-    } finally {
-      setAskBusy(false);
     }
   };
 
@@ -116,55 +94,6 @@ export function TreatmentsView() {
         alt="Brass bowl of herbal oil with tulsi and neem"
         className="mb-6 h-44 w-full rounded-2xl object-cover shadow-md"
       />
-
-      <Card className="mb-6 space-y-3 p-4 shadow-sm" aria-label="Ask about treatments">
-        <div>
-          <h2 className="font-serif text-lg font-semibold text-primary-dark">Ask about treatments</h2>
-          <p className="mt-1 text-sm text-muted">
-            Ask when a therapy is offered or what it costs. The agent answers from the catalogue only and will not give medical advice.
-          </p>
-        </div>
-        <form className="space-y-3" onSubmit={handleAsk}>
-          <label className="block text-sm text-muted" htmlFor="treatment-ask-question">
-            Question
-            <textarea
-              id="treatment-ask-question"
-              value={askQuestion}
-              onChange={(event) => setAskQuestion(event.target.value)}
-              rows={3}
-              maxLength={2000}
-              placeholder="Example: When is Panchakarma available and what is the fee?"
-              className="mt-1 min-h-[5.5rem] w-full rounded-md border border-surface-border bg-surface-raised px-3 py-2 text-ink outline-none ring-primary focus:ring-2"
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={askBusy || !askQuestion.trim()}>
-              {askBusy ? 'Asking…' : 'Ask'}
-            </Button>
-            {askResult?.refused ? (
-              <Badge tone="rejected">Medical advice refused</Badge>
-            ) : null}
-            {askResult && !askResult.refused && askResult.matchedTreatmentIds.length > 0 ? (
-              <Badge tone="success">{askResult.matchedTreatmentIds.length} matched</Badge>
-            ) : null}
-          </div>
-        </form>
-        {askError ? (
-          <p className="text-sm text-danger" role="alert">{askError}</p>
-        ) : null}
-        {askResult ? (
-          <div
-            className={`rounded-lg border px-3 py-3 text-sm whitespace-pre-wrap ${
-              askResult.refused
-                ? 'border-amber-200 bg-amber-50 text-amber-950'
-                : 'border-primary bg-primary-muted text-primary-dark'
-            }`}
-            role="status"
-          >
-            {askResult.answer}
-          </div>
-        ) : null}
-      </Card>
 
       <Card className="overflow-hidden shadow-sm">
         <div className="flex gap-4 border-b border-surface-border bg-neutral-50 p-4">
