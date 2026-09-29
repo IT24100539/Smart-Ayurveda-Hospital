@@ -1,7 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentAssertions;
+using Hospital.Domain.Enums;
+using Hospital.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Hospital.IntegrationTests;
 
@@ -34,6 +39,39 @@ public sealed class HealthAndAuthTests
         var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/treatments");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Register_OpensAPatientRecord()
+    {
+        var client = _factory.CreateClient();
+        var email = $"new-{Guid.NewGuid():N}@example.local";
+        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            fullName = "Nimal Silva",
+            email,
+            phoneNumber = $"077{Random.Shared.Next(1000000, 9999999)}",
+            password = "ChangeMe!Patient1",
+            dateOfBirth = new DateOnly(1992, 3, 4),
+            gender = Gender.Male
+        }, json);
+
+        var body = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.OK, "response body: {0}", body);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+        var patient = await db.Patients.SingleAsync(x => x.Email == email);
+        patient.FirstName.Should().Be("Nimal");
+        patient.LastName.Should().Be("Silva");
+        patient.Uhid.Should().StartWith("SAH-");
+        patient.DateOfBirth.Should().Be(new DateOnly(1992, 3, 4));
+        patient.Gender.Should().Be(Gender.Male);
     }
 
     [Fact]

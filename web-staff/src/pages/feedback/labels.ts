@@ -27,7 +27,8 @@ const SENTIMENT_LABELS: Record<FeedbackSentiment, string> = {
 const STATUS_LABELS: Record<FeedbackStatus, string> = {
   Visible: "Visible",
   Hidden: "Hidden",
-  PendingModeration: "Pending moderation"
+  PendingModeration: "Pending moderation",
+  Withdrawn: "Withdrawn by patient"
 };
 
 const REPLY_STATUS_LABELS: Record<FeedbackReplyStatus, string> = {
@@ -63,12 +64,14 @@ export function displayPatientName(feedback: { isAnonymous: boolean; patientName
   return name.length > 0 ? name : "Patient";
 }
 
+export const NOT_ANALYSED_LABEL = "Not analysed yet";
+
 export function categoryLabel(category: FeedbackCategory | null): string {
-  return category ? CATEGORY_LABELS[category] : "Uncategorized";
+  return category ? CATEGORY_LABELS[category] : NOT_ANALYSED_LABEL;
 }
 
 export function sentimentLabel(sentiment: FeedbackSentiment | null): string {
-  return sentiment ? SENTIMENT_LABELS[sentiment] : "Unscored";
+  return sentiment ? SENTIMENT_LABELS[sentiment] : NOT_ANALYSED_LABEL;
 }
 
 export function feedbackStatusLabel(status: FeedbackStatus): string {

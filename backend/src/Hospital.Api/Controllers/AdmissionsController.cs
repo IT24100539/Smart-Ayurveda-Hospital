@@ -1,3 +1,4 @@
+using Hospital.Application.Abstractions;
 using Hospital.Application.Wards;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,14 +10,20 @@ namespace Hospital.Api.Controllers;
 public sealed class AdmissionsController : ControllerBase
 {
     private readonly IWardService _wards;
+    private readonly IActorContext _actors;
 
-    public AdmissionsController(IWardService wards) => _wards = wards;
+    public AdmissionsController(IWardService wards, IActorContext actors)
+    {
+        _wards = wards;
+        _actors = actors;
+    }
 
     [HttpPost]
     [Authorize(Roles = "Patient")]
     public async Task<ActionResult<AdmissionRequestDto>> Create(CreateAdmissionRequestRequest request, CancellationToken cancellationToken)
     {
-        var created = await _wards.RequestAdmissionAsync(request, cancellationToken);
+        var patient = await _actors.RequirePatientAsync(cancellationToken);
+        var created = await _wards.RequestAdmissionAsync(request with { PatientId = patient.Id }, cancellationToken);
         return CreatedAtAction(null, created);
     }
 

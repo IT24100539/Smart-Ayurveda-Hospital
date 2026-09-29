@@ -34,6 +34,19 @@ type StaffComment = {
   status: string;
 };
 
+function sentimentBadge(sentiment: string | null): { text: string; tone: BadgeTone } {
+  if (sentiment === "Positive") {
+    return { text: "Positive", tone: "approved" };
+  }
+  if (sentiment === "Negative") {
+    return { text: "Negative", tone: "rejected" };
+  }
+  if (sentiment === "Neutral") {
+    return { text: "Neutral", tone: "pending" };
+  }
+  return { text: "Not analysed yet", tone: "pending" };
+}
+
 type Snapshot = {
   patientCount: number;
   appointments: Appointment[];
@@ -289,8 +302,8 @@ export function DashboardPage() {
                           {"★".repeat(item.rating)}
                           <span className="text-surface-border">{"★".repeat(Math.max(0, 5 - item.rating))}</span>
                         </span>
-                        <Badge tone={item.sentiment === "Negative" ? "rejected" : item.status === "PendingModeration" ? "pending" : "approved"}>
-                          {item.sentiment ?? item.status}
+                        <Badge tone={sentimentBadge(item.sentiment).tone}>
+                          {sentimentBadge(item.sentiment).text}
                         </Badge>
                       </div>
                     </div>

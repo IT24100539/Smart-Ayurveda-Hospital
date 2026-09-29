@@ -1,3 +1,8 @@
+using System.Net;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Hospital.Application.Agents.Dtos;
+using Hospital.Application.Communication;
 using Hospital.Application.Communication.Dtos;
 using Hospital.Domain.Entities;
 using Hospital.Domain.Enums;
@@ -121,18 +126,126 @@ public sealed class ReplyServiceTests
     }
 
     [Fact]
+    public async Task CreateManualReply_IsPostedImmediately_AndNotifiesThePatient()
+    {
+        var harness = new FeedbackHarness(actAsStaff: true);
+        var feedback = harness.SeedFeedback(FeedbackTestClock.Now);
+        feedback.Status = FeedbackStatus.PendingModeration;
+
+        var posted = await harness.Replies.CreateManualReplyAsync(
+            feedback.Id,
+            new CreateReplyRequest("Namaste. A vaidya will review the wait for abhyanga."),
+            CancellationToken.None);
+
+        Assert.Equal(FeedbackReplyStatus.Posted, posted.Status);
+        Assert.False(posted.IsAiGenerated);
+        Assert.Equal(FeedbackReplyUserRole.Staff, posted.UserRole);
+        var notice = Assert.Single(harness.NotificationStore.Items);
+        Assert.Equal(feedback.PatientId, notice.PatientId);
+        Assert.Null(notice.StaffUserId);
+        Assert.Equal(NotificationType.FeedbackReply, notice.Type);
+        Assert.Equal(posted.Reply, notice.Message);
+    }
+
+    [Fact]
+    public async Task CreateManualReply_WhenWithdrawn_DoesNotPost()
+    {
+        var harness = new FeedbackHarness(actAsStaff: true);
+        var feedback = harness.SeedFeedback(FeedbackTestClock.Now);
+        feedback.Status = FeedbackStatus.Withdrawn;
+
+        var error = await Assert.ThrowsAsync<DomainException>(() => harness.Replies.CreateManualReplyAsync(
+            feedback.Id,
+            new CreateReplyRequest("This should not be stored."),
+            CancellationToken.None));
+
+        Assert.Contains("withdrawn", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(harness.ReplyStore.Items);
+        Assert.Empty(harness.NotificationStore.Items);
+    }
+
+    [Fact]
     public async Task RequestAiDraft_WhenAgentThrows_LeavesFeedbackAndExplains()
     {
         var harness = new FeedbackHarness(actAsStaff: true);
         var feedback = harness.SeedFeedback(FeedbackTestClock.Now);
-        harness.Agents.Failure = new HttpRequestException("connection refused");
+        harness.Agents.Failure = new HttpRequestException("connection refused", null, HttpStatusCode.BadGateway);
 
         var error = await Assert.ThrowsAsync<DomainException>(() =>
             harness.Replies.RequestAiDraftAsync(feedback.Id, CancellationToken.None));
 
-        Assert.Contains("unavailable", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(ReplyService.AiUnavailableMessage, error.Message);
         Assert.Null(feedback.Sentiment);
         Assert.Empty(harness.ReplyStore.Items);
+        var logged = Assert.Single(harness.AgentLog.Entries);
+        Assert.Contains("HttpRequestException", logged.Message, StringComparison.Ordinal);
+        Assert.Contains("502", logged.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("dev-internal-agent-secret", logged.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("X-Internal-Secret", logged.Exception?.ToString() ?? "", StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RequestAiDraft_WhenRulesCouldNotDraft_KeepsAnalysisAndSaysTheServiceIsUnavailable()
+    {
+        var harness = new FeedbackHarness(actAsStaff: true);
+        var feedback = harness.SeedFeedback(FeedbackTestClock.Now);
+        harness.Agents.DraftSkipped = true;
+        harness.Agents.ClassifiedBy = "rules";
+        harness.Agents.Sentiment = "Negative";
+        harness.Agents.Category = "WaitingTime";
+
+        var error = await Assert.ThrowsAsync<DomainException>(() =>
+            harness.Replies.RequestAiDraftAsync(feedback.Id, CancellationToken.None));
+
+        Assert.Equal(ReplyService.AiUnavailableMessage, error.Message);
+        Assert.Equal(FeedbackSentiment.Negative, feedback.Sentiment);
+        Assert.Equal(FeedbackCategory.WaitingTime, feedback.Category);
+        Assert.Empty(harness.ReplyStore.Items);
+    }
+
+    [Fact]
+    public void StaffDto_IncludesSentimentAndCategoryAsStrings()
+    {
+        var feedback = new Feedback
+        {
+            PatientNameSnapshot = "Meera Nair",
+            Rating = 2,
+            Comment = "The queue for abhyanga ran long.",
+            Sentiment = FeedbackSentiment.Negative,
+            Category = FeedbackCategory.WaitingTime,
+            Status = FeedbackStatus.PendingModeration
+        };
+
+        var summary = FeedbackMapper.ToSummary(feedback);
+        var detail = FeedbackMapper.ToDetail(feedback, includeUnpostedReplies: true);
+        Assert.Equal(FeedbackSentiment.Negative, summary.Sentiment);
+        Assert.Equal(FeedbackCategory.WaitingTime, summary.Category);
+        Assert.Equal(FeedbackSentiment.Negative, detail.Sentiment);
+        Assert.Equal(FeedbackCategory.WaitingTime, detail.Category);
+
+        var json = JsonSerializer.Serialize(detail, new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        });
+        Assert.Contains("\"sentiment\":\"Negative\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"category\":\"WaitingTime\"", json, StringComparison.Ordinal);
+
+        var agent = JsonSerializer.Deserialize<FeedbackSupportAgentResponse>("""
+            {
+              "sentiment": "Negative",
+              "category": "WaitingTime",
+              "priority": "Normal",
+              "similar_feedback_count": 1,
+              "suggested_reply": null,
+              "draft_skipped": true,
+              "workflow_id": "wf",
+              "classified_by": "rules"
+            }
+            """);
+        Assert.NotNull(agent);
+        Assert.Equal("Negative", agent.Sentiment);
+        Assert.Equal("WaitingTime", agent.Category);
+        Assert.Equal("rules", agent.ClassifiedBy);
     }
 
     private static FeedbackReply Draft(Feedback feedback, string text) => new()

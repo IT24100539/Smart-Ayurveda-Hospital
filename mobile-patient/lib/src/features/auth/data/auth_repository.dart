@@ -21,12 +21,16 @@ class AuthRepository {
     required String email,
     required String phoneNumber,
     required String password,
+    required String dateOfBirth,
+    required String gender,
   }) {
     return _post('/auth/register', {
       'fullName': fullName,
       'email': email,
       'phoneNumber': phoneNumber,
       'password': password,
+      'dateOfBirth': dateOfBirth,
+      'gender': gender,
     });
   }
 

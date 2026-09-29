@@ -15,6 +15,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
+static string? FirstNonEmpty(params string?[] values) =>
+    values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+
 var builder = WebApplication.CreateBuilder(args);
 var serilogEnabled = !builder.Environment.IsEnvironment("Testing");
 
@@ -44,7 +47,12 @@ try
         builder.Configuration["Jwt:SigningKey"] = jwtSecret;
     }
 
-    var internalServiceKey = builder.Configuration["InternalServiceKey"];
+    // One name for the agent and the API. INTERNAL_SERVICE_KEY wins; InternalServiceKey
+    // remains so an existing host keeps working. Both readers then see the same value.
+    // An empty value is left empty so the filter and the handler fail closed.
+    var internalServiceKey = FirstNonEmpty(
+        builder.Configuration["INTERNAL_SERVICE_KEY"],
+        builder.Configuration["InternalServiceKey"]);
     if (!string.IsNullOrWhiteSpace(internalServiceKey))
     {
         builder.Configuration["InternalService:ApiKey"] = internalServiceKey;

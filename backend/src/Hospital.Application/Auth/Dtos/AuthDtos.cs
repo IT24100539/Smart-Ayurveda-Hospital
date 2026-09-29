@@ -7,7 +7,9 @@ public sealed record RegisterRequest(
     string Email,
     string PhoneNumber,
     string Password,
-    UserRole? Role = null);
+    UserRole? Role = null,
+    DateOnly? DateOfBirth = null,
+    Gender? Gender = null);
 
 public sealed record LoginRequest(string Email, string Password);
 

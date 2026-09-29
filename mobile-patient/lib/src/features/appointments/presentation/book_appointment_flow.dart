@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../auth/application/auth_controller.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../l10n/feature_localizations.dart';
+import '../../auth/application/auth_controller.dart';
 import '../data/appointment_repository.dart';
 import '../domain/appointment_models.dart';
 
@@ -13,6 +14,16 @@ abstract final class BookAppointmentKeys {
   static const next = ValueKey('booking-next');
   static const submit = ValueKey('booking-submit');
   static const pendingConfirmation = ValueKey('booking-pending-confirmation');
+  static const error = ValueKey('booking-error');
+}
+
+/// ProblemDetails text for the booking screen. Validation field errors win
+/// over the generic title, and the exception type name is never shown.
+String describeBookingError(Object error) {
+  if (error is ApiException) {
+    return error.message ?? 'The hospital could not accept this request.';
+  }
+  return error.toString();
 }
 
 class BookAppointmentFlow extends ConsumerStatefulWidget {
@@ -118,6 +129,7 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
       const SizedBox(height: 6),
       Text(FeatureLocalizations.of(context).unavailableGrey),
       const SizedBox(height: 18),
+      _AvailabilityNotice(availability: _availability),
       Wrap(
         spacing: 10,
         runSpacing: 10,
@@ -294,6 +306,7 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
             padding: const EdgeInsets.only(top: 12),
             child: Text(
               _error!,
+              key: BookAppointmentKeys.error,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
@@ -351,7 +364,7 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
           );
       if (mounted) setState(() => _pending = true);
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() => _error = describeBookingError(error));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -396,6 +409,30 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
       ),
     ),
   );
+}
+
+class _AvailabilityNotice extends StatelessWidget {
+  const _AvailabilityNotice({required this.availability});
+
+  final Map<DateTime, Future<TreatmentAvailability>> availability;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<TreatmentAvailability>>(
+      future: Future.wait(availability.values),
+      builder: (context, snapshot) {
+        if (!snapshot.hasError) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            describeBookingError(snapshot.error!),
+            key: BookAppointmentKeys.error,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _StepHeader extends StatelessWidget {

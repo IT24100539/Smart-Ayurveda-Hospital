@@ -19,6 +19,28 @@ abstract final class AppRoutes {
   static String bookingFor(String treatmentId) =>
       '/treatments/$treatmentId/book';
 
-  /// Routes reachable without a token.
-  static const public = {splash, login, treatments};
+  static String treatmentById(String id) => '/treatments/$id';
+
+  /// Catalogue browsing is public. Booking and the other tabs need a session.
+  static bool isPublic(String location) {
+    if (location == splash || location == login || location == treatments) {
+      return true;
+    }
+    final treatmentDetail = RegExp(r'^/treatments/[^/]+$');
+    return treatmentDetail.hasMatch(location);
+  }
+
+  static String loginWithReturn(String returnPath) {
+    final sanitized = sanitizeReturnPath(returnPath);
+    if (sanitized == null) return login;
+    return Uri(path: login, queryParameters: {'returnPath': sanitized}).toString();
+  }
+
+  static String? sanitizeReturnPath(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (path == splash || path == login || path.startsWith('$login?')) {
+      return null;
+    }
+    return path;
+  }
 }

@@ -49,7 +49,10 @@ public sealed class ActorContext : IActorContext
             throw new ForbiddenException("Only a patient can perform this action.");
         }
 
+        // Email wins: the live chart id is not the JWT user id.
+        // A chart opened with the same guid and no email (older rows) is the only id fallback.
         var patient = await _patients.GetByEmailAsync(user.Email, cancellationToken)
+            ?? await _patients.GetByIdAsync(user.Id, cancellationToken)
             ?? throw new DomainException(
                 "No patient record is linked to this login. The clinical record must use the same email address.");
         return patient;

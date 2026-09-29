@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
@@ -11,7 +12,11 @@ class CommunicationRepository {
   final Dio _dio;
 
   Future<List<PublicFeedback>> publicFeed() {
-    return _getList('/feedback', PublicFeedback.fromJson);
+    return _getList(
+      '/feedback',
+      PublicFeedback.fromJson,
+      options: anonymousRequest,
+    );
   }
 
   Future<void> submitFeedback({
@@ -116,12 +121,21 @@ class CommunicationRepository {
 
   Future<List<T>> _getList<T>(
     String path,
-    T Function(Map<String, dynamic>) parse,
-  ) async {
+    T Function(Map<String, dynamic>) parse, {
+    Options? options,
+  }) async {
     try {
-      final response = await _dio.get<dynamic>(path);
+      final response = await _dio.get<dynamic>(path, options: options);
       final raw = response.data;
-      if (raw is! List) return <T>[];
+      if (kDebugMode) {
+        debugPrint('GET $path status=${response.statusCode} type=${raw.runtimeType} body=$raw');
+      }
+      if (raw is! List) {
+        throw const ApiException(
+          statusCode: 200,
+          detail: 'The server response could not be read.',
+        );
+      }
       return raw
           .map((item) => parse(Map<String, dynamic>.from(item as Map)))
           .toList();

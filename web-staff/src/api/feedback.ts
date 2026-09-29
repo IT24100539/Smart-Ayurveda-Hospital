@@ -1,6 +1,6 @@
 import { ApiError, api } from "./client";
 
-export type FeedbackStatus = "Visible" | "Hidden" | "PendingModeration";
+export type FeedbackStatus = "Visible" | "Hidden" | "PendingModeration" | "Withdrawn";
 export type FeedbackCategory =
   | "TreatmentQuality"
   | "WaitingTime"
@@ -179,6 +179,10 @@ export function createManualReply(feedbackId: string, reply: string): Promise<Re
 
 export function requestAiDraft(feedbackId: string): Promise<Reply> {
   return api.request<Reply>(`/feedback/${feedbackId}/replies/ai-draft`, { method: "POST" });
+}
+
+export function analyseFeedback(id: string): Promise<FeedbackDetail> {
+  return api.request<FeedbackDetail>(`/feedback/${id}/analyse`, { method: "POST" });
 }
 
 export function decideReply(replyId: string, decision: ReplyDecision, reply?: string): Promise<Reply> {

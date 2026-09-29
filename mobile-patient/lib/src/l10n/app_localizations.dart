@@ -188,6 +188,54 @@ abstract class AppLocalizations {
   /// **'Phone number'**
   String get phoneNumberLabel;
 
+  /// No description provided for @dateOfBirthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Date of birth'**
+  String get dateOfBirthLabel;
+
+  /// No description provided for @dateOfBirthRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your date of birth'**
+  String get dateOfBirthRequired;
+
+  /// No description provided for @genderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Gender'**
+  String get genderLabel;
+
+  /// No description provided for @genderRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a gender'**
+  String get genderRequired;
+
+  /// No description provided for @genderFemale.
+  ///
+  /// In en, this message translates to:
+  /// **'Female'**
+  String get genderFemale;
+
+  /// No description provided for @genderMale.
+  ///
+  /// In en, this message translates to:
+  /// **'Male'**
+  String get genderMale;
+
+  /// No description provided for @genderOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get genderOther;
+
+  /// No description provided for @genderUnspecified.
+  ///
+  /// In en, this message translates to:
+  /// **'Unspecified'**
+  String get genderUnspecified;
+
   /// No description provided for @passwordLabel.
   ///
   /// In en, this message translates to:
@@ -320,6 +368,36 @@ abstract class AppLocalizations {
   /// **'Book consultations, follow your panchakarma plan, and track your herbal medicines.'**
   String get homeSubtitle;
 
+  /// Hospital name on the home information card
+  ///
+  /// In en, this message translates to:
+  /// **'Smart Ayurveda Hospital'**
+  String get homeHospitalName;
+
+  /// No description provided for @homeHospitalAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Pallekele, Kundasale 20168'**
+  String get homeHospitalAddress;
+
+  /// No description provided for @homeHospitalPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'+94 81 242 0541'**
+  String get homeHospitalPhone;
+
+  /// No description provided for @homeHospitalHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Mon-Fri 8:00 AM - 5:30 PM'**
+  String get homeHospitalHours;
+
+  /// No description provided for @homeLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load hospital information. Try again.'**
+  String get homeLoadError;
+
   /// No description provided for @comingSoonTitle.
   ///
   /// In en, this message translates to:
@@ -449,8 +527,86 @@ abstract class AppLocalizations {
   /// No description provided for @feedbackNeedsLink.
   ///
   /// In en, this message translates to:
-  /// **'Open this from a completed appointment so the visit can be attached.'**
+  /// **'Choose a completed visit or a treatment.'**
   String get feedbackNeedsLink;
+
+  /// No description provided for @writeFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Write feedback'**
+  String get writeFeedback;
+
+  /// No description provided for @hubCommunity.
+  ///
+  /// In en, this message translates to:
+  /// **'Community'**
+  String get hubCommunity;
+
+  /// No description provided for @hubMine.
+  ///
+  /// In en, this message translates to:
+  /// **'My feedback'**
+  String get hubMine;
+
+  /// No description provided for @hubComplaints.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaints'**
+  String get hubComplaints;
+
+  /// No description provided for @hubNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get hubNotifications;
+
+  /// No description provided for @linkToVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed visit'**
+  String get linkToVisit;
+
+  /// No description provided for @linkToTreatment.
+  ///
+  /// In en, this message translates to:
+  /// **'Treatment'**
+  String get linkToTreatment;
+
+  /// No description provided for @chooseTreatment.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a treatment'**
+  String get chooseTreatment;
+
+  /// No description provided for @editTimeRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m left to edit or withdraw'**
+  String editTimeRemaining(int hours, int minutes);
+
+  /// No description provided for @feedbackStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending review'**
+  String get feedbackStatusPending;
+
+  /// No description provided for @feedbackStatusVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible'**
+  String get feedbackStatusVisible;
+
+  /// No description provided for @feedbackStatusHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get feedbackStatusHidden;
+
+  /// No description provided for @feedbackStatusWithdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawn'**
+  String get feedbackStatusWithdrawn;
 
   /// No description provided for @publicFeedTitle.
   ///
@@ -743,7 +899,7 @@ abstract class AppLocalizations {
   /// No description provided for @noCompletedVisit.
   ///
   /// In en, this message translates to:
-  /// **'No completed visit is available for feedback yet.'**
+  /// **'No completed visit yet. You can still write about a treatment.'**
   String get noCompletedVisit;
 
   /// No description provided for @escalatedOn.

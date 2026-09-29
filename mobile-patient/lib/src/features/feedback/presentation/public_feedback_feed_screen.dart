@@ -11,6 +11,7 @@ import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
 import '../domain/communication_models.dart';
 import 'feedback_banner.dart';
+import 'feedback_keys.dart';
 import 'feedback_messages.dart';
 
 class _ReactionView {
@@ -26,7 +27,10 @@ class _ReactionView {
 }
 
 class PublicFeedbackFeedScreen extends ConsumerStatefulWidget {
-  const PublicFeedbackFeedScreen({super.key});
+  const PublicFeedbackFeedScreen({this.embedded = false, super.key});
+
+  /// Shown inside the feedback hub, without a second app bar.
+  final bool embedded;
 
   @override
   ConsumerState<PublicFeedbackFeedScreen> createState() =>
@@ -95,6 +99,7 @@ class _PublicFeedbackFeedScreenState
           .read(communicationRepositoryProvider)
           .replyToFeedback(item.id, text);
       ref.invalidate(publicFeedProvider);
+      ref.invalidate(myFeedbackProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -119,30 +124,32 @@ class _PublicFeedbackFeedScreenState
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.publicFeedTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.myFeedbackTitle,
-            onPressed: () => context.push(AppRoutes.myFeedback),
-            icon: const Icon(Icons.rate_review_outlined),
-          ),
-          IconButton(
-            tooltip: l10n.complaintsTitle,
-            onPressed: () => context.push(AppRoutes.complaints),
-            icon: const Icon(Icons.report_outlined),
-          ),
-          IconButton(
-            tooltip: l10n.notificationsTitle,
-            onPressed: () => context.push(AppRoutes.notifications),
-            icon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text('$unread'),
-              child: const Icon(Icons.notifications_outlined),
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              title: Text(l10n.publicFeedTitle),
+              actions: [
+                IconButton(
+                  tooltip: l10n.myFeedbackTitle,
+                  onPressed: () => context.push(AppRoutes.myFeedback),
+                  icon: const Icon(Icons.rate_review_outlined),
+                ),
+                IconButton(
+                  tooltip: l10n.complaintsTitle,
+                  onPressed: () => context.push(AppRoutes.complaints),
+                  icon: const Icon(Icons.report_outlined),
+                ),
+                IconButton(
+                  tooltip: l10n.notificationsTitle,
+                  onPressed: () => context.push(AppRoutes.notifications),
+                  icon: Badge(
+                    isLabelVisible: unread > 0,
+                    label: Text('$unread'),
+                    child: const Icon(Icons.notifications_outlined),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
       body: feed.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => ErrorState(
@@ -165,7 +172,10 @@ class _PublicFeedbackFeedScreenState
               separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return FeedbackBanner(
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FeedbackBanner(
                     imageAsset: 'assets/images/feedback-note.png',
                     kicker: copy.text('After the visit', 'පැමිණීමෙන් පසු'),
                     title: l10n.publicFeedTitle,
@@ -179,6 +189,15 @@ class _PublicFeedbackFeedScreenState
                             '${items.length} notes · ${average.toStringAsFixed(1)} / 5',
                             'සටහන් ${items.length} · ${average.toStringAsFixed(1)} / 5',
                           ),
+                  ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        key: FeedbackKeys.writeFeedback,
+                        onPressed: () => context.push(AppRoutes.submitFeedback),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: Text(l10n.writeFeedback),
+                      ),
+                    ],
                   );
                 }
                 if (items.isEmpty) {

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/language_switcher.dart';
 import '../../../theme/app_theme.dart';
 import '../application/auth_controller.dart';
 
@@ -32,9 +34,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneNumberController = TextEditingController();
+  final _dateOfBirthController = TextEditingController();
   final _passwordController = TextEditingController();
 
   AuthFormMode _mode = AuthFormMode.login;
+  String? _gender;
   bool _isSubmitting = false;
   bool _obscurePassword = true;
   String? _errorMessage;
@@ -46,6 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _fullNameController.dispose();
     _emailController.dispose();
     _phoneNumberController.dispose();
+    _dateOfBirthController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -56,6 +61,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorMessage = null;
     });
     _formKey.currentState?.reset();
+  }
+
+  Future<void> _pickDateOfBirth() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year - 30, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: DateUtils.dateOnly(now),
+    );
+    if (picked == null) return;
+    setState(() {
+      _dateOfBirthController.text = DateFormat('yyyy-MM-dd').format(picked);
+    });
   }
 
   Future<void> _submit() async {
@@ -77,6 +96,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: email,
           phoneNumber: _phoneNumberController.text.trim(),
           password: password,
+          dateOfBirth: _dateOfBirthController.text.trim(),
+          gender: _gender!,
         );
       } else {
         await controller.login(email: email, password: password);
@@ -100,7 +121,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final l10n = AppLocalizations.of(context);
     if (error.isNetworkError) return l10n.networkErrorMessage;
     if (error.isUnauthorized) return l10n.invalidCredentialsMessage;
-    if (error.isConflict) return l10n.emailAlreadyRegisteredMessage;
+    if (error.isConflict) {
+      return error.message ?? l10n.emailAlreadyRegisteredMessage;
+    }
     return error.message ?? l10n.genericErrorMessage;
   }
 
@@ -139,6 +162,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    Text(
+                      l10n.chooseLanguage,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Center(child: LanguageSwitcher()),
                     const SizedBox(height: 28),
 
                     if (sessionExpired && _errorMessage == null)
@@ -221,6 +254,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           }
                           return null;
                         },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _dateOfBirthController,
+                        readOnly: true,
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
+                          labelText: l10n.dateOfBirthLabel,
+                          prefixIcon: const Icon(Icons.cake_outlined),
+                        ),
+                        onTap: _pickDateOfBirth,
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                            ? l10n.dateOfBirthRequired
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: _gender,
+                        decoration: InputDecoration(
+                          labelText: l10n.genderLabel,
+                          prefixIcon: const Icon(Icons.wc_outlined),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'Female',
+                            child: Text(l10n.genderFemale),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Male',
+                            child: Text(l10n.genderMale),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Other',
+                            child: Text(l10n.genderOther),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Unspecified',
+                            child: Text(l10n.genderUnspecified),
+                          ),
+                        ],
+                        onChanged: _isSubmitting
+                            ? null
+                            : (value) => setState(() => _gender = value),
+                        validator: (value) =>
+                            (value == null || value.isEmpty)
+                            ? l10n.genderRequired
+                            : null,
                       ),
                     ],
 

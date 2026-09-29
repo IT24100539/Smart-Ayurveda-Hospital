@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:patient_app/src/core/network/api_exception.dart';
 import 'package:patient_app/src/features/appointments/data/appointment_repository.dart';
 import 'package:patient_app/src/features/appointments/domain/appointment_models.dart';
 import 'package:patient_app/src/features/appointments/presentation/appointments_screen.dart';
 import 'package:patient_app/src/features/appointments/presentation/book_appointment_flow.dart';
+import 'package:patient_app/src/features/auth/application/auth_controller.dart';
+import 'package:patient_app/src/features/auth/domain/auth_models.dart';
 import 'package:patient_app/src/theme/app_theme.dart';
 import 'package:patient_app/src/l10n/app_localizations.dart';
 import 'package:patient_app/src/l10n/locale_controller.dart';
@@ -13,10 +16,12 @@ class _FakeAppointmentRepository implements AppointmentRepository {
   _FakeAppointmentRepository({
     this.availabilityByDate = const {},
     this.appointments = const [],
+    this.createError,
   });
 
   final Map<DateTime, TreatmentAvailability> availabilityByDate;
   final List<Appointment> appointments;
+  final Object? createError;
 
   @override
   Future<TreatmentAvailability> availability(
@@ -35,16 +40,34 @@ class _FakeAppointmentRepository implements AppointmentRepository {
     required TreatmentBooking treatment,
     required DateTime date,
     required TreatmentSlot slot,
-  }) async => Appointment(
+  }) async {
+    final error = createError;
+    if (error != null) throw error;
+    return Appointment(
     id: 'created',
     treatmentName: treatment.name,
     requestedDate: date,
     requestedTimeSlot: slot.time,
     status: AppointmentStatus.pending,
-  );
+    );
+  }
 
   @override
   Future<List<Appointment>> mine() async => appointments;
+}
+
+class _SignedInAuth extends AuthController {
+  @override
+  AuthState build() => const AuthState(
+    status: AuthStatus.authenticated,
+    user: AuthUser(
+      id: '11111111-1111-1111-1111-111111111111',
+      fullName: 'Meera Nair',
+      email: 'meera.nair@example.local',
+      phoneNumber: '9876500001',
+      role: UserRole.patient,
+    ),
+  );
 }
 
 Future<void> _pump(
@@ -52,10 +75,14 @@ Future<void> _pump(
   Widget child,
   AppointmentRepository repository, {
   Locale locale = const Locale('en'),
+  bool signedIn = false,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [appointmentRepositoryProvider.overrideWithValue(repository)],
+      overrides: [
+        appointmentRepositoryProvider.overrideWithValue(repository),
+        if (signedIn) authControllerProvider.overrideWith(_SignedInAuth.new),
+      ],
       child: MaterialApp(
         theme: AppTheme.light,
         locale: locale,
@@ -99,6 +126,102 @@ void main() {
     );
     expect(unavailableButton.onPressed, isNull);
     expect(availableButton.onPressed, isNotNull);
+  });
+
+  testWidgets('submit shows pending staff approval, not a booked confirmation', (
+    tester,
+  ) async {
+    final available = DateTime(2026, 9, 30);
+    final repository = _FakeAppointmentRepository(
+      availabilityByDate: {
+        available: const TreatmentAvailability(
+          available: true,
+          slots: [TreatmentSlot(time: '08:00-12:00', scheduleId: 'schedule-1')],
+        ),
+      },
+    );
+
+    await _pump(
+      tester,
+      BookAppointmentFlow(
+        treatment: const TreatmentBooking(
+          id: '19415cdb-746a-4729-8349-02bc4e632cf7',
+          name: 'Panchakarma',
+        ),
+        candidateDates: [available],
+      ),
+      repository,
+      signedIn: true,
+    );
+
+    await tester.tap(find.byKey(BookAppointmentKeys.date(available)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(BookAppointmentKeys.next));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('08:00-12:00'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(BookAppointmentKeys.submit));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(BookAppointmentKeys.pendingConfirmation), findsOneWidget);
+    expect(
+      find.text('Request sent - pending staff approval'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('booked'), findsNothing);
+  });
+
+  testWidgets('submit shows the backend validation message', (tester) async {
+    final available = DateTime(2026, 9, 30);
+    final repository = _FakeAppointmentRepository(
+      createError: const ApiException(
+        statusCode: 400,
+        detail: 'One or more validation errors occurred.',
+        fieldErrors: {
+          'requestedtimeslot': ['Requested time slot does not match schedule time slot.'],
+        },
+      ),
+      availabilityByDate: {
+        available: const TreatmentAvailability(
+          available: true,
+          slots: [TreatmentSlot(time: '08:00-12:00', scheduleId: 'schedule-1')],
+        ),
+      },
+    );
+
+    await _pump(
+      tester,
+      BookAppointmentFlow(
+        treatment: const TreatmentBooking(
+          id: '19415cdb-746a-4729-8349-02bc4e632cf7',
+          name: 'Panchakarma',
+        ),
+        candidateDates: [available],
+      ),
+      repository,
+      signedIn: true,
+    );
+
+    await tester.tap(find.byKey(BookAppointmentKeys.date(available)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(BookAppointmentKeys.next));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('08:00-12:00'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(BookAppointmentKeys.submit));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Requested time slot does not match schedule time slot.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('ApiException'), findsNothing);
+    expect(find.text('One or more validation errors occurred.'), findsNothing);
+    expect(find.byKey(BookAppointmentKeys.pendingConfirmation), findsNothing);
   });
 
   testWidgets('appointment statuses render their defined chip colors', (

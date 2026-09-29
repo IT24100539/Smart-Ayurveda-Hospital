@@ -11,7 +11,9 @@ import 'feedback_keys.dart';
 import 'feedback_messages.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
-  const NotificationsScreen({super.key});
+  const NotificationsScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   ConsumerState<NotificationsScreen> createState() =>
@@ -79,15 +81,24 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         (cached ?? notices.valueOrNull)?.any((item) => !item.isRead) ?? false;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.notificationsTitle),
-        actions: [
-          if (hasUnread)
-            TextButton(onPressed: _markAllRead, child: Text(l10n.markAllRead)),
-        ],
-      ),
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              title: Text(l10n.notificationsTitle),
+              actions: [
+                if (hasUnread)
+                  TextButton(
+                    onPressed: _markAllRead,
+                    child: Text(l10n.markAllRead),
+                  ),
+              ],
+            ),
       body: cached != null
-          ? _NotificationList(items: cached, onTap: _markRead)
+          ? _NotificationList(
+              items: cached,
+              onTap: _markRead,
+              onMarkAll: hasUnread ? _markAllRead : null,
+            )
           : notices.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => ErrorState(
@@ -95,18 +106,28 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 actionLabel: l10n.retry,
                 onAction: () => ref.invalidate(notificationsProvider),
               ),
-              data: (loaded) =>
-                  _NotificationList(items: loaded, onTap: _markRead),
+              data: (loaded) => _NotificationList(
+                items: loaded,
+                onTap: _markRead,
+                onMarkAll: loaded.any((item) => !item.isRead)
+                    ? _markAllRead
+                    : null,
+              ),
             ),
     );
   }
 }
 
 class _NotificationList extends StatelessWidget {
-  const _NotificationList({required this.items, required this.onTap});
+  const _NotificationList({
+    required this.items,
+    required this.onTap,
+    this.onMarkAll,
+  });
 
   final List<PatientNotification> items;
   final ValueChanged<PatientNotification> onTap;
+  final VoidCallback? onMarkAll;
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +142,17 @@ class _NotificationList extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         if (index == 0) {
-          return _UnreadBadge(count: unread, label: l10n.unreadLabel);
+          return Row(
+            children: [
+              _UnreadBadge(count: unread, label: l10n.unreadLabel),
+              const Spacer(),
+              if (onMarkAll != null)
+                TextButton(
+                  onPressed: onMarkAll,
+                  child: Text(l10n.markAllRead),
+                ),
+            ],
+          );
         }
         final item = items[index - 1];
         return _NotificationTile(item: item, onTap: () => onTap(item));

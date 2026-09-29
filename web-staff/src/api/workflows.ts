@@ -76,3 +76,18 @@ export function decideWorkflow(
     })
   });
 }
+
+export type AskTreatmentInfoResponse = {
+  answer: string;
+  matchedTreatmentIds: string[];
+  refused: boolean;
+  workflowId: string;
+};
+
+/** Ask the treatment-info agent about listed therapies, days, and fees. */
+export function askTreatmentInfo(question: string): Promise<AskTreatmentInfoResponse> {
+  return api.request<AskTreatmentInfoResponse>("/agent-workflows/ask-treatment", {
+    method: "POST",
+    body: JSON.stringify({ question })
+  });
+}

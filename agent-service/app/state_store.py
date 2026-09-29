@@ -6,14 +6,48 @@ Hospital.Api, which owns the EF Core context. `InMemoryWorkflowStateStore`
 remains for tests that replace the store explicitly.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from asyncio import Lock
-from typing import Any
+from collections.abc import Awaitable
+from contextvars import ContextVar
+from typing import Any, TypeVar
 
 import httpx
 
 from app.schemas import ApprovalStatus, WorkflowState
 from app.settings import settings
+from app.tools.tools import _internal_headers
+
+logger = logging.getLogger(__name__)
+_T = TypeVar("_T")
+_persistence_warning: ContextVar[str | None] = ContextVar("workflow_persistence_warning", default=None)
+
+
+def reset_persistence_warning() -> None:
+    """Clear the warning for the workflow that is about to run."""
+    _persistence_warning.set(None)
+
+
+def persistence_warning() -> str | None:
+    """Warning set when a store call failed during the current workflow."""
+    return _persistence_warning.get()
+
+
+async def persist(operation: Awaitable[_T]) -> _T | None:
+    """Run a store call. An HTTP failure is logged by status code and does not propagate."""
+    try:
+        return await operation
+    except httpx.HTTPStatusError as exc:
+        logger.warning("Workflow persistence failed. HttpStatus=%s", exc.response.status_code)
+        if _persistence_warning.get() is None:
+            _persistence_warning.set(f"Workflow persistence failed (HTTP {exc.response.status_code}).")
+        return None
+    except httpx.HTTPError:
+        logger.warning("Workflow persistence failed. HttpStatus=none")
+        if _persistence_warning.get() is None:
+            _persistence_warning.set("Workflow persistence failed.")
+        return None
 
 
 class StateNotFoundError(KeyError):
@@ -172,8 +206,7 @@ class BackendApiWorkflowStateStore(WorkflowStateStore):
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self._base_url = (base_url or settings.hospital_api_base_url).rstrip("/")
-        key = settings.internal_service_key.get_secret_value() if api_key is None else api_key
-        self._headers = {"X-Internal-Service-Key": key}
+        self._headers = _internal_headers() if api_key is None else {"X-Internal-Service-Key": api_key}
         self._client = client
         self._lock = Lock()
         self._cache: dict[str, WorkflowState] = {}

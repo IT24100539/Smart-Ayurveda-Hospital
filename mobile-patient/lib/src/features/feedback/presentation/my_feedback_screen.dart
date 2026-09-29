@@ -1,19 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/feature_localizations.dart';
+import '../../../router/app_routes.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../theme/app_theme.dart';
 import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
 import '../domain/communication_models.dart';
 import 'feedback_banner.dart';
+import 'feedback_keys.dart';
 import 'feedback_messages.dart';
 import 'star_rating.dart';
 
+String _editWindowLabel(AppLocalizations l10n, PatientFeedback item) {
+  if (!item.canEdit) return l10n.editingClosed;
+  final end = item.createdAt.toUtc().add(const Duration(hours: 24));
+  final left = end.difference(DateTime.now().toUtc());
+  if (left.isNegative) return l10n.editingClosed;
+  return l10n.editTimeRemaining(left.inHours, left.inMinutes.remainder(60));
+}
+
 class MyFeedbackScreen extends ConsumerWidget {
-  const MyFeedbackScreen({super.key});
+  const MyFeedbackScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,7 +34,7 @@ class MyFeedbackScreen extends ConsumerWidget {
     final feedback = ref.watch(myFeedbackProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.myFeedbackTitle)),
+      appBar: embedded ? null : AppBar(title: Text(l10n.myFeedbackTitle)),
       body: feedback.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => ErrorState(
@@ -40,7 +53,10 @@ class MyFeedbackScreen extends ConsumerWidget {
               separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return FeedbackBanner(
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FeedbackBanner(
                     imageAsset: 'assets/images/feedback-note.png',
                     kicker: copy.text('Your notes', 'ඔබේ සටහන්'),
                     title: l10n.myFeedbackTitle,
@@ -54,6 +70,15 @@ class MyFeedbackScreen extends ConsumerWidget {
                             '${items.length} sent',
                             'යවන ලදී ${items.length}',
                           ),
+                  ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        key: FeedbackKeys.writeFeedback,
+                        onPressed: () => context.push(AppRoutes.submitFeedback),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: Text(l10n.writeFeedback),
+                      ),
+                    ],
                   );
                 }
                 if (items.isEmpty) {
@@ -248,7 +273,15 @@ class _OwnFeedbackCard extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              item.canEdit ? l10n.canStillEdit : l10n.editingClosed,
+              feedbackStatusLabel(l10n, item.status),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _editWindowLabel(l10n, item),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -274,6 +307,40 @@ class _OwnFeedbackCard extends ConsumerWidget {
                   ),
                 ],
               ),
+            const Divider(),
+            Text(
+              l10n.repliesHeading,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (item.replies.isEmpty)
+              Text(
+                l10n.noReplies,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              for (final reply in item.replies)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        reply.role == ReplyRole.staff
+                            ? l10n.careTeam
+                            : l10n.patientRole,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(reply.reply),
+                    ],
+                  ),
+                ),
           ],
         ),
       ),

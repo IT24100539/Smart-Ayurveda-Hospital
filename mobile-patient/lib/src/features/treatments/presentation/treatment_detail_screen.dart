@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../router/app_routes.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../theme/app_theme.dart';
+import '../../appointments/domain/appointment_models.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/availability_provider.dart';
 import '../application/treatments_provider.dart';
@@ -57,9 +59,17 @@ class _TreatmentDetailView extends ConsumerWidget {
   void _handleRequestAppointment(BuildContext context, WidgetRef ref) {
     final authState = ref.read(authControllerProvider);
     if (authState.isAuthenticated) {
-      context.push(AppRoutes.bookingFor(treatment.id));
+      context.push(
+        AppRoutes.bookingFor(treatment.id),
+        extra: TreatmentBooking(
+          id: treatment.id,
+          name: treatment.nameEnglish,
+        ),
+      );
     } else {
-      context.push('/login?returnPath=/treatments/${treatment.id}');
+      context.push(
+        AppRoutes.loginWithReturn(AppRoutes.bookingFor(treatment.id)),
+      );
     }
   }
 
@@ -251,7 +261,9 @@ class _TreatmentDetailView extends ConsumerWidget {
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
                     error: (error, stack) => ErrorState(
-                      message: 'Failed to check availability: $error',
+                      message: error is ApiException
+                          ? (error.message ?? 'Failed to check availability.')
+                          : 'Failed to check availability: $error',
                     ),
                   );
                 },

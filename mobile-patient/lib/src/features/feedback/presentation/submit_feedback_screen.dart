@@ -5,9 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/feature_localizations.dart';
 import '../../../router/app_routes.dart';
-import '../../appointments/presentation/appointments_screen.dart';
 import '../../appointments/domain/appointment_models.dart';
+import '../../appointments/presentation/appointments_screen.dart';
 import '../../auth/application/auth_controller.dart';
+import '../../treatments/application/treatments_provider.dart';
+import '../../treatments/domain/treatment_models.dart';
+import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
 import 'feedback_banner.dart';
 import 'feedback_keys.dart';
@@ -79,6 +82,8 @@ class SubmitFeedbackScreen extends ConsumerStatefulWidget {
       _SubmitFeedbackScreenState();
 }
 
+enum _FeedbackLink { visit, treatment }
+
 class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
   final _formKey = GlobalKey<FormState>();
   final _comment = TextEditingController();
@@ -87,21 +92,27 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
   bool _anonymous = false;
   bool _attempted = false;
   bool _submitting = false;
+  late _FeedbackLink _link;
   String? _selectedAppointmentId;
+  String? _selectedTreatmentId;
 
   @override
   void initState() {
     super.initState();
+    final hasVisit =
+        widget.appointmentId != null && widget.appointmentId!.isNotEmpty;
+    final hasTreatment =
+        widget.treatmentId != null && widget.treatmentId!.isNotEmpty;
+    _link = hasVisit || !hasTreatment
+        ? _FeedbackLink.visit
+        : _FeedbackLink.treatment;
     _selectedAppointmentId = widget.appointmentId;
+    _selectedTreatmentId = widget.treatmentId;
   }
 
-  bool get _linkedFromRoute =>
-      (widget.appointmentId != null && widget.appointmentId!.isNotEmpty) ||
-      (widget.treatmentId != null && widget.treatmentId!.isNotEmpty);
-
-  bool get _hasLink =>
-      (_selectedAppointmentId != null && _selectedAppointmentId!.isNotEmpty) ||
-      (widget.treatmentId != null && widget.treatmentId!.isNotEmpty);
+  bool get _hasLink => _link == _FeedbackLink.visit
+      ? _selectedAppointmentId != null && _selectedAppointmentId!.isNotEmpty
+      : _selectedTreatmentId != null && _selectedTreatmentId!.isNotEmpty;
 
   @override
   void dispose() {
@@ -123,14 +134,19 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
             rating: _rating,
             comment: _comment.text.trim(),
             isAnonymous: _anonymous,
-            appointmentId: _selectedAppointmentId,
-            treatmentId: widget.treatmentId,
+            appointmentId: _link == _FeedbackLink.visit
+                ? _selectedAppointmentId
+                : null,
+            treatmentId: _link == _FeedbackLink.treatment
+                ? _selectedTreatmentId
+                : null,
           );
+      ref.invalidate(myFeedbackProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.feedbackSent)));
-      if (context.canPop()) context.pop();
+      context.go('${AppRoutes.feedback}?section=mine');
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -167,26 +183,19 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
               body: l10n.commentHint,
             ),
             const SizedBox(height: 16),
-            if (_linkedFromRoute)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(
-                  l10n.linkedVisit,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _FeedbackLinkSelector(
+                link: _link,
+                appointmentId: _selectedAppointmentId,
+                treatmentId: _selectedTreatmentId,
+                onLink: (value) => setState(() => _link = value),
+                onAppointment: (value) =>
+                    setState(() => _selectedAppointmentId = value),
+                onTreatment: (value) =>
+                    setState(() => _selectedTreatmentId = value),
               ),
-            if (!_linkedFromRoute)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _CompletedVisitPicker(
-                  selectedId: _selectedAppointmentId,
-                  onSelected: (value) =>
-                      setState(() => _selectedAppointmentId = value),
-                ),
-              ),
+            ),
             Text(
               l10n.ratingLabel,
               style: theme.textTheme.titleSmall?.copyWith(
@@ -240,11 +249,12 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
                   child: Text(previewName, key: FeedbackKeys.namePreview),
                 ),
               ),
-            if (!_hasLink)
+            if (_attempted && !_hasLink)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
                   l10n.feedbackNeedsLink,
+                  key: const Key('feedback_link_required'),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.error,
                   ),
@@ -252,7 +262,7 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
               ),
             FilledButton(
               key: FeedbackKeys.submit,
-              onPressed: _submitting || !_hasLink ? null : _submit,
+              onPressed: _submitting ? null : _submit,
               child: _submitting
                   ? const SizedBox(
                       height: 22,
@@ -269,11 +279,62 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
   }
 }
 
-class _CompletedVisitPicker extends ConsumerWidget {
-  const _CompletedVisitPicker({
-    required this.selectedId,
-    required this.onSelected,
+class _FeedbackLinkSelector extends ConsumerWidget {
+  const _FeedbackLinkSelector({
+    required this.link,
+    required this.appointmentId,
+    required this.treatmentId,
+    required this.onLink,
+    required this.onAppointment,
+    required this.onTreatment,
   });
+
+  final _FeedbackLink link;
+  final String? appointmentId;
+  final String? treatmentId;
+  final ValueChanged<_FeedbackLink> onLink;
+  final ValueChanged<String?> onAppointment;
+  final ValueChanged<String?> onTreatment;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<_FeedbackLink>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(
+              value: _FeedbackLink.visit,
+              label: Text(l10n.linkToVisit, key: FeedbackKeys.linkVisit),
+            ),
+            ButtonSegment(
+              value: _FeedbackLink.treatment,
+              label: Text(l10n.linkToTreatment, key: FeedbackKeys.linkTreatment),
+            ),
+          ],
+          selected: {link},
+          onSelectionChanged: (selection) => onLink(selection.first),
+        ),
+        const SizedBox(height: 12),
+        if (link == _FeedbackLink.visit)
+          _VisitMenu(
+            selectedId: appointmentId,
+            onSelected: onAppointment,
+          )
+        else
+          _TreatmentMenu(
+            selectedId: treatmentId,
+            onSelected: onTreatment,
+          ),
+      ],
+    );
+  }
+}
+
+class _VisitMenu extends ConsumerWidget {
+  const _VisitMenu({required this.selectedId, required this.onSelected});
 
   final String? selectedId;
   final ValueChanged<String?> onSelected;
@@ -299,7 +360,7 @@ class _CompletedVisitPicker extends ConsumerWidget {
           return Text(
             l10n.noCompletedVisit,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.error,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           );
         }
@@ -307,7 +368,7 @@ class _CompletedVisitPicker extends ConsumerWidget {
             ? selectedId
             : null;
         return DropdownButtonFormField<String>(
-          key: ValueKey(selected),
+          key: ValueKey('visit-$selected'),
           initialValue: selected,
           decoration: InputDecoration(labelText: l10n.chooseCompletedVisit),
           items: [
@@ -320,6 +381,49 @@ class _CompletedVisitPicker extends ConsumerWidget {
           onChanged: onSelected,
         );
       },
+    );
+  }
+}
+
+class _TreatmentMenu extends ConsumerWidget {
+  const _TreatmentMenu({required this.selectedId, required this.onSelected});
+
+  final String? selectedId;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final treatments = ref.watch(treatmentsProvider);
+    return treatments.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (error, _) => Text(
+        feedbackErrorText(error, l10n),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.error,
+        ),
+      ),
+      data: (items) => _treatmentMenu(l10n, items),
+    );
+  }
+
+  Widget _treatmentMenu(AppLocalizations l10n, List<Treatment> items) {
+    final selected = items.any((item) => item.id == selectedId)
+        ? selectedId
+        : null;
+    return DropdownButtonFormField<String>(
+      key: ValueKey('treatment-$selected'),
+      initialValue: selected,
+      decoration: InputDecoration(labelText: l10n.chooseTreatment),
+      items: [
+        for (final treatment in items)
+          DropdownMenuItem(
+            value: treatment.id,
+            child: Text(treatment.nameEnglish),
+          ),
+      ],
+      onChanged: onSelected,
     );
   }
 }

@@ -23,6 +23,21 @@ public sealed class PatientServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WhenEmailExists_ThrowsConflict()
+    {
+        var patients = new FakePatientRepository();
+        patients.Items.Add(new Patient
+        {
+            Phone = "0770000001",
+            Email = "meera@example.com",
+            Uhid = "SAH-2026-00007"
+        });
+        var sut = new PatientService(patients, new FakeUhidGenerator(), new FakeUnitOfWork());
+
+        await Assert.ThrowsAsync<ConflictException>(() => sut.CreateAsync(NewCreateRequest(), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task CreateAsync_WhenPhoneExists_ThrowsConflict()
     {
         var patients = new FakePatientRepository();

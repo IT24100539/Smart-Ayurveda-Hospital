@@ -24,8 +24,8 @@ public sealed class NotificationsController : ControllerBase
     [Authorize(Roles = "Patient")]
     public async Task<ActionResult<IReadOnlyList<NotificationDto>>> Mine(CancellationToken cancellationToken)
     {
-        var patient = await _actors.RequirePatientAsync(cancellationToken);
-        return Ok(await _notifications.GetForPatient(patient.Id, cancellationToken));
+        var chartId = await _actors.RequirePatientIdAsync(cancellationToken);
+        return Ok(await _notifications.GetForPatient(chartId, cancellationToken));
     }
 
     [HttpPatch("{id:guid}/read")]

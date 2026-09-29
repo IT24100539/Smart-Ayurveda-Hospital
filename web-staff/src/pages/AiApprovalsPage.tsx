@@ -6,6 +6,8 @@ import {
   getWorkflow,
   listWorkflows,
   type ApprovalStatus,
+  type ToolResult,
+  type ValidationResult,
   type WorkflowExecution,
   type WorkflowFilters
 } from "../api/workflows";
@@ -27,6 +29,8 @@ const STATUSES: { value: ApprovalStatus | ""; label: string }[] = [
   { value: "NotRequired", label: "Not required" }
 ];
 
+const APPROVABLE_TYPES = new Set(["AdmissionRequest", "Feedback", "FeedbackReply"]);
+
 const fieldClass =
   "rounded-lg border border-surface-border bg-white px-3 py-2 text-sm outline-none ring-primary focus:ring-2";
 const secondaryButton =
@@ -44,7 +48,7 @@ function statusLabel(status: ApprovalStatus): string {
   return STATUSES.find((item) => item.value === status)?.label ?? status;
 }
 
-function calledAt(result: WorkflowExecution["toolResults"][number]): string {
+function calledAt(result: ToolResult): string {
   return result.calledAt ?? result.called_at ?? "";
 }
 
@@ -56,7 +60,35 @@ function formatWhen(value: string): string {
 }
 
 function asStrings(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "string") return item;
+      if (item && typeof item === "object" && "step" in item && typeof (item as { step: unknown }).step === "string") {
+        return (item as { step: string }).step;
+      }
+      return null;
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
+function asToolResults(value: unknown): ToolResult[] {
+  return Array.isArray(value) ? (value as ToolResult[]) : [];
+}
+
+function asValidationResults(value: unknown): ValidationResult[] {
+  return Array.isArray(value) ? (value as ValidationResult[]) : [];
+}
+
+function asErrorList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function canApprove(workflow: WorkflowExecution | null): boolean {
+  if (!workflow || workflow.approvalStatus !== "Pending") return false;
+  if (!workflow.relatedEntityId || !workflow.relatedEntityType) return false;
+  return APPROVABLE_TYPES.has(workflow.relatedEntityType);
 }
 
 type Bed = { id: string; bedLabel: string; isOccupied: boolean };
@@ -78,7 +110,7 @@ function outcomeFrom(workflow: WorkflowExecution, bedLabel: string | null): stri
 }
 
 export function AiApprovalsPage() {
-  const [filters, setFilters] = useState<WorkflowFilters>({ agentName: "", approvalStatus: "" });
+  const [filters, setFilters] = useState<WorkflowFilters>({ agentName: "", approvalStatus: "Pending" });
   const [items, setItems] = useState<WorkflowExecution[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<WorkflowExecution | null>(null);
@@ -97,7 +129,10 @@ export function AiApprovalsPage() {
       .then((page) => {
         if (!active) return;
         setItems(page.items);
-        setSelectedId((current) => current ?? page.items[0]?.id ?? null);
+        setSelectedId((current) => {
+          if (current && page.items.some((item) => item.id === current)) return current;
+          return page.items[0]?.id ?? null;
+        });
       })
       .catch((caught) => {
         if (active) setError(errorMessage(caught));
@@ -134,6 +169,14 @@ export function AiApprovalsPage() {
 
   async function decide(decision: "Approve" | "Reject" | "RevisionRequested") {
     if (!selected) return;
+    if (decision !== "RevisionRequested" && !canApprove(selected)) {
+      setError(
+        selected.relatedEntityId
+          ? "This agent run cannot be approved from here."
+          : "This run has nothing for a vaidya to approve."
+      );
+      return;
+    }
     setBusy(true);
     setError(null);
     setOutcome(null);
@@ -146,7 +189,12 @@ export function AiApprovalsPage() {
         workflow.relatedEntityType === "AdmissionRequest" ? await apiWards().catch(() => []) : [];
       const bedLabel = allocatedBed(workflow, beforeWards, wards);
       setSelected(workflow);
-      setItems((current) => current.map((item) => (item.id === workflow.id ? workflow : item)));
+      setItems((current) => {
+        if (filters.approvalStatus && filters.approvalStatus !== workflow.approvalStatus) {
+          return current.filter((item) => item.id !== workflow.id);
+        }
+        return current.map((item) => (item.id === workflow.id ? workflow : item));
+      });
       setOutcome(outcomeFrom(workflow, bedLabel));
     } catch (caught) {
       setError(errorMessage(caught));
@@ -157,16 +205,24 @@ export function AiApprovalsPage() {
 
   const plan = asStrings(selected?.plan);
   const completed = new Set(asStrings(selected?.completedSteps));
-  const canDecide = selected?.approvalStatus === "Pending";
+  const toolResults = asToolResults(selected?.toolResults);
+  const validationResults = asValidationResults(selected?.validationResults);
+  const errors = asErrorList(selected?.errors);
+  const approveEnabled = canApprove(selected);
+  const revisionEnabled = selected?.approvalStatus === "Pending";
 
   return (
     <section className="mx-auto max-w-7xl space-y-4">
       <PageHeader
         kicker="Agent plans"
         title="AI approvals"
-        description="Review agent plans before a vaidya confirms them."
+        description="Review pending agent plans before a vaidya confirms a bed or posts a reply draft."
         action={
-          <button type="button" className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-primary-muted" onClick={() => setRefreshKey((value) => value + 1)}>
+          <button
+            type="button"
+            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-primary-muted"
+            onClick={() => setRefreshKey((value) => value + 1)}
+          >
             Refresh
           </button>
         }
@@ -215,9 +271,16 @@ export function AiApprovalsPage() {
         </label>
       </div>
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? (
+        <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">
+          {error}
+        </p>
+      ) : null}
       {outcome ? (
-        <p className="rounded-lg border border-primary bg-primary-muted px-3 py-2 text-sm font-medium text-primary-dark" role="status">
+        <p
+          className="rounded-lg border border-primary bg-primary-muted px-3 py-2 text-sm font-medium text-primary-dark"
+          role="status"
+        >
           {outcome}
         </p>
       ) : null}
@@ -225,7 +288,13 @@ export function AiApprovalsPage() {
       <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1.1fr)]">
         <aside className="rounded-xl border border-surface-border bg-surface-raised p-3" aria-label="Workflows">
           {loading ? <p className="text-sm text-muted">Loading workflows…</p> : null}
-          {!loading && items.length === 0 ? <p className="text-sm text-muted">No workflows match these filters.</p> : null}
+          {!loading && items.length === 0 ? (
+            <p className="text-sm text-muted">
+              {filters.approvalStatus === "Pending"
+                ? "No pending plans. Ask for an AI reply draft or start a bed admission, then refresh."
+                : "No workflows match these filters."}
+            </p>
+          ) : null}
           <ul className="space-y-2">
             {items.map((item) => (
               <li key={item.id}>
@@ -252,18 +321,29 @@ export function AiApprovalsPage() {
           <h2 className="font-serif text-lg font-semibold text-primary-dark">Plan</h2>
           {detailLoading ? <p className="mt-3 text-sm text-muted">Loading plan…</p> : null}
           {selected && !detailLoading ? (
-            plan.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">This workflow has no plan steps.</p>
-            ) : (
-              <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm">
-                {plan.map((step, index) => (
-                  <li key={`${index}-${step}`} className={completed.has(step) ? "text-primary-dark" : "text-ink"}>
-                    <span>{step}</span>
-                    {completed.has(step) ? <span className="ml-2 text-xs text-primary">Done</span> : null}
-                  </li>
-                ))}
-              </ol>
-            )
+            <>
+              <p className="mt-3 text-sm text-ink">{selected.objectiveText}</p>
+              {selected.relatedEntityType ? (
+                <p className="mt-2 text-xs text-muted">
+                  Related: {selected.relatedEntityType}
+                  {selected.relatedEntityId ? ` · ${selected.relatedEntityId.slice(0, 8)}…` : ""}
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-muted">No related hospital record for this run.</p>
+              )}
+              {plan.length === 0 ? (
+                <p className="mt-3 text-sm text-muted">This workflow has no plan steps.</p>
+              ) : (
+                <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm">
+                  {plan.map((step, index) => (
+                    <li key={`${index}-${step}`} className={completed.has(step) ? "text-primary-dark" : "text-ink"}>
+                      <span>{step}</span>
+                      {completed.has(step) ? <span className="ml-2 text-xs text-primary">Done</span> : null}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </>
           ) : null}
         </section>
 
@@ -280,8 +360,8 @@ export function AiApprovalsPage() {
             <>
               <h3 className="mt-4 text-sm font-semibold text-ink">Tool calls</h3>
               <ul className="mt-2 space-y-2">
-                {selected.toolResults.length === 0 ? <li className="text-sm text-muted">No tool calls yet.</li> : null}
-                {selected.toolResults.map((result, index) => (
+                {toolResults.length === 0 ? <li className="text-sm text-muted">No tool calls yet.</li> : null}
+                {toolResults.map((result, index) => (
                   <li key={`${result.tool ?? "tool"}-${index}`} className="rounded-lg border border-surface-border px-3 py-2 text-sm">
                     <p className="font-medium">{result.tool ?? "Tool"}</p>
                     <p className="text-xs text-muted">{formatWhen(calledAt(result))}</p>
@@ -293,8 +373,8 @@ export function AiApprovalsPage() {
               </ul>
               <h3 className="mt-4 text-sm font-semibold text-ink">Validation</h3>
               <ul className="mt-2 flex flex-wrap gap-2">
-                {selected.validationResults.length === 0 ? <li className="text-sm text-muted">No validation results.</li> : null}
-                {selected.validationResults.map((result, index) => (
+                {validationResults.length === 0 ? <li className="text-sm text-muted">No validation results.</li> : null}
+                {validationResults.map((result, index) => (
                   <li
                     key={`${result.check ?? "check"}-${index}`}
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -306,14 +386,51 @@ export function AiApprovalsPage() {
                   </li>
                 ))}
               </ul>
+              {errors.length > 0 ? (
+                <>
+                  <h3 className="mt-4 text-sm font-semibold text-ink">Errors</h3>
+                  <ul className="mt-2 space-y-1 text-sm text-danger">
+                    {errors.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              {!approveEnabled && selected.approvalStatus === "Pending" ? (
+                <p className="mt-4 text-sm text-muted">
+                  This pending run has no bed request or reply draft to approve. Open Feedback to request an AI draft, or
+                  start a ward admission plan.
+                </p>
+              ) : null}
+              {selected.approvalStatus === "NotRequired" ? (
+                <p className="mt-4 text-sm text-muted">
+                  No staff decision is required for this run. Treatment answers and information-only flows land here for the
+                  log.
+                </p>
+              ) : null}
               <div className="mt-5 flex flex-wrap gap-2">
-                <button type="button" className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60" disabled={!canDecide || busy} onClick={() => decide("Approve")}>
+                <button
+                  type="button"
+                  className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+                  disabled={!approveEnabled || busy}
+                  onClick={() => decide("Approve")}
+                >
                   Approve
                 </button>
-                <button type="button" className="rounded-lg bg-danger px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60" disabled={!canDecide || busy} onClick={() => decide("Reject")}>
+                <button
+                  type="button"
+                  className="rounded-lg bg-danger px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+                  disabled={!approveEnabled || busy}
+                  onClick={() => decide("Reject")}
+                >
                   Reject
                 </button>
-                <button type="button" className={secondaryButton} disabled={!canDecide || busy} onClick={() => decide("RevisionRequested")}>
+                <button
+                  type="button"
+                  className={secondaryButton}
+                  disabled={!revisionEnabled || busy}
+                  onClick={() => decide("RevisionRequested")}
+                >
                   Request revision
                 </button>
               </div>
@@ -332,7 +449,7 @@ async function apiWards(): Promise<Ward[]> {
 }
 
 function wardIdOf(workflow: WorkflowExecution): string | undefined {
-  return workflow.toolResults
+  return asToolResults(workflow.toolResults)
     .map((result) => result.output?.ward_id ?? result.output?.wardId)
     .find((value): value is string => typeof value === "string");
 }

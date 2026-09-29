@@ -216,7 +216,10 @@ public sealed class TreatmentRepository : ITreatmentRepository
     public TreatmentRepository(HospitalDbContext db) => _db = db;
 
     public async Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken) =>
-        await _db.TreatmentSchedules.AsNoTracking().Where(x => x.TreatmentId == treatmentId).ToListAsync(cancellationToken);
+        await _db.TreatmentSchedules.AsNoTracking()
+            .Include(x => x.Therapist)
+            .Where(x => x.TreatmentId == treatmentId)
+            .ToListAsync(cancellationToken);
 
     public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.TreatmentSchedules.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);

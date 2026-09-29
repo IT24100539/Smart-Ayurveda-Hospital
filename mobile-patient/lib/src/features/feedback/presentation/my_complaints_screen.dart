@@ -11,7 +11,9 @@ import '../domain/communication_models.dart';
 import 'feedback_messages.dart';
 
 class MyComplaintsScreen extends ConsumerWidget {
-  const MyComplaintsScreen({super.key});
+  const MyComplaintsScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,7 +21,7 @@ class MyComplaintsScreen extends ConsumerWidget {
     final complaints = ref.watch(myComplaintsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.complaintsTitle)),
+      appBar: embedded ? null : AppBar(title: Text(l10n.complaintsTitle)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.submitComplaint),
         icon: const Icon(Icons.add),

@@ -23,7 +23,12 @@ public sealed class WorkflowExecutionTests
         var missingKey = await client.PostAsJsonAsync("/api/internal/workflow-executions", Payload());
         missingKey.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
-        client.DefaultRequestHeaders.Add("X-Internal-Service-Key", "dev-internal-service-key");
+        client.DefaultRequestHeaders.Add("X-Internal-Service-Key", "wrong-key");
+        var wrongKey = await client.PostAsJsonAsync("/api/internal/workflow-executions", Payload());
+        wrongKey.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        client.DefaultRequestHeaders.Remove("X-Internal-Service-Key");
+
+        client.DefaultRequestHeaders.Add("X-Internal-Service-Key", HospitalApiFactory.InternalServiceKey);
         var id = Guid.NewGuid();
         var created = await client.PostAsJsonAsync("/api/internal/workflow-executions", Payload(id));
         created.StatusCode.Should().Be(HttpStatusCode.OK);

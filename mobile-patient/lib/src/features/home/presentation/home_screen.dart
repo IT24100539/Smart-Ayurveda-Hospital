@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/feature_localizations.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_banner.dart';
 import '../../auth/application/auth_controller.dart';
+import '../../treatments/application/treatments_provider.dart';
 import '../../../router/app_routes.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -17,53 +19,111 @@ class HomeScreen extends ConsumerWidget {
     final featureCopy = FeatureLocalizations.of(context);
     final user = ref.watch(authControllerProvider).user;
     final firstName = user?.firstName ?? '';
+    final treatments = ref.watch(treatmentsProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.appTitle)),
-      body: ListView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.asset(
-              'assets/images/ayurveda-courtyard.png',
-              height: 160,
-              width: double.infinity,
-              fit: BoxFit.cover,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+          if (treatments.isLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LinearProgressIndicator(),
             ),
-          ),
-          const SizedBox(height: 16),
-          SectionBanner(
-            kicker: featureCopy.text('Hospital', 'රෝහල'),
-            title: firstName.isEmpty
-                ? l10n.homeGreetingGeneric
-                : l10n.homeGreeting(firstName),
-            body: l10n.homeSubtitle,
-          ),
-          _HomeCard(
-            icon: Icons.event_available_outlined,
-            title: l10n.navAppointments,
-            body: l10n.appointmentsPlaceholder,
-            onTap: () => context.go(AppRoutes.appointments),
-          ),
-          const SizedBox(height: 12),
-          _HomeCard(
-            icon: Icons.spa_outlined,
-            title: l10n.navTreatments,
-            body: l10n.treatmentsPlaceholder,
-            onTap: () => context.go(AppRoutes.treatments),
-          ),
-          const SizedBox(height: 12),
-          _HomeCard(
-            icon: Icons.hotel_outlined,
-            title: featureCopy.wardAvailability,
-            body: featureCopy.text(
-              'View occupancy and request admission for staff review.',
-              'වාට්ටු භාවිතය බලා කාර්ය මණ්ඩල සමාලෝචනය සඳහා ඇතුළත් වීමක් ඉල්ලන්න.',
+          if (treatments.hasError)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ErrorState(
+                message: l10n.homeLoadError,
+                actionLabel: l10n.retry,
+                onAction: () => ref.invalidate(treatmentsProvider),
+              ),
             ),
-            onTap: () => context.push(AppRoutes.wards),
-          ),
-        ],
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset(
+                'assets/images/ayurveda-courtyard.png',
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, _, _) => Container(
+                  height: 160,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.spa_outlined,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SectionBanner(
+              kicker: featureCopy.text('Hospital', 'රෝහල'),
+              title: firstName.isEmpty
+                  ? l10n.homeGreetingGeneric
+                  : l10n.homeGreeting(firstName),
+              body: l10n.homeSubtitle,
+            ),
+            _HomeCard(
+              icon: Icons.spa_outlined,
+              title: l10n.navTreatments,
+              body: l10n.treatmentsPlaceholder,
+              onTap: () => context.go(AppRoutes.treatments),
+            ),
+            const SizedBox(height: 12),
+            _HomeCard(
+              icon: Icons.event_available_outlined,
+              title: featureCopy.bookAppointment,
+              body: l10n.appointmentsPlaceholder,
+              onTap: () => context.go(AppRoutes.treatments),
+            ),
+            const SizedBox(height: 12),
+            _HomeCard(
+              icon: Icons.hotel_outlined,
+              title: featureCopy.wardAvailability,
+              body: featureCopy.text(
+                'View occupancy and request admission for staff review.',
+                'වාට්ටු භාවිතය බලා කාර්ය මණ්ඩල සමාලෝචනය සඳහා ඇතුළත් වීමක් ඉල්ලන්න.',
+              ),
+              onTap: () => context.push(AppRoutes.wards),
+            ),
+            const SizedBox(height: 12),
+            _HomeCard(
+              icon: Icons.reviews_outlined,
+              title: l10n.navFeedback,
+              body: l10n.publicFeedTitle,
+              onTap: () => context.go(AppRoutes.feedback),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.homeHospitalName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(l10n.homeHospitalAddress),
+                    const SizedBox(height: 4),
+                    Text(l10n.homeHospitalPhone),
+                    const SizedBox(height: 4),
+                    Text(l10n.homeHospitalHours),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

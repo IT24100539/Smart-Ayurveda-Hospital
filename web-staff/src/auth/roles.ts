@@ -17,7 +17,7 @@ export const ROUTE_ROLES = {
   appointments: STAFF_ROLES,
   wards: ["Admin", "Doctor"] as UserRole[],
   feedback: STAFF_ROLES,
-  aiApprovals: ["Admin", "Doctor"] as UserRole[]
+  aiApprovals: STAFF_ROLES
 };
 
 export function isStaffRole(role: UserRole | undefined): boolean {

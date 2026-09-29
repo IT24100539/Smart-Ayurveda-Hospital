@@ -17,6 +17,15 @@ public sealed class WorkflowExecutionRepository : IWorkflowExecutionRepository
     public async Task AddAsync(WorkflowExecution execution, CancellationToken cancellationToken) =>
         await _db.WorkflowExecutions.AddAsync(execution, cancellationToken);
 
+    public async Task<IReadOnlyList<WorkflowExecution>> ListPendingByRelatedAsync(
+        Guid relatedEntityId,
+        CancellationToken cancellationToken) =>
+        await _db.WorkflowExecutions
+            .Where(x =>
+                x.RelatedEntityId == relatedEntityId
+                && x.ApprovalStatus == WorkflowApprovalStatus.Pending)
+            .ToListAsync(cancellationToken);
+
     public async Task<(IReadOnlyList<WorkflowExecution> Items, int Total)> SearchAsync(
         string? agentName,
         WorkflowApprovalStatus? approvalStatus,

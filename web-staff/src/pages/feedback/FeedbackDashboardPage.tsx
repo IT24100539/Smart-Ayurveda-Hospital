@@ -9,6 +9,7 @@ import {
   listStaffFeedback,
   moderateFeedback,
   requestAiDraft,
+  analyseFeedback,
   type FeedbackCategory,
   type FeedbackDetail,
   type FeedbackSentiment,
@@ -68,7 +69,7 @@ type RowExtra = {
   detailError?: string;
 };
 
-type BusyKind = "generate" | "decide" | "moderate" | "manual";
+type BusyKind = "generate" | "decide" | "moderate" | "manual" | "analyse";
 
 function findDraft(replies: Reply[]): Reply | undefined {
   return [...replies]
@@ -322,6 +323,35 @@ export function FeedbackDashboardPage() {
     }
   }
 
+  async function refreshDetail(id: string, generation: number) {
+    try {
+      const detail = await getStaffFeedback(id);
+      if (generation !== listGeneration.current) {
+        return;
+      }
+      applyDetail(detail);
+    } catch {
+      // The action error or the draft already on screen stays visible.
+    }
+  }
+
+  async function onAnalyse(id: string) {
+    const generation = listGeneration.current;
+    setBusy({ id, kind: "analyse" });
+    setRowError(null);
+    try {
+      const detail = await analyseFeedback(id);
+      if (generation !== listGeneration.current) {
+        return;
+      }
+      applyDetail(detail);
+    } catch (err: unknown) {
+      setRowError({ id, message: errorMessage(err, "AI service unavailable - reply manually") });
+    } finally {
+      setBusy((current) => (current?.id === id ? null : current));
+    }
+  }
+
   async function onGenerate(id: string) {
     const generation = listGeneration.current;
     setBusy({ id, kind: "generate" });
@@ -331,9 +361,13 @@ export function FeedbackDashboardPage() {
       if (generation !== listGeneration.current) {
         return;
       }
+      await refreshDetail(id, generation);
       upsertReply(id, reply);
     } catch (err: unknown) {
-      setRowError({ id, message: errorMessage(err, "Unable to generate a reply.") });
+      setRowError({ id, message: errorMessage(err, "AI service unavailable - reply manually") });
+      if (generation === listGeneration.current) {
+        await refreshDetail(id, generation);
+      }
     } finally {
       setBusy((current) => (current?.id === id ? null : current));
     }
@@ -602,6 +636,7 @@ export function FeedbackDashboardPage() {
                   onRetryDetail={() => beginDetailLoad(item.id)}
                   onModerate={(action) => onModerate(item.id, action)}
                   onGenerate={() => onGenerate(item.id)}
+                  onAnalyse={() => onAnalyse(item.id)}
                   onDecide={(decision, replyText) => onDecide(item.id, decision, replyText)}
                   onManual={(reply) => onManual(item.id, reply)}
                 />
@@ -649,16 +684,35 @@ function sentimentTone(sentiment: FeedbackSentiment | null): string {
     return "bg-red-100 text-danger";
   }
   if (sentiment === "Neutral") {
-    return "bg-surface text-ink";
+    return "bg-amber-100 text-amber-950";
   }
-  return "bg-surface text-muted";
+  return "border border-surface-border bg-neutral-100 text-muted";
+}
+
+function categoryTone(category: FeedbackCategory | null): string {
+  if (category === "TreatmentQuality") {
+    return "bg-primary-muted text-primary-dark";
+  }
+  if (category === "WaitingTime") {
+    return "bg-status-pending-bg text-status-pending-fg";
+  }
+  if (category === "StaffService") {
+    return "bg-status-success-bg text-status-success-fg";
+  }
+  if (category === "FacilityIssue") {
+    return "bg-status-rejected-bg text-status-rejected-fg";
+  }
+  if (category === "Other") {
+    return "bg-neutral-100 text-ink";
+  }
+  return "border border-surface-border bg-neutral-100 text-muted";
 }
 
 function statusTone(status: FeedbackStatus): string {
   if (status === "Visible") {
     return "bg-primary-muted text-primary-dark";
   }
-  if (status === "Hidden") {
+  if (status === "Hidden" || status === "Withdrawn") {
     return "bg-surface text-muted";
   }
   return "bg-amber-100 text-amber-950";
@@ -682,6 +736,7 @@ type FeedbackRowProps = {
   onRetryDetail: () => void;
   onModerate: (action: ModerationAction) => Promise<void>;
   onGenerate: () => Promise<void>;
+  onAnalyse: () => Promise<void>;
   onDecide: (decision: ReplyDecision, replyText?: string) => Promise<void>;
   onManual: (reply: string) => Promise<void>;
 };
@@ -696,6 +751,7 @@ function FeedbackRow({
   onRetryDetail,
   onModerate,
   onGenerate,
+  onAnalyse,
   onDecide,
   onManual
 }: FeedbackRowProps) {
@@ -719,6 +775,9 @@ function FeedbackRow({
   const showActions = extra?.detailState === "ready" || extra?.detailState === "error";
   const generating = busy === "generate";
   const deciding = busy === "decide";
+  const analysing = busy === "analyse";
+  const withdrawn = item.status === "Withdrawn";
+  const needsAnalysis = item.sentiment === null || item.category === null;
 
   async function submitManual(event: FormEvent) {
     event.preventDefault();
@@ -756,9 +815,24 @@ function FeedbackRow({
           <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${sentimentTone(item.sentiment)}`}>
             {sentimentLabel(item.sentiment)}
           </span>
+          {needsAnalysis ? (
+            <button
+              type="button"
+              className={`${secondaryButton} mt-2 block`}
+              disabled={analysing || generating}
+              onClick={() => void onAnalyse()}
+            >
+              {analysing ? "Analysing…" : "Re-analyse"}
+            </button>
+          ) : null}
+          {actionError && !expanded ? (
+            <p className="mt-2 max-w-[14rem] text-xs text-danger" role="alert">
+              {actionError}
+            </p>
+          ) : null}
         </td>
         <td className="px-4 py-3">
-          <span className="inline-flex rounded-md border border-surface-border bg-surface px-2 py-0.5 text-xs font-medium text-ink">
+          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${categoryTone(item.category)}`}>
             {categoryLabel(item.category)}
           </span>
         </td>
@@ -789,7 +863,28 @@ function FeedbackRow({
             <blockquote className="whitespace-pre-wrap rounded-xl border-l-4 border-amber-300 bg-white px-4 py-3 font-display text-base leading-7 text-ink">
               {item.comment}
             </blockquote>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${sentimentTone(item.sentiment)}`}>
+                {sentimentLabel(item.sentiment)}
+              </span>
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${categoryTone(item.category)}`}>
+                {categoryLabel(item.category)}
+              </span>
+              {needsAnalysis ? (
+                <button
+                  type="button"
+                  className={secondaryButton}
+                  disabled={analysing || generating}
+                  onClick={() => void onAnalyse()}
+                >
+                  {analysing ? "Analysing…" : "Re-analyse"}
+                </button>
+              ) : null}
+            </div>
             <div className="mt-3">
+              {withdrawn ? (
+                <p className="text-sm text-muted">Replies are closed because the patient withdrew this feedback.</p>
+              ) : (
               <span className="group relative inline-flex">
                 <button
                   type="button"
@@ -809,6 +904,7 @@ function FeedbackRow({
                   </span>
                 ) : null}
               </span>
+              )}
             </div>
 
             <div className="mt-4 space-y-3">
@@ -842,7 +938,7 @@ function FeedbackRow({
                 </ul>
               ) : null}
 
-              {showActions && draft ? (
+              {showActions && draft && !withdrawn ? (
                 <div className="rounded-lg border border-primary/20 bg-white p-3">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-ink">AI draft</h3>
@@ -860,7 +956,7 @@ function FeedbackRow({
                 </div>
               ) : null}
 
-              {showActions ? (
+              {showActions && !withdrawn ? (
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className={secondaryButton} onClick={() => setManualOpen((open) => !open)}>
                     Reply manually
@@ -868,16 +964,16 @@ function FeedbackRow({
                   <button
                     type="button"
                     className={secondaryButton}
-                    disabled={generating || deciding}
+                    disabled={generating || deciding || analysing}
                     aria-busy={generating}
                     onClick={() => void onGenerate()}
                   >
-                    {generating ? "Generating reply…" : "Generate Reply"}
+                    {generating ? "Generating reply…" : "Generate AI reply"}
                   </button>
                   {draft ? (
                     <>
-                      <button type="button" className={secondaryButton} disabled={deciding || generating} onClick={submitEdit}>
-                        Save edit
+                  <button type="button" className={secondaryButton} disabled={deciding || generating} onClick={submitEdit}>
+                        Edit
                       </button>
                       <button
                         type="button"
@@ -903,7 +999,7 @@ function FeedbackRow({
                 </div>
               ) : null}
 
-              {showActions && manualOpen ? (
+              {showActions && manualOpen && !withdrawn ? (
                 <form onSubmit={submitManual}>
                   <label className="block text-sm font-semibold" htmlFor={`manual-${item.id}`}>
                     Staff reply

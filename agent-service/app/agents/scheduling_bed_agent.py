@@ -18,7 +18,7 @@ from app.schemas import (
     ToolResult, ValidationResult, WorkflowState,
 )
 from app.settings import settings
-from app.state_store import get_state_store
+from app.state_store import get_state_store, persist, reset_persistence_warning
 from app.tools import (
     check_treatment_schedule, check_ward_availability, create_admission_request,
 )
@@ -124,22 +124,23 @@ async def _call(tool, **kwargs) -> ToolResult:
 def build_graph(request: SchedulingAgentRequest):
     """Build an isolated graph bound to validated input, without a new state type."""
     request = SchedulingAgentRequest.model_validate(request.model_dump())
+    reset_persistence_warning()
     store = get_state_store()
 
     def persisted(name, node):
         async def transition(state: WorkflowState):
             if name == "plan":
                 state = state.model_copy(update={"approval_status": None})
-                await store.save(state)
+                await persist(store.save(state))
             changes = node(state)
             if isawaitable(changes):
                 changes = await changes
             changes = {**changes, "completed_steps": [*state.completed_steps, name]}
             if name == "plan" or changes.get("final_outcome") == "safe_failure":
                 changes["approval_status"] = None
-            # Keep persistence outside tool/planner exception handlers: failures
-            # propagate to the caller and cannot trigger retries or later writes.
-            await store.update(state.workflow_id, **changes)
+            # HTTP persistence failures are logged by status code and do not stop
+            # the workflow. Other errors still propagate and are not retried.
+            await persist(store.update(state.workflow_id, **changes))
             return changes
         return transition
 

@@ -10,7 +10,7 @@ namespace Hospital.Infrastructure.Agents;
 public sealed class AgentServiceOptions
 {
     public const string SectionName = "AgentService";
-    public string BaseUrl { get; set; } = "http://127.0.0.1:8100";
+    public string BaseUrl { get; set; } = "http://127.0.0.1:8001";
     public string SharedSecret { get; set; } = string.Empty;
 }
 
@@ -49,6 +49,14 @@ public sealed class AgentHttpClient : IAgentClient
             request,
             cancellationToken);
 
+    public Task<TreatmentInfoAgentResponse> AskTreatmentInfoAsync(
+        TreatmentInfoAgentRequest request,
+        CancellationToken cancellationToken) =>
+        PostAsync<TreatmentInfoAgentRequest, TreatmentInfoAgentResponse>(
+            "/internal/agents/treatment-info",
+            request,
+            cancellationToken);
+
     public async Task<AgentInvokeResponse> InvokeAsync(AgentInvokeRequest request, CancellationToken cancellationToken)
     {
         var coordinated = await CoordinateAsync(
@@ -76,11 +84,31 @@ public sealed class AgentHttpClient : IAgentClient
         };
         message.Headers.Add("X-Internal-Secret", _options.SharedSecret);
 
-        var response = await _http.SendAsync(message, cancellationToken);
+        HttpResponseMessage response;
+        try
+        {
+            response = await _http.SendAsync(message, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var status = ex is HttpRequestException http ? http.StatusCode : null;
+            _logger.LogWarning(
+                ex,
+                "Agent request failed. ExceptionType={ExceptionType} HttpStatus={HttpStatus}",
+                ex.GetType().Name,
+                status is null ? "none" : ((int)status).ToString());
+            throw;
+        }
+
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogWarning("Agent service returned {Status}: {Body}", (int)response.StatusCode, errorBody);
+            _logger.LogWarning(
+                "Agent service returned HttpStatus={HttpStatus}",
+                (int)response.StatusCode);
             response.EnsureSuccessStatusCode();
         }
 
