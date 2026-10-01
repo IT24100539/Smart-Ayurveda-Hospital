@@ -133,7 +133,10 @@ class _NotificationList extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     if (items.isEmpty) {
-      return EmptyState(message: l10n.notificationsEmpty);
+      return EmptyState(
+        message: l10n.notificationsEmpty,
+        imageAsset: 'assets/images/empty-feedback.png',
+      );
     }
     final unread = items.where((item) => !item.isRead).length;
     return ListView.separated(

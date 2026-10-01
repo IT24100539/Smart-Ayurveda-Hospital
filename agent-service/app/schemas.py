@@ -206,3 +206,48 @@ class TreatmentInfoAgentResponse(BaseModel):
     matched_treatment_ids: list[str] = Field(default_factory=list)
     refused: bool = False
     workflow_id: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Patient Information Agent schemas
+# ---------------------------------------------------------------------------
+
+
+class PatientInfoAgentRequest(BaseModel):
+    """Patient question about their own administrative record."""
+
+    patient_id: UUID = Field(alias="patientId")
+    question: str
+
+    model_config = {"populate_by_name": True}
+
+
+class PatientRecordToolOutput(BaseModel):
+    """Administrative patient record returned by GET /api/internal/patients/{id}."""
+
+    id: UUID
+    uhid: str
+    first_name: str = Field(alias="firstName")
+    last_name: str = Field(alias="lastName")
+    full_name: str = Field(alias="fullName")
+    date_of_birth: date | str = Field(alias="dateOfBirth")
+    gender: str
+    phone: str
+    email: str | None = None
+    address: str | None = None
+    blood_group: str | None = Field(default=None, alias="bloodGroup")
+    allergies: str | None = None
+    prakriti: str | None = None
+    vikriti: str | None = None
+    is_active: bool = Field(default=True, alias="isActive")
+    registered_at: datetime | str | None = Field(default=None, alias="registeredAt")
+
+    model_config = {"populate_by_name": True}
+
+
+class PatientInfoAgentResponse(BaseModel):
+    """Grounded answer to an administrative question about patient record."""
+
+    answer: str
+    refused: bool = False
+    workflow_id: str = ""

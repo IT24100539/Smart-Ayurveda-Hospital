@@ -4,9 +4,11 @@ import 'package:intl/intl.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../l10n/feature_localizations.dart';
+import '../../../theme/app_theme.dart';
 import '../../auth/application/auth_controller.dart';
 import '../data/appointment_repository.dart';
 import '../domain/appointment_models.dart';
+import 'appointments_screen.dart';
 
 abstract final class BookAppointmentKeys {
   static Key date(DateTime date) =>
@@ -30,11 +32,13 @@ class BookAppointmentFlow extends ConsumerStatefulWidget {
   const BookAppointmentFlow({
     required this.treatment,
     this.candidateDates,
+    this.appointmentIdToReschedule,
     super.key,
   });
 
   final TreatmentBooking treatment;
   final List<DateTime>? candidateDates;
+  final String? appointmentIdToReschedule;
 
   @override
   ConsumerState<BookAppointmentFlow> createState() =>
@@ -73,8 +77,15 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
   Widget build(BuildContext context) {
     if (_pending) return _buildPending(context);
     final copy = FeatureLocalizations.of(context);
+    final isRescheduling = widget.appointmentIdToReschedule != null;
     return Scaffold(
-      appBar: AppBar(title: Text(copy.bookAppointment)),
+      appBar: AppBar(
+        title: Text(
+          isRescheduling
+              ? copy.text('Reschedule appointment', 'හමුවීම වෙනත් දිනකට මාරු කරන්න')
+              : copy.bookAppointment,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -332,7 +343,11 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
                           color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       )
-                    : Text(copy.requestAppointment),
+                    : Text(
+                        widget.appointmentIdToReschedule != null
+                            ? copy.text('Confirm Reschedule', 'වෙනස් කිරීම තහවුරු කරන්න')
+                            : copy.requestAppointment,
+                      ),
               ),
             ),
           ],
@@ -342,8 +357,9 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
   }
 
   Future<void> _submit() async {
+    final isRescheduling = widget.appointmentIdToReschedule != null;
     final patientId = ref.read(authControllerProvider).user?.id;
-    if (patientId == null || patientId.isEmpty) {
+    if (!isRescheduling && (patientId == null || patientId.isEmpty)) {
       setState(
         () => _error = FeatureLocalizations.of(context).profileUnavailable,
       );
@@ -354,14 +370,24 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
       _error = null;
     });
     try {
-      await ref
-          .read(appointmentRepositoryProvider)
-          .create(
-            patientId: patientId,
-            treatment: widget.treatment,
-            date: _date!,
-            slot: _slot!,
-          );
+      if (isRescheduling) {
+        await ref.read(appointmentRepositoryProvider).reschedule(
+          appointmentId: widget.appointmentIdToReschedule!,
+          date: _date!,
+          timeSlot: _slot!.time,
+          scheduleId: _slot!.scheduleId,
+        );
+        ref.invalidate(myAppointmentsProvider);
+      } else {
+        await ref
+            .read(appointmentRepositoryProvider)
+            .create(
+              patientId: patientId!,
+              treatment: widget.treatment,
+              date: _date!,
+              slot: _slot!,
+            );
+      }
       if (mounted) setState(() => _pending = true);
     } catch (error) {
       if (mounted) setState(() => _error = describeBookingError(error));
@@ -370,45 +396,62 @@ class _BookAppointmentFlowState extends ConsumerState<BookAppointmentFlow> {
     }
   }
 
-  Widget _buildPending(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(FeatureLocalizations.of(context).appointmentRequested),
-    ),
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.hourglass_top_rounded,
-              key: BookAppointmentKeys.pendingConfirmation,
-              size: 72,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-            const SizedBox(height: 18),
-            Text(
-              FeatureLocalizations.of(context).pendingApproval,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              FeatureLocalizations.of(context).pendingExplanation,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(FeatureLocalizations.of(context).done),
-            ),
-          ],
+  Widget _buildPending(BuildContext context) {
+    final isRescheduling = widget.appointmentIdToReschedule != null;
+    final copy = FeatureLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          isRescheduling
+              ? copy.text('Appointment Rescheduled', 'හමුවීම වෙනස් කරන ලදි')
+              : copy.appointmentRequested,
         ),
       ),
-    ),
-  );
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isRescheduling ? Icons.check_circle_outline : Icons.hourglass_top_rounded,
+                key: BookAppointmentKeys.pendingConfirmation,
+                size: 72,
+                color: isRescheduling
+                    ? AyurvedaColors.forest
+                    : Theme.of(context).colorScheme.secondary,
+              ),
+              const SizedBox(height: 18),
+              Text(
+                isRescheduling
+                    ? copy.text('Reschedule Successful', 'හමුවීමේ දිනය සාර්ථකව වෙනස් විය')
+                    : copy.pendingApproval,
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                isRescheduling
+                    ? copy.text(
+                        'Your appointment has been updated for ${DateFormat('EEE, MMM d').format(_date!)} at ${_slot!.time}.',
+                        'ඔබගේ හමුවීම සාර්ථකව යාවත්කාලීන විය.',
+                      )
+                    : copy.pendingExplanation,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(copy.done),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _AvailabilityNotice extends StatelessWidget {

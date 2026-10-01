@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_config.dart';
 import '../storage/token_storage.dart';
+import 'certificate_bypass.dart';
 
 /// Attaches the stored JWT to every outgoing request.
 class AuthHeaderInterceptor extends Interceptor {
@@ -107,6 +108,11 @@ final dioProvider = Provider<Dio>((ref) {
       responseType: ResponseType.json,
     ),
   );
+
+  final baseUri = Uri.tryParse(AppConfig.apiBaseUrl);
+  if (baseUri != null) {
+    configureDevCertificate(dio, baseUri);
+  }
 
   dio.interceptors.addAll([
     AuthHeaderInterceptor(tokenStorage),

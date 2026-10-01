@@ -21,3 +21,12 @@ public sealed class UpdateAppointmentStatusRequestValidator : AbstractValidator<
         RuleFor(x => x.Status).IsInEnum();
     }
 }
+
+public sealed class RescheduleAppointmentRequestValidator : AbstractValidator<RescheduleAppointmentRequest>
+{
+    public RescheduleAppointmentRequestValidator()
+    {
+        RuleFor(x => x.RequestedDate).NotEqual(default(DateOnly));
+        RuleFor(x => x.RequestedTimeSlot).NotEmpty().MaximumLength(32);
+    }
+}

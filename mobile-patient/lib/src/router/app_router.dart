@@ -8,13 +8,19 @@ import '../features/appointments/domain/appointment_models.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
+import '../features/charaka_chat/presentation/charaka_chat_screen.dart';
+import '../features/contact/presentation/contact_location_screen.dart';
+import '../features/faq/presentation/faq_screen.dart';
 import '../features/feedback/presentation/feedback_hub_screen.dart';
 import '../features/feedback/presentation/my_complaints_screen.dart';
 import '../features/feedback/presentation/my_feedback_screen.dart';
 import '../features/feedback/presentation/notifications_screen.dart';
 import '../features/feedback/presentation/submit_complaint_screen.dart';
 import '../features/feedback/presentation/submit_feedback_screen.dart';
+import '../features/health_hub/presentation/health_hub_screen.dart';
 import '../features/home/presentation/home_screen.dart';
+import '../features/onboarding/application/onboarding_controller.dart';
+import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/shell/presentation/home_shell.dart';
 import '../features/treatments/presentation/treatment_detail_screen.dart';
@@ -22,31 +28,53 @@ import '../features/treatments/presentation/treatments_screen.dart';
 import '../features/wards/presentation/ward_availability_screen.dart';
 import 'app_routes.dart';
 
-/// One [GoRouter] for the process. Auth changes notify [refreshListenable]
+/// One [GoRouter] for the process. Auth & onboarding changes notify [refreshListenable]
 /// instead of rebuilding this provider, which would reset navigation.
 final routerProvider = Provider<GoRouter>((ref) {
-  final authListenable = ValueNotifier<AuthStatus>(AuthStatus.loading);
+  final routerListenable = ValueNotifier<int>(0);
   ref.listen<AuthState>(
     authControllerProvider,
-    (_, next) => authListenable.value = next.status,
-    fireImmediately: true,
+    (previous, next) {
+      if (previous?.status != next.status) {
+        routerListenable.value++;
+      }
+    },
   );
-  ref.onDispose(authListenable.dispose);
+  ref.listen<OnboardingState>(
+    onboardingControllerProvider,
+    (previous, next) {
+      if (previous?.hasSeenOnboarding != next.hasSeenOnboarding ||
+          previous?.isResolved != next.isResolved) {
+        routerListenable.value++;
+      }
+    },
+  );
+  ref.onDispose(routerListenable.dispose);
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
-    refreshListenable: authListenable,
+    refreshListenable: routerListenable,
     redirect: (context, state) {
       final authState = ref.read(authControllerProvider);
+      final onboardingState = ref.read(onboardingControllerProvider);
       final location = state.matchedLocation;
       final fullPath = '${state.uri.path}${state.uri.hasQuery ? '?${state.uri.query}' : ''}';
 
-      if (!authState.isResolved) {
+      if (!authState.isResolved || !onboardingState.isResolved) {
         if (location == AppRoutes.splash) return null;
         return Uri(
           path: AppRoutes.splash,
           queryParameters: {'from': fullPath},
         ).toString();
+      }
+
+      // First-launch onboarding check
+      if (!onboardingState.hasSeenOnboarding) {
+        if (location == AppRoutes.onboarding) return null;
+        return AppRoutes.onboarding;
+      }
+      if (location == AppRoutes.onboarding) {
+        return authState.isAuthenticated ? AppRoutes.home : AppRoutes.login;
       }
 
       final pendingFrom = AppRoutes.sanitizeReturnPath(
@@ -74,8 +102,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
+        path: AppRoutes.onboarding,
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.faq,
+        builder: (context, state) => const FaqScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.contact,
+        builder: (context, state) => const ContactLocationScreen(),
       ),
       GoRoute(
         path: AppRoutes.bookAppointment,
@@ -95,6 +135,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.wards,
         builder: (context, state) => const WardAvailabilityScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.charakaChat,
+        builder: (context, state) => const CharakaChatScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -130,6 +174,23 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.appointments,
                 builder: (context, state) => const MyAppointmentsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':appointmentId/reschedule',
+                    builder: (context, state) {
+                      final appointmentId = state.pathParameters['appointmentId']!;
+                      final treatmentId = state.uri.queryParameters['treatmentId'] ?? '';
+                      final treatmentName = state.uri.queryParameters['name'] ?? 'Treatment';
+                      return BookAppointmentFlow(
+                        treatment: TreatmentBooking(
+                          id: treatmentId,
+                          name: treatmentName,
+                        ),
+                        appointmentIdToReschedule: appointmentId,
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -178,6 +239,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.profile,
                 builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'health-hub',
+                    builder: (context, state) => const HealthHubScreen(),
+                  ),
+                ],
               ),
             ],
           ),

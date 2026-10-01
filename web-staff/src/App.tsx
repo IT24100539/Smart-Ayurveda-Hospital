@@ -1,7 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { ROUTE_ROLES } from "./auth/roles";
+import { ROUTE_ROLES, isStaffRole } from "./auth/roles";
 import { AppShell } from "./components/AppShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { hasValidJwt, useAuthStore } from "./store/authStore";
 import { AiApprovalsPage } from "./pages/AiApprovalsPage";
 import { AppointmentsPage } from "./pages/AppointmentsPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -10,6 +11,22 @@ import { LoginPage } from "./pages/LoginPage";
 import { PatientsPage } from "./pages/PatientsPage";
 import { TreatmentsPage } from "./pages/TreatmentsPage";
 import { WardsPage } from "./pages/WardsPage";
+
+/**
+ * Directs root and wildcard requests:
+ * - If authenticated with a valid staff role -> /dashboard
+ * - If unauthenticated or role is Patient -> /login
+ */
+function RootRedirect() {
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+
+  if (hasValidJwt(token) && user && isStaffRole(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Navigate to="/login" replace />;
+}
 
 export default function App() {
   return (
@@ -79,8 +96,8 @@ export default function App() {
           }
         />
       </Route>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<RootRedirect />} />
+      <Route path="*" element={<RootRedirect />} />
     </Routes>
   );
 }

@@ -29,6 +29,7 @@ class CommunicationRepository {
     return _send(
       () => _dio.post<dynamic>(
         '/feedback',
+        options: Options(receiveTimeout: const Duration(seconds: 90)),
         data: {
           'rating': rating,
           'comment': comment,

@@ -11,17 +11,20 @@ public sealed class ActorContext : IActorContext
     private readonly IUserRepository _users;
     private readonly IPatientRepository _patients;
     private readonly IStaffUserRepository _staff;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ActorContext(
         ICurrentUser current,
         IUserRepository users,
         IPatientRepository patients,
-        IStaffUserRepository staff)
+        IStaffUserRepository staff,
+        IUnitOfWork unitOfWork)
     {
         _current = current;
         _users = users;
         _patients = patients;
         _staff = staff;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<User> RequireUserAsync(CancellationToken cancellationToken)
@@ -49,13 +52,32 @@ public sealed class ActorContext : IActorContext
             throw new ForbiddenException("Only a patient can perform this action.");
         }
 
-        // Email wins: the live chart id is not the JWT user id.
-        // A chart opened with the same guid and no email (older rows) is the only id fallback.
-        var patient = await _patients.GetByEmailAsync(user.Email, cancellationToken)
-            ?? await _patients.GetByIdAsync(user.Id, cancellationToken)
-            ?? throw new DomainException(
-                "No patient record is linked to this login. The clinical record must use the same email address.");
-        return patient;
+        // 1. Fast path: patient record has the login email already set.
+        var patient = await _patients.GetByEmailAsync(user.Email, cancellationToken);
+        if (patient is not null)
+        {
+            return patient;
+        }
+
+        // 2. Healing path: patient record was staff-created by phone with no email.
+        //    Stamp the login email now so every subsequent request uses the fast path.
+        var byPhone = await _patients.GetByPhoneAsync(user.PhoneNumber, cancellationToken);
+        if (byPhone is not null && string.IsNullOrWhiteSpace(byPhone.Email))
+        {
+            byPhone.Email = user.Email;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return byPhone;
+        }
+
+        // 3. Legacy fallback: old rows where Patient.Id == User.Id.
+        patient = await _patients.GetByIdAsync(user.Id, cancellationToken);
+        if (patient is not null)
+        {
+            return patient;
+        }
+
+        throw new DomainException(
+            "No patient record is linked to this login. The clinical record must use the same email address.");
     }
 
     public async Task<StaffUser> RequireStaffAsync(CancellationToken cancellationToken)

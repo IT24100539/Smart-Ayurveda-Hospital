@@ -79,6 +79,7 @@ public interface IAppointmentRepository
         CancellationToken cancellationToken);
     Task<int> CountActiveAppointmentsAsync(Guid treatmentId, DateOnly requestedDate, string requestedTimeSlot, CancellationToken cancellationToken);
     Task<bool> TryAddWithinCapacityAsync(Appointment appointment, int maxPatients, CancellationToken cancellationToken);
+    Task<bool> TryRescheduleWithinCapacityAsync(Appointment appointment, DateOnly newDate, string newSlot, Guid? newScheduleId, int maxPatients, CancellationToken cancellationToken);
     Task AddAsync(Appointment appointment, CancellationToken cancellationToken);
 }
 

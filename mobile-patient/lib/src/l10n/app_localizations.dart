@@ -913,6 +913,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save changes'**
   String get saveChanges;
+
+  /// No description provided for @myHealthHubTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Health Hub'**
+  String get myHealthHubTitle;
+
+  /// No description provided for @myHealthHubSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your therapy sessions and registration summary.'**
+  String get myHealthHubSubtitle;
+
+  /// No description provided for @myTherapySessionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My therapy sessions'**
+  String get myTherapySessionsTitle;
+
+  /// No description provided for @noTherapySessionsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No therapy sessions recorded yet.'**
+  String get noTherapySessionsFound;
+
+  /// No description provided for @nextSessionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Session'**
+  String get nextSessionLabel;
+
+  /// No description provided for @myRegistrationSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My registration summary'**
+  String get myRegistrationSummaryTitle;
+
+  /// No description provided for @uhidLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'UHID'**
+  String get uhidLabel;
+
+  /// No description provided for @prakritiLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Prakriti'**
+  String get prakritiLabel;
+
+  /// No description provided for @vikritiLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Vikriti'**
+  String get vikritiLabel;
+
+  /// No description provided for @allergiesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Allergies'**
+  String get allergiesLabel;
+
+  /// No description provided for @bloodGroupLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Blood Group'**
+  String get bloodGroupLabel;
+
+  /// No description provided for @notRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not recorded'**
+  String get notRecorded;
+
+  /// No description provided for @healthHubError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load health records.'**
+  String get healthHubError;
+
+  /// No description provided for @sessionsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 session} other{{count} sessions}}'**
+  String sessionsCount(int count);
 }
 
 class _AppLocalizationsDelegate

@@ -1,6 +1,9 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Hospital.Application.Abstractions;
+using Hospital.Domain.Entities;
+using Hospital.Domain.Enums;
 using Hospital.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -58,6 +61,26 @@ public sealed class HospitalApiFactory : WebApplicationFactory<Program>
                 });
             });
         });
+    }
+
+    public HttpClient CreateAuthenticatedClient(Guid userId, UserRole role)
+    {
+        using var scope = Services.CreateScope();
+        var tokens = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
+        var (token, _) = tokens.Create(new User
+        {
+            Id = userId,
+            FullName = $"Integration {role}",
+            Email = $"{role.ToString().ToLowerInvariant()}-{userId:N}@integration.test",
+            PhoneNumber = "0000000000",
+            Role = role,
+            IsActive = true
+        });
+
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 }
 

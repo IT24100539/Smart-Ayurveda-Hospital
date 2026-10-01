@@ -189,6 +189,8 @@ Write 2 to 4 sentences.
 Never promise a specific compensation, refund, discount, reimbursement, or complimentary session. Do not promise anything the hospital cannot already verify.
 Do not invent clinical results.
 If ANONYMOUS is yes, do not address the patient by name.
+If the comment is in Sinhala, draft the reply in polite, natural Sinhala. Otherwise draft in English.
+Output only the draft message itself without conversational preamble or notes.
 
 """ + _USER_COMMENT_BLOCK + "\n"
 
@@ -396,25 +398,29 @@ async def _classify(prompt: str, enum_type: type[_EnumT], default: _EnumT, label
 
 
 def _tokens(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9]+", (text or "").lower())
+    return re.findall(r"[a-z0-9\u0d80-\u0dff]+", (text or "").lower())
 
 
 # Checked in this order. An equal score keeps the earlier category so the result is deterministic.
 _CATEGORY_KEYWORDS: tuple[tuple[FeedbackCategory, frozenset[str]], ...] = (
     (FeedbackCategory.WAITING_TIME, frozenset({
         "wait", "waiting", "queue", "queued", "delay", "delayed", "late", "hour", "hours",
+        "ප්‍රමාදය", "ප්‍රමාද", "පෝලිම", "කාලය", "පැය", "බලා",
     })),
     (FeedbackCategory.STAFF_SERVICE, frozenset({
         "staff", "nurse", "nurses", "doctor", "doctors", "vaidya", "receptionist",
         "rude", "dismissive", "therapist", "therapists", "seva",
+        "කාර්යමණ්ඩලය", "වෛද්‍ය", "දොස්තර", "හෙද", "සේවය", "කාරුණික", "නපුරු",
     })),
     (FeedbackCategory.FACILITY_ISSUE, frozenset({
         "room", "rooms", "clean", "dirty", "cold", "bed", "beds", "toilet", "facility",
         "facilities", "crowded", "smell", "ward", "wards", "bathroom",
+        "කාමරය", "කාමර", "පිරිසිදු", "අපිරිසිදු", "වැසිකිලි", "සුවපහසු", "රෝහල",
     })),
     (FeedbackCategory.TREATMENT_QUALITY, frozenset({
         "treatment", "treatments", "therapy", "therapies", "abhyanga", "shirodhara",
         "panchakarma", "herbal", "oil", "medicine", "medicines", "nadi", "pariksha",
+        "ප්‍රතිකාර", "ප්‍රතිකාරය", "තෙල්", "බෙහෙත්", "ඖෂධ", "අභ්‍යංග", "ශිරෝධාරා", "පංචකර්ම", "නාඩි",
     })),
 )
 
@@ -423,6 +429,7 @@ _POSITIVE_WORDS = frozenset({
     "calming", "calmed", "eased", "good", "pleasant", "appreciate", "appreciated",
     "warm", "clear", "caring", "lovely", "comforting", "thorough", "gentle",
     "professional", "comfortable",
+    "ස්තූතියි", "ස්තුතියි", "හොඳ", "විශිෂ්ට", "කාරුණික", "ගුණ", "සුවය", "සුවපත්", "අගය", "සතුටුයි", "තෘප්තිමත්",
 })
 
 _NEGATIVE_WORDS = frozenset({
@@ -430,9 +437,10 @@ _NEGATIVE_WORDS = frozenset({
     "complaint", "slow", "crowded", "cold", "dirty", "long", "late", "wait", "waiting",
     "delay", "delayed", "never", "noisy", "noise", "worn", "broken", "ignored",
     "painful", "disappointed", "smell", "smelled", "smelly", "problem", "problems",
+    "නරක", "අපිරිසිදු", "ප්‍රමාද", "ප්‍රමාදය", "දුර්වල", "අසතුටුදායක", "වේදනාකාරී", "ගැටලුව", "අමාරුයි", "කණගාටුයි",
 })
 
-_NEGATIONS = frozenset({"not", "no", "never", "nt"})
+_NEGATIONS = frozenset({"not", "no", "never", "nt", "නැත", "නැහැ", "නොවේ", "නෙවෙයි", "එපා"})
 
 
 def _polarity(tokens: list[str]) -> tuple[int, int]:
@@ -549,8 +557,43 @@ def flag_priority(feedback_summary: FeedbackSummary) -> PriorityFlag:
     return PriorityFlag(priority=priority, immediate_dashboard_alert=priority == FeedbackPriority.HIGH)
 
 
+def _clean_draft(text: str) -> str:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:markdown|text)?\s*|\s*```$", "", cleaned, flags=re.IGNORECASE).strip()
+
+    # Strip conversational LLM introductory phrases
+    cleaned = re.sub(
+        r"^(?:here(?:'s|\s+is)\s+(?:a\s+)?(?:suggested\s+|polite\s+|draft\s+)?reply(?:\s+for\s+the\s+hospital)?(?:\s+to\s+the\s+patient)?[:\s\-\n]+)",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip()
+    cleaned = re.sub(
+        r"^(?:draft\s+reply[:\s\-\n]+)",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip()
+
+    # Strip trailing LLM notes/disclaimers
+    cleaned = re.sub(
+        r"(?:\n|\s)*[\(\[\{]?(?:note|please note|disclaimer):.*$",
+        "",
+        cleaned,
+        flags=re.IGNORECASE | re.DOTALL,
+    ).strip()
+
+    # Strip surrounding quotes if the LLM quoted the entire reply
+    if (cleaned.startswith('"') and cleaned.endswith('"')) or (cleaned.startswith("'") and cleaned.endswith("'")):
+        cleaned = cleaned[1:-1].strip()
+
+    return cleaned
+
+
 def _limit_sentences(text: str, maximum: int = 4) -> str:
-    parts = [part.strip() for part in _SENTENCE_SPLIT.split(text.strip()) if part.strip()]
+    text = _clean_draft(text)
+    parts = [part.strip() for part in _SENTENCE_SPLIT.split(text) if part.strip()]
     if len(parts) > maximum:
         parts = parts[:maximum]
     kept = [part for part in parts if not _UNVERIFIED_PROMISE.search(part)]

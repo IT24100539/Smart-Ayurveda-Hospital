@@ -29,6 +29,8 @@ class PatientApp extends ConsumerWidget {
       title: 'Smart Ayurveda',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
       routerConfig: router,
       // Sinhala unless the patient switches, regardless of device locale.
       locale: locale,

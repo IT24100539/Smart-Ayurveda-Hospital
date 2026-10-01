@@ -270,6 +270,24 @@ public static class DbSeeder
     {
         if (await db.Patients.AnyAsync(cancellationToken))
         {
+            const string patientLoginEmail = "meera.nair@example.local";
+            if (!await db.Patients.AnyAsync(p => p.Email == patientLoginEmail, cancellationToken))
+            {
+                db.Patients.Add(new Patient
+                {
+                    Uhid = "SAH-2026-00007",
+                    FirstName = "Meera",
+                    LastName = "Nair",
+                    DateOfBirth = new DateOnly(1990, 6, 15),
+                    Gender = Gender.Female,
+                    Phone = "9876500001",
+                    Email = patientLoginEmail,
+                    Address = "Colombo",
+                    Prakriti = DoshaType.Pitta,
+                    IsActive = true
+                });
+                await db.SaveChangesAsync(cancellationToken);
+            }
             return;
         }
 
@@ -342,6 +360,19 @@ public static class DbSeeder
                 Phone = "0771000006",
                 Address = "Anuradhapura",
                 Prakriti = DoshaType.Vata | DoshaType.Kapha
+            },
+            new Patient
+            {
+                Uhid = "SAH-2026-00007",
+                FirstName = "Meera",
+                LastName = "Nair",
+                DateOfBirth = new DateOnly(1990, 6, 15),
+                Gender = Gender.Female,
+                Phone = "9876500001",
+                Email = "meera.nair@example.local",
+                Address = "Colombo",
+                Prakriti = DoshaType.Pitta,
+                IsActive = true
             });
     }
 

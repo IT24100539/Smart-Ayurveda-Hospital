@@ -46,7 +46,11 @@ public sealed class AgentWorkflowService : IAgentWorkflowService
         AskTreatmentInfoRequest request,
         CancellationToken cancellationToken)
     {
-        await _actors.RequirePatientAsync(cancellationToken);
+        var user = await _actors.RequireUserAsync(cancellationToken);
+        if (user.Role != UserRole.Patient)
+        {
+            throw new ForbiddenException("Only a patient can perform this action.");
+        }
         var response = await _agents.AskTreatmentInfoAsync(
             new TreatmentInfoAgentRequest(request.Question.Trim()),
             cancellationToken);
@@ -64,6 +68,22 @@ public sealed class AgentWorkflowService : IAgentWorkflowService
         return new AskTreatmentInfoResponse(
             response.Answer ?? "",
             matched,
+            response.Refused,
+            workflowId);
+    }
+
+    public async Task<AskPatientInfoResponse> AskPatientInfoAsync(
+        AskPatientInfoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var patient = await _actors.RequirePatientAsync(cancellationToken);
+        var response = await _agents.AskPatientInfoAsync(
+            new PatientInfoAgentRequest(patient.Id, request.Question.Trim()),
+            cancellationToken);
+
+        Guid.TryParse(response.WorkflowId, out var workflowId);
+        return new AskPatientInfoResponse(
+            response.Answer ?? "",
             response.Refused,
             workflowId);
     }

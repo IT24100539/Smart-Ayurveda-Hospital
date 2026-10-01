@@ -7,6 +7,7 @@ import '../../../shared/widgets/section_banner.dart';
 import '../../../theme/app_theme.dart';
 import '../../../l10n/feature_localizations.dart';
 import '../../../router/app_routes.dart';
+import '../../treatments/application/treatments_provider.dart';
 import '../data/appointment_repository.dart';
 import '../domain/appointment_models.dart';
 
@@ -74,6 +75,7 @@ class MyAppointmentsScreen extends ConsumerWidget {
                   message: copy.noAppointments,
                   detail: copy.chooseTreatmentFirst,
                   icon: Icons.event_note_outlined,
+                  imageAsset: 'assets/images/empty-appointments.png',
                   actionLabel: copy.bookNewAppointment,
                   onAction: () => context.go(AppRoutes.treatments),
                   useFilledAction: true,
@@ -133,56 +135,90 @@ class MyAppointmentsScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    appointment.treatmentName,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      appointment.treatmentName,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  AppointmentStatusChip(status: appointment.status),
+                ],
+              ),
+              const SizedBox(height: 18),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_today_outlined),
+                title: Text(copy.dateLabel),
+                subtitle: Text(
+                  copy.date('EEEE, d MMMM yyyy', appointment.requestedDate),
+                ),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.schedule),
+                title: Text(copy.timeLabel),
+                subtitle: Text(appointment.requestedTimeSlot),
+              ),
+              if (_canRescheduleOrCancel(appointment.status)) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  key: const ValueKey('reschedule-appointment-button'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AyurvedaColors.forest,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    final treatments =
+                        ref.read(treatmentsProvider).valueOrNull ?? [];
+                    final matching = treatments
+                        .where((t) =>
+                            t.nameEnglish == appointment.treatmentName ||
+                            t.nameSinhala == appointment.treatmentName)
+                        .firstOrNull;
+                    final effectiveTreatmentId =
+                        appointment.treatmentId ?? matching?.id ?? '';
+                    context.push(
+                      '/appointments/${appointment.id}/reschedule?treatmentId=$effectiveTreatmentId&name=${Uri.encodeComponent(appointment.treatmentName)}',
+                    );
+                  },
+                  icon: const Icon(Icons.event_repeat, size: 18),
+                  label: Text(
+                    copy.text(
+                      'Reschedule appointment',
+                      'හමුවීම වෙනත් දිනකට මාරු කරන්න',
                     ),
                   ),
                 ),
-                AppointmentStatusChip(status: appointment.status),
-              ],
-            ),
-            const SizedBox(height: 18),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_today_outlined),
-              title: Text(copy.dateLabel),
-              subtitle: Text(
-                copy.date('EEEE, d MMMM yyyy', appointment.requestedDate),
-              ),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.schedule),
-              title: Text(copy.timeLabel),
-              subtitle: Text(appointment.requestedTimeSlot),
-            ),
-            if (_canCancel(appointment.status)) ...[
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                  side: BorderSide(color: Theme.of(context).colorScheme.error),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  key: const ValueKey('cancel-appointment-button'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                    side: BorderSide(color: Theme.of(context).colorScheme.error),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    await _confirmCancel(context, ref, appointment);
+                  },
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: Text(copy.cancelAppointment),
                 ),
-                onPressed: () async {
-                  Navigator.pop(sheetContext);
-                  await _confirmCancel(context, ref, appointment);
-                },
-                icon: const Icon(Icons.cancel_outlined),
-                label: Text(copy.cancelAppointment),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -205,6 +241,7 @@ class MyAppointmentsScreen extends ConsumerWidget {
             child: Text(copy.keep),
           ),
           FilledButton(
+            key: const ValueKey('confirm-cancel-button'),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(copy.cancelAppointment),
           ),
@@ -229,7 +266,9 @@ class MyAppointmentsScreen extends ConsumerWidget {
     }
   }
 
-  static bool _canCancel(AppointmentStatus status) =>
+  /// Only appointments in 'pending' or 'approved' status can be rescheduled or cancelled.
+  /// Terminal/closed statuses ('cancelled', 'completed', 'rejected') hide modification controls.
+  static bool _canRescheduleOrCancel(AppointmentStatus status) =>
       status == AppointmentStatus.pending ||
       status == AppointmentStatus.approved;
 }

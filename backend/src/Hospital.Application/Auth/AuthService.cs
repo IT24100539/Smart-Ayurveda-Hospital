@@ -154,7 +154,38 @@ public sealed class AuthService : IAuthService
             throw new UnauthorizedException("Invalid email or password.");
         }
 
+        // Heal missing email link: if the patient record was created by staff
+        // (e.g., via phone number only) and has no email yet, stamp the login
+        // email onto it so RequirePatientAsync can find it by email going forward.
+        if (user.Role == UserRole.Patient)
+        {
+            await LinkPatientEmailIfMissingAsync(user, cancellationToken);
+        }
+
         return CreateResponse(user);
+    }
+
+    /// <summary>
+    /// Silently links the login email to an existing patient record that was
+    /// staff-created by phone (no email on the patient row). No-ops when the
+    /// patient record already has the correct email or doesn't exist at all.
+    /// </summary>
+    private async Task LinkPatientEmailIfMissingAsync(User user, CancellationToken cancellationToken)
+    {
+        // If a record already matches by email, nothing to do.
+        var byEmail = await _patients.GetByEmailAsync(user.Email, cancellationToken);
+        if (byEmail is not null)
+        {
+            return;
+        }
+
+        // Look for a staff-created record matched by phone.
+        var byPhone = await _patients.GetByPhoneAsync(user.PhoneNumber, cancellationToken);
+        if (byPhone is not null && string.IsNullOrWhiteSpace(byPhone.Email))
+        {
+            byPhone.Email = user.Email;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private AuthResponse CreateResponse(User user)

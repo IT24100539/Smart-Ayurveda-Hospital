@@ -438,4 +438,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get saveChanges => 'Save changes';
+
+  @override
+  String get myHealthHubTitle => 'My Health Hub';
+
+  @override
+  String get myHealthHubSubtitle =>
+      'Your therapy sessions and registration summary.';
+
+  @override
+  String get myTherapySessionsTitle => 'My therapy sessions';
+
+  @override
+  String get noTherapySessionsFound => 'No therapy sessions recorded yet.';
+
+  @override
+  String get nextSessionLabel => 'Next Session';
+
+  @override
+  String get myRegistrationSummaryTitle => 'My registration summary';
+
+  @override
+  String get uhidLabel => 'UHID';
+
+  @override
+  String get prakritiLabel => 'Prakriti';
+
+  @override
+  String get vikritiLabel => 'Vikriti';
+
+  @override
+  String get allergiesLabel => 'Allergies';
+
+  @override
+  String get bloodGroupLabel => 'Blood Group';
+
+  @override
+  String get notRecorded => 'Not recorded';
+
+  @override
+  String get healthHubError => 'Could not load health records.';
+
+  @override
+  String sessionsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sessions',
+      one: '1 session',
+    );
+    return '$_temp0';
+  }
 }

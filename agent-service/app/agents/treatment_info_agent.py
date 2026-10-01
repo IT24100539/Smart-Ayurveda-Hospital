@@ -74,11 +74,18 @@ def is_medical_advice_question(question: str) -> bool:
 # ---------------------------------------------------------------------------
 
 _STOPWORDS = frozenset(
-    "a an the is are was were what when where which who whom how do does "
-    "did will would shall can could may might about on in at to for of and "
-    "or but with from by this that these those it its i me my we our you "
-    "your they their there here please tell show give list "
-    "available availability schedule scheduled cost cost price much service treatment".split()
+    (
+        "a an the is are was were what when where which who whom how do does "
+        "did will would shall can could may might about on in at to for of and "
+        "or but with from by this that these those it its i me my we our you "
+        "your they their there here please tell show give list "
+        "available availability schedule scheduled cost costs price prices "
+        "fee fees much many service services treatment treatments therapy therapies "
+        "day days time times date dates detail details info information "
+        "offer offered offers rate rates charge charges get know have has "
+        "monday tuesday wednesday thursday friday saturday sunday "
+        "ගැන විස්තර කියන්න මොනවාද තියෙන්නේ තියෙන දවස් දින ගාස්තු මිල කරන්නේ ලබා දෙන"
+    ).split()
 )
 
 
@@ -87,10 +94,11 @@ def _extract_search_query(question: str) -> str:
 
     Strips punctuation and common stop words, returning the remaining
     meaningful terms that the backend ``Name`` filter can match against.
+    Returns empty string if all words are stop words or general inquiries.
     """
     words = re.sub(r"[^\w\s]", "", question).split()
     meaningful = [w for w in words if w.lower() not in _STOPWORDS]
-    return " ".join(meaningful[:5]) if meaningful else question.strip()[:50]
+    return " ".join(meaningful[:5]) if meaningful else ""
 
 
 # ---------------------------------------------------------------------------
@@ -98,28 +106,75 @@ def _extract_search_query(question: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def get_treatment_schedule(query: str) -> TreatmentScheduleToolOutput:
-    """Call the backend ``GET /api/treatments?name={query}`` endpoint.
+async def get_treatment_schedule(query: str, question: str = "") -> TreatmentScheduleToolOutput:
+    """Call the backend ``GET /api/treatments`` endpoint.
 
     Returns a typed :class:`TreatmentScheduleToolOutput` with matched
     treatments.  On any HTTP error or when no results are found the
     treatments list is empty — the function never raises.
     """
+    treatments: list[TreatmentScheduleItem] = []
     try:
         async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
             url = f"{settings.backend_base_url}/api/treatments"
-            resp = await client.get(url, params={"name": query})
-            resp.raise_for_status()
-            data = resp.json()
 
-            items_raw: list[dict[str, Any]] = data.get("items") or []
+            # 1. If a clean search keyword is extracted, try backend name search first
+            if query.strip():
+                resp = await client.get(url, params={"name": query.strip()})
+                resp.raise_for_status()
+                items_raw: list[dict[str, Any]] = resp.json().get("items") or []
+                treatments = [
+                    TreatmentScheduleItem.model_validate(item) for item in items_raw
+                ]
 
-            treatments = [
-                TreatmentScheduleItem.model_validate(item) for item in items_raw
-            ]
+            # 2. If no treatments matched or query was empty, fetch catalogue to match
+            # against full question context (e.g. Sinhala names, general inquiries, multi-term names)
+            if not treatments:
+                resp_all = await client.get(url, params={"pageSize": 100})
+                resp_all.raise_for_status()
+                all_raw: list[dict[str, Any]] = resp_all.json().get("items") or []
+                all_treatments = [
+                    TreatmentScheduleItem.model_validate(item) for item in all_raw
+                ]
+
+                full_text = f"{question} {query}".strip().lower()
+
+                # Check if any specific treatment name or keyword is mentioned
+                matched: list[TreatmentScheduleItem] = []
+                for t in all_treatments:
+                    t_name = t.name.lower()
+                    t_sinhala = (t.name_sinhala or "").lower()
+                    tokens = [tok for tok in re.split(r"\s+", t_name) if tok not in {"treatment", "therapy", "consultation"}]
+                    sinhala_tokens = [tok for tok in re.split(r"\s+", t_sinhala) if tok]
+                    if (
+                        t_name in full_text
+                        or (t_sinhala and t_sinhala in full_text)
+                        or any(tok in full_text for tok in tokens if len(tok) >= 4)
+                        or any(st in full_text for st in sinhala_tokens if len(st) >= 3)
+                    ):
+                        matched.append(t)
+
+                if matched:
+                    treatments = matched
+                else:
+                    # Check if this is a general inquiry about available treatments/catalogue
+                    general_inquiry_terms = {
+                        "treatment", "treatments", "therapy", "therapies", "service", "services",
+                        "catalog", "catalogue", "all", "available", "schedule", "schedules",
+                        "day", "days", "fee", "fees", "cost", "costs", "price", "prices",
+                        "offer", "offered", "list", "options", "what", "how much",
+                        "ප්‍රතිකාර", "සේවා", "ගාස්තු", "මිල", "දවස්", "දින",
+                    }
+                    if not query.strip() or any(term in full_text for term in general_inquiry_terms):
+                        unrecognized_specific = any(
+                            token in full_text
+                            for token in ["quantum", "chakra", "realignment", "acupuncture", "homeopathy", "reiki"]
+                        )
+                        if not unrecognized_specific:
+                            treatments = all_treatments
     except Exception:
         treatments = []
-    
+
     return TreatmentScheduleToolOutput(query=query, treatments=treatments)
 
 
@@ -192,7 +247,7 @@ def _should_continue(state: TreatmentInfoState) -> str:
 
 async def _search_node(state: TreatmentInfoState) -> TreatmentInfoState:
     """Second node — call the backend tool."""
-    tool_output = await get_treatment_schedule(state["search_query"])
+    tool_output = await get_treatment_schedule(state["search_query"], state.get("question", ""))
     return {
         **state,
         "tool_output": tool_output.model_dump(),
@@ -232,6 +287,7 @@ remove any.
 4. Keep your answer concise, friendly, and informative.
 5. Do NOT provide any medical advice, diagnosis, or treatment suitability \
 recommendations.
+6. If the user asks in Sinhala, please respond in natural, polite Sinhala.
 
 TREATMENT DATA:
 {treatment_data}
@@ -257,18 +313,22 @@ async def _answer_node(state: TreatmentInfoState) -> TreatmentInfoState:
     system_msg = _SYSTEM_PROMPT.format(treatment_data=treatment_context)
 
     try:
+        import asyncio
         llm = ChatOllama(
             base_url=settings.ollama_base_url,
             model=settings.ollama_model,
             temperature=0.1,
         )
-        response = await llm.ainvoke([
-            SystemMessage(content=system_msg),
-            HumanMessage(content=state["question"]),
-        ])
+        response = await asyncio.wait_for(
+            llm.ainvoke([
+                SystemMessage(content=system_msg),
+                HumanMessage(content=state["question"]),
+            ]),
+            timeout=settings.ollama_timeout_seconds,
+        )
         answer = response.content
     except Exception:
-        # Fallback: if Ollama is unavailable, produce a structured text answer
+        # Fallback: if Ollama is unavailable or times out, produce a structured text answer
         # directly from the data rather than failing.
         answer = (
             f"Here is the information I found:\n\n{treatment_context}"

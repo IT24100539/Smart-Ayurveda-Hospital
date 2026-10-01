@@ -8,10 +8,13 @@ from app.agents.feedback_support_agent import (
     FeedbackAgentResponse,
     run_feedback_support,
 )
+from app.agents.patient_info_agent import run_patient_info_agent
 from app.agents.scheduling_bed_agent import run_scheduling_bed_agent
 from app.agents.treatment_info_agent import run_treatment_info_agent
 from app.graph.coordinator import CoordinatorRequest, CoordinatorResponse, coordinate, invoke_graph
 from app.schemas import (
+    PatientInfoAgentRequest,
+    PatientInfoAgentResponse,
     SchedulingAgentRequest,
     SchedulingAgentResponse,
     TreatmentInfoAgentRequest,
@@ -79,6 +82,11 @@ async def invoke(payload: dict) -> JSONResponse:
 @app.post("/internal/agents/treatment-info", dependencies=[Depends(require_internal_secret)])
 async def treatment_info(request: TreatmentInfoAgentRequest) -> TreatmentInfoAgentResponse:
     return await run_treatment_info_agent(request)
+
+
+@app.post("/internal/agents/patient-info", dependencies=[Depends(require_internal_secret)])
+async def patient_info(request: PatientInfoAgentRequest) -> PatientInfoAgentResponse:
+    return await run_patient_info_agent(request)
 
 
 @app.post(

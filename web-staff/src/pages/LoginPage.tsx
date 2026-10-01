@@ -34,13 +34,19 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const login = useAuthStore((state) => state.login);
+  const logout = useAuthStore((state) => state.logout);
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(() => {
+    const state = location.state as { staffOnly?: boolean } | null;
+    return state?.staffOnly
+      ? "This portal is for hospital staff. Patients, please use the Smart Ayurveda mobile app."
+      : null;
+  });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -50,8 +56,12 @@ export function LoginPage() {
   }, []);
 
   if (hydrated && hasValidJwt(token) && user) {
-    const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-    return <Navigate to={from && from !== "/login" ? from : "/dashboard"} replace />;
+    if (isStaffRole(user.role)) {
+      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+      return <Navigate to={from && from !== "/login" ? from : "/dashboard"} replace />;
+    } else {
+      logout();
+    }
   }
 
   function validate(): FieldErrors {
@@ -82,11 +92,13 @@ export function LoginPage() {
     try {
       const auth = await api.login(email.trim(), password);
       if (!isStaffRole(auth.user.role)) {
-        setFormError("This portal is for hospital staff.");
+        logout();
+        setFormError("This portal is for hospital staff. Patients, please use the Smart Ayurveda mobile app.");
         return;
       }
       login(auth.token, auth.user);
-      navigate("/dashboard", { replace: true });
+      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+      navigate(from && from !== "/login" ? from : "/dashboard", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         const emailError = firstFieldError(err.fields, ["email", "Email"]);

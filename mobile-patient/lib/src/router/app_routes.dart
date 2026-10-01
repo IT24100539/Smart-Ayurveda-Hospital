@@ -15,15 +15,25 @@ abstract final class AppRoutes {
   static const submitComplaint = '/feedback/complaints/new';
   static const notifications = '/feedback/notifications';
   static const profile = '/profile';
+  static const healthHub = '/profile/health-hub';
+  static const charakaChat = '/charaka-chat';
+  static const onboarding = '/onboarding';
+  static const faq = '/faq';
+  static const contact = '/contact';
 
   static String bookingFor(String treatmentId) =>
       '/treatments/$treatmentId/book';
 
   static String treatmentById(String id) => '/treatments/$id';
 
-  /// Catalogue browsing is public. Booking and the other tabs need a session.
+  /// Catalogue browsing, onboarding, FAQs, and contact info are public.
   static bool isPublic(String location) {
-    if (location == splash || location == login || location == treatments) {
+    if (location == splash ||
+        location == login ||
+        location == onboarding ||
+        location == faq ||
+        location == contact ||
+        location == treatments) {
       return true;
     }
     final treatmentDetail = RegExp(r'^/treatments/[^/]+$');
@@ -38,7 +48,10 @@ abstract final class AppRoutes {
 
   static String? sanitizeReturnPath(String? path) {
     if (path == null || path.isEmpty) return null;
-    if (path == splash || path == login || path.startsWith('$login?')) {
+    if (path == splash ||
+        path == login ||
+        path == onboarding ||
+        path.startsWith('$login?')) {
       return null;
     }
     return path;

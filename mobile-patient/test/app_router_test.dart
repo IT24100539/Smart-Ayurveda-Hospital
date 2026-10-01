@@ -5,6 +5,7 @@ import 'package:patient_app/src/app.dart';
 import 'package:patient_app/src/core/storage/token_storage.dart';
 import 'package:patient_app/src/features/auth/application/auth_controller.dart';
 import 'package:patient_app/src/features/auth/presentation/login_screen.dart';
+import 'package:patient_app/src/features/onboarding/data/onboarding_storage.dart';
 import 'package:patient_app/src/features/treatments/application/treatments_provider.dart';
 import 'package:patient_app/src/l10n/app_localizations.dart';
 
@@ -24,6 +25,7 @@ class _UnauthenticatedAuth extends AuthController {
 Future<void> _pumpApp(
   WidgetTester tester, {
   String? storedToken,
+  bool seenOnboarding = true,
   List<Override> extraOverrides = const [],
 }) async {
   await tester.pumpWidget(
@@ -32,6 +34,9 @@ Future<void> _pumpApp(
         unauthorizedOverride,
         tokenStorageProvider.overrideWithValue(
           InMemoryTokenStorage(storedToken),
+        ),
+        onboardingStorageProvider.overrideWithValue(
+          InMemoryOnboardingStorage(seen: seenOnboarding),
         ),
         treatmentsProvider.overrideWith((ref) async => const []),
         ...extraOverrides,

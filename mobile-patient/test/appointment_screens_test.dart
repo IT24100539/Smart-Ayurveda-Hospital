@@ -17,11 +17,17 @@ class _FakeAppointmentRepository implements AppointmentRepository {
     this.availabilityByDate = const {},
     this.appointments = const [],
     this.createError,
+    this.cancelError,
+    this.rescheduleError,
   });
 
   final Map<DateTime, TreatmentAvailability> availabilityByDate;
   final List<Appointment> appointments;
   final Object? createError;
+  final Object? cancelError;
+  final Object? rescheduleError;
+  final List<String> cancelledIds = [];
+  final List<Map<String, dynamic>> rescheduleCalls = [];
 
   @override
   Future<TreatmentAvailability> availability(
@@ -32,7 +38,11 @@ class _FakeAppointmentRepository implements AppointmentRepository {
       const TreatmentAvailability(available: false, slots: []);
 
   @override
-  Future<void> cancel(String id) async {}
+  Future<void> cancel(String id) async {
+    final error = cancelError;
+    if (error != null) throw error;
+    cancelledIds.add(id);
+  }
 
   @override
   Future<Appointment> create({
@@ -44,16 +54,40 @@ class _FakeAppointmentRepository implements AppointmentRepository {
     final error = createError;
     if (error != null) throw error;
     return Appointment(
-    id: 'created',
-    treatmentName: treatment.name,
-    requestedDate: date,
-    requestedTimeSlot: slot.time,
-    status: AppointmentStatus.pending,
+      id: 'created',
+      treatmentName: treatment.name,
+      requestedDate: date,
+      requestedTimeSlot: slot.time,
+      status: AppointmentStatus.pending,
     );
   }
 
   @override
   Future<List<Appointment>> mine() async => appointments;
+
+  @override
+  Future<Appointment> reschedule({
+    required String appointmentId,
+    required DateTime date,
+    required String timeSlot,
+    String? scheduleId,
+  }) async {
+    final error = rescheduleError;
+    if (error != null) throw error;
+    rescheduleCalls.add({
+      'appointmentId': appointmentId,
+      'date': date,
+      'timeSlot': timeSlot,
+      'scheduleId': scheduleId,
+    });
+    return Appointment(
+      id: appointmentId,
+      treatmentName: 'Rescheduled Treatment',
+      requestedDate: date,
+      requestedTimeSlot: timeSlot,
+      status: AppointmentStatus.pending,
+    );
+  }
 }
 
 class _SignedInAuth extends AuthController {
@@ -281,4 +315,240 @@ void main() {
     expect(find.text('බලාපොරොත්තුවෙන්'), findsOneWidget);
     expect(find.text('විස්තර සඳහා තට්ටු කරන්න'), findsOneWidget);
   });
+
+  testWidgets('cancellation confirmation dialog cancels appointment on confirm', (
+    tester,
+  ) async {
+    final repository = _FakeAppointmentRepository(
+      appointments: [
+        Appointment(
+          id: 'appt-to-cancel',
+          treatmentName: 'Shirodhara',
+          requestedDate: DateTime(2026, 10, 1),
+          requestedTimeSlot: '10:00-11:00',
+          status: AppointmentStatus.approved,
+        ),
+      ],
+    );
+
+    await _pump(tester, const MyAppointmentsScreen(), repository);
+
+    // Tap appointment to open details sheet
+    await tester.tap(find.text('Shirodhara'));
+    await tester.pumpAndSettle();
+
+    // Tap Cancel appointment button
+    await tester.tap(find.byKey(const ValueKey('cancel-appointment-button')));
+    await tester.pumpAndSettle();
+
+    // Confirmation dialog should be visible
+    expect(find.text('Cancel appointment?'), findsOneWidget);
+
+    // Tap Keep first to verify it doesn't cancel
+    await tester.tap(find.text('Keep'));
+    await tester.pumpAndSettle();
+    expect(repository.cancelledIds, isEmpty);
+
+    // Open sheet again and confirm cancel
+    await tester.tap(find.text('Shirodhara'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('cancel-appointment-button')));
+    await tester.pumpAndSettle();
+
+    // Tap Cancel appointment in the dialog
+    await tester.tap(find.byKey(const ValueKey('confirm-cancel-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.cancelledIds, contains('appt-to-cancel'));
+    expect(find.textContaining('Appointment cancelled'), findsOneWidget);
+  });
+
+  testWidgets('cancellation failure displays error message', (
+    tester,
+  ) async {
+    final repository = _FakeAppointmentRepository(
+      appointments: [
+        Appointment(
+          id: 'appt-fail-cancel',
+          treatmentName: 'Panchakarma',
+          requestedDate: DateTime(2026, 10, 5),
+          requestedTimeSlot: '09:00-10:00',
+          status: AppointmentStatus.pending,
+        ),
+      ],
+      cancelError: const ApiException(
+        statusCode: 400,
+        detail: 'Cannot cancel an appointment within 2 hours of slot.',
+      ),
+    );
+
+    await _pump(tester, const MyAppointmentsScreen(), repository);
+
+    await tester.tap(find.text('Panchakarma'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('cancel-appointment-button')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('confirm-cancel-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Cannot cancel an appointment within 2 hours of slot.'), findsOneWidget);
+  });
+
+  testWidgets('rescheduling flow submits updated date and slot', (
+    tester,
+  ) async {
+    final targetDate = DateTime(2026, 10, 15);
+    final repository = _FakeAppointmentRepository(
+      availabilityByDate: {
+        targetDate: const TreatmentAvailability(
+          available: true,
+          slots: [TreatmentSlot(time: '14:00-15:00', scheduleId: 'sched-99')],
+        ),
+      },
+    );
+
+    await _pump(
+      tester,
+      BookAppointmentFlow(
+        treatment: const TreatmentBooking(
+          id: 'treatment-42',
+          name: 'Abhyanga Massage',
+        ),
+        candidateDates: [targetDate],
+        appointmentIdToReschedule: 'appt-1234',
+      ),
+      repository,
+      signedIn: true,
+    );
+
+    expect(find.text('Reschedule appointment'), findsOneWidget);
+
+    await tester.tap(find.byKey(BookAppointmentKeys.date(targetDate)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(BookAppointmentKeys.next));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('14:00-15:00'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Review'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Confirm Reschedule'), findsOneWidget);
+
+    await tester.tap(find.byKey(BookAppointmentKeys.submit));
+    await tester.pumpAndSettle();
+
+    expect(repository.rescheduleCalls.length, 1);
+    expect(repository.rescheduleCalls.first['appointmentId'], 'appt-1234');
+    expect(repository.rescheduleCalls.first['timeSlot'], '14:00-15:00');
+    expect(repository.rescheduleCalls.first['scheduleId'], 'sched-99');
+    expect(find.text('Reschedule Successful'), findsOneWidget);
+  });
+
+  testWidgets('rescheduling failure displays server error without optimistic update', (
+    tester,
+  ) async {
+    final targetDate = DateTime(2026, 10, 15);
+    final repository = _FakeAppointmentRepository(
+      availabilityByDate: {
+        targetDate: const TreatmentAvailability(
+          available: true,
+          slots: [TreatmentSlot(time: '14:00-15:00', scheduleId: 'sched-99')],
+        ),
+      },
+      rescheduleError: const ApiException(
+        statusCode: 400,
+        detail: 'The selected time slot is no longer available.',
+      ),
+    );
+
+    await _pump(
+      tester,
+      BookAppointmentFlow(
+        treatment: const TreatmentBooking(
+          id: 'treatment-42',
+          name: 'Abhyanga Massage',
+        ),
+        candidateDates: [targetDate],
+        appointmentIdToReschedule: 'appt-1234',
+      ),
+      repository,
+      signedIn: true,
+    );
+
+    await tester.tap(find.byKey(BookAppointmentKeys.date(targetDate)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(BookAppointmentKeys.next));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('14:00-15:00'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Review'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(BookAppointmentKeys.submit));
+    await tester.pumpAndSettle();
+
+    expect(find.text('The selected time slot is no longer available.'), findsOneWidget);
+    expect(find.text('Reschedule Successful'), findsNothing);
+  });
+
+  testWidgets(
+    'hides Cancel and Reschedule buttons for Cancelled, Completed, and Rejected appointments',
+    (tester) async {
+      final repository = _FakeAppointmentRepository(
+        appointments: [
+          Appointment(
+            id: 'appt-cancelled',
+            treatmentName: 'Shirodhara',
+            requestedDate: DateTime(2026, 10, 1),
+            requestedTimeSlot: '10:00-11:00',
+            status: AppointmentStatus.cancelled,
+          ),
+          Appointment(
+            id: 'appt-completed',
+            treatmentName: 'Abhyanga',
+            requestedDate: DateTime(2026, 9, 20),
+            requestedTimeSlot: '14:00-15:00',
+            status: AppointmentStatus.completed,
+          ),
+          Appointment(
+            id: 'appt-rejected',
+            treatmentName: 'Panchakarma',
+            requestedDate: DateTime(2026, 9, 25),
+            requestedTimeSlot: '09:00-10:00',
+            status: AppointmentStatus.rejected,
+          ),
+        ],
+      );
+
+      await _pump(tester, const MyAppointmentsScreen(), repository);
+
+      for (final treatment in ['Shirodhara', 'Abhyanga', 'Panchakarma']) {
+        final itemFinder = find.text(treatment);
+        await tester.scrollUntilVisible(itemFinder, 50);
+        await tester.tap(itemFinder);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey('cancel-appointment-button')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const ValueKey('reschedule-appointment-button')),
+          findsNothing,
+        );
+
+        // Close bottom sheet cleanly
+        Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+        await tester.pumpAndSettle();
+      }
+    },
+  );
 }
+

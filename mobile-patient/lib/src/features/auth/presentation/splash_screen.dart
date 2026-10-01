@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/language_switcher.dart';
 import '../../../theme/app_theme.dart';
+import '../../onboarding/application/onboarding_controller.dart';
 import '../application/auth_controller.dart';
 
 /// Shown while the stored session is restored. The router moves on once
-/// [AuthState.isResolved] is true.
+/// [AuthState.isResolved] and [OnboardingState.isResolved] are true.
 class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
 
@@ -16,6 +17,7 @@ class SplashScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     ref.watch(authControllerProvider);
+    ref.watch(onboardingControllerProvider);
 
     return Scaffold(
       body: SafeArea(

@@ -148,5 +148,19 @@
   "feedbackStatusHidden": "සඟවා ඇත",
   "feedbackStatusWithdrawn": "ඉවත් කරන ලදි",
   "escalatedOn": "ඉහළ නංවා ඇත",
-  "saveChanges": "වෙනස්කම් සුරකින්න"
+  "saveChanges": "වෙනස්කම් සුරකින්න",
+  "myHealthHubTitle": "මගේ සෞඛ්‍ය කේන්ද්‍රය",
+  "myHealthHubSubtitle": "ඔබගේ ප්‍රතිකාර සැසි සහ ලියාපදිංචි සාරාංශය.",
+  "myTherapySessionsTitle": "මගේ ප්‍රතිකාර සැසි",
+  "noTherapySessionsFound": "තවම ප්‍රතිකාර සැසි වාර්තා වී නොමැත.",
+  "nextSessionLabel": "මීළඟ සැසිය",
+  "myRegistrationSummaryTitle": "මගේ ලියාපදිංචි සාරාංශය",
+  "uhidLabel": "UHID අංකය",
+  "prakritiLabel": "ප්‍රකෘතිය",
+  "vikritiLabel": "වික්‍රිතිය",
+  "allergiesLabel": "ආසාත්මිකතා",
+  "bloodGroupLabel": "රුධිර වර්ගය",
+  "notRecorded": "වාර්තා වී නැත",
+  "healthHubError": "සෞඛ්‍ය වාර්තා ලබාගත නොහැක.",
+  "sessionsCount": "{count, plural, =1{සැසි 1} other{සැසි {count}}}"
 }

@@ -7,7 +7,7 @@ calls one existing specialist, and aggregate returns one response shape.
 
 from enum import Enum
 from typing import Any, TypedDict
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 from langgraph.graph import END, StateGraph
@@ -16,11 +16,13 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.agents.appointment_agent import run_appointment_agent
 from app.agents.feedback_support_agent import FeedbackAgentRequest, run_feedback_support
 from app.agents.intake_agent import run_intake_agent
+from app.agents.patient_info_agent import run_patient_info_agent
 from app.agents.scheduling_bed_agent import run_scheduling_bed_agent
 from app.agents.treatment_agent import run_treatment_agent
 from app.agents.treatment_info_agent import run_treatment_info_agent
 from app.graph.state import AgentState
 from app.schemas import (
+    PatientInfoAgentRequest,
     SchedulingAgentRequest,
     TreatmentInfoAgentRequest,
     WorkflowState,
@@ -233,24 +235,40 @@ async def delegate_node(state: CoordinatorState) -> dict[str, Any]:
             "approval_status": None,
             "final_outcome": "safe_failure" if result.refused else "success",
         }
-    reset_persistence_warning()
-    workflow_id = str(uuid4())
-    summary = run_intake_agent(objective, context)
-    await persist(get_state_store().save(WorkflowState(
-        workflow_id=workflow_id,
-        objective=objective,
-        agent_name="patient_info",
-        plan=["intake"],
-        completed_steps=["intake"],
-        approval_status=None,
-        final_outcome="success",
-    )))
-    return {
-        "workflow_id": workflow_id,
-        "summary": summary,
-        "approval_status": None,
-        "final_outcome": "success",
-    }
+    if specialist is Specialist.PATIENT_INFO:
+        patient_id_raw = context.get("patient_id") or context.get("patientId")
+        if patient_id_raw:
+            try:
+                pid = UUID(patient_id_raw)
+                result = await run_patient_info_agent(
+                    PatientInfoAgentRequest(patient_id=pid, question=objective)
+                )
+                return {
+                    "workflow_id": result.workflow_id,
+                    "summary": result.answer,
+                    "approval_status": None,
+                    "final_outcome": "safe_failure" if result.refused else "success",
+                }
+            except Exception:
+                pass
+        reset_persistence_warning()
+        workflow_id = str(uuid4())
+        summary = run_intake_agent(objective, context)
+        await persist(get_state_store().save(WorkflowState(
+            workflow_id=workflow_id,
+            objective=objective,
+            agent_name="patient_info",
+            plan=["intake"],
+            completed_steps=["intake"],
+            approval_status=None,
+            final_outcome="success",
+        )))
+        return {
+            "workflow_id": workflow_id,
+            "summary": summary,
+            "approval_status": None,
+            "final_outcome": "success",
+        }
 
 
 def aggregate_node(state: CoordinatorState) -> dict[str, Any]:

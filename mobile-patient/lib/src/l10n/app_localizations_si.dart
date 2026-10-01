@@ -439,4 +439,55 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get saveChanges => 'වෙනස්කම් සුරකින්න';
+
+  @override
+  String get myHealthHubTitle => 'මගේ සෞඛ්‍ය කේන්ද්‍රය';
+
+  @override
+  String get myHealthHubSubtitle =>
+      'ඔබගේ ප්‍රතිකාර සැසි සහ ලියාපදිංචි සාරාංශය.';
+
+  @override
+  String get myTherapySessionsTitle => 'මගේ ප්‍රතිකාර සැසි';
+
+  @override
+  String get noTherapySessionsFound => 'තවම ප්‍රතිකාර සැසි වාර්තා වී නොමැත.';
+
+  @override
+  String get nextSessionLabel => 'මීළඟ සැසිය';
+
+  @override
+  String get myRegistrationSummaryTitle => 'මගේ ලියාපදිංචි සාරාංශය';
+
+  @override
+  String get uhidLabel => 'UHID අංකය';
+
+  @override
+  String get prakritiLabel => 'ප්‍රකෘතිය';
+
+  @override
+  String get vikritiLabel => 'වික්‍රිතිය';
+
+  @override
+  String get allergiesLabel => 'ආසාත්මිකතා';
+
+  @override
+  String get bloodGroupLabel => 'රුධිර වර්ගය';
+
+  @override
+  String get notRecorded => 'වාර්තා වී නැත';
+
+  @override
+  String get healthHubError => 'සෞඛ්‍ය වාර්තා ලබාගත නොහැක.';
+
+  @override
+  String sessionsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'සැසි $count',
+      one: 'සැසි 1',
+    );
+    return '$_temp0';
+  }
 }

@@ -8,6 +8,7 @@ class EmptyState extends StatelessWidget {
     required this.message,
     this.detail,
     this.icon = Icons.spa_outlined,
+    this.imageAsset,
     this.actionLabel,
     this.onAction,
     this.useFilledAction = false,
@@ -19,6 +20,7 @@ class EmptyState extends StatelessWidget {
   final String message;
   final String? detail;
   final IconData icon;
+  final String? imageAsset;
   final String? actionLabel;
   final VoidCallback? onAction;
   final bool useFilledAction;
@@ -34,6 +36,7 @@ class EmptyState extends StatelessWidget {
       _StatusBody(
         icon: icon,
         iconColor: AyurvedaColors.sage,
+        imageAsset: imageAsset,
         message: message,
         detail: detail,
         actionLabel: actionLabel,
@@ -91,6 +94,7 @@ class _StatusBody extends StatelessWidget {
   const _StatusBody({
     required this.icon,
     required this.iconColor,
+    this.imageAsset,
     required this.message,
     this.detail,
     this.actionLabel,
@@ -101,6 +105,7 @@ class _StatusBody extends StatelessWidget {
 
   final IconData icon;
   final Color iconColor;
+  final String? imageAsset;
   final String message;
   final String? detail;
   final String? actionLabel;
@@ -117,9 +122,27 @@ class _StatusBody extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 48, color: iconColor),
+            if (imageAsset != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(
+                  imageAsset!,
+                  height: 140,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Icon(icon, size: 52, color: iconColor),
+                ),
+              ),
+            ] else
+              Icon(icon, size: 52, color: iconColor),
             const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             if (detail != null) ...[
               const SizedBox(height: 8),
               Text(

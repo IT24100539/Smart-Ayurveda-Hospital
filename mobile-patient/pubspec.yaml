@@ -68,11 +68,7 @@ flutter:
   generate: true
 
   assets:
-    - assets/images/ayurveda-courtyard.png
-    - assets/images/herbal-oils.png
-    - assets/images/ayurveda-ward.png
-    - assets/images/feedback-note.png
-    - assets/images/consultation-desk.png
+    - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -118,6 +118,7 @@ class Appointment {
     required this.requestedDate,
     required this.requestedTimeSlot,
     required this.status,
+    this.treatmentId,
   });
 
   final String id;
@@ -125,6 +126,7 @@ class Appointment {
   final DateTime requestedDate;
   final String requestedTimeSlot;
   final AppointmentStatus status;
+  final String? treatmentId;
 
   factory Appointment.fromJson(Map<String, dynamic> json) => Appointment(
     id: json['id'].toString(),
@@ -132,5 +134,6 @@ class Appointment {
     requestedDate: DateTime.parse(json['requestedDate'].toString()),
     requestedTimeSlot: json['requestedTimeSlot']?.toString() ?? '',
     status: AppointmentStatus.fromWire(json['status']),
+    treatmentId: json['treatmentId']?.toString(),
   );
 }

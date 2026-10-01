@@ -322,6 +322,7 @@ class _FeedbackLinkSelector extends ConsumerWidget {
           _VisitMenu(
             selectedId: appointmentId,
             onSelected: onAppointment,
+            onSwitchToTreatment: () => onLink(_FeedbackLink.treatment),
           )
         else
           _TreatmentMenu(
@@ -334,10 +335,15 @@ class _FeedbackLinkSelector extends ConsumerWidget {
 }
 
 class _VisitMenu extends ConsumerWidget {
-  const _VisitMenu({required this.selectedId, required this.onSelected});
+  const _VisitMenu({
+    required this.selectedId,
+    required this.onSelected,
+    this.onSwitchToTreatment,
+  });
 
   final String? selectedId;
   final ValueChanged<String?> onSelected;
+  final VoidCallback? onSwitchToTreatment;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -357,16 +363,27 @@ class _VisitMenu extends ConsumerWidget {
             .where((visit) => visit.status == AppointmentStatus.completed)
             .toList();
         if (completed.isEmpty) {
-          return Text(
-            l10n.noCompletedVisit,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          return InkWell(
+            onTap: onSwitchToTreatment,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                l10n.noCompletedVisit,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
             ),
           );
         }
+        if (selectedId == null && completed.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            onSelected(completed.first.id);
+          });
+        }
         final selected = completed.any((visit) => visit.id == selectedId)
             ? selectedId
-            : null;
+            : completed.first.id;
         return DropdownButtonFormField<String>(
           key: ValueKey('visit-$selected'),
           initialValue: selected,
@@ -409,9 +426,14 @@ class _TreatmentMenu extends ConsumerWidget {
   }
 
   Widget _treatmentMenu(AppLocalizations l10n, List<Treatment> items) {
+    if (selectedId == null && items.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        onSelected(items.first.id);
+      });
+    }
     final selected = items.any((item) => item.id == selectedId)
         ? selectedId
-        : null;
+        : (items.isNotEmpty ? items.first.id : null);
     return DropdownButtonFormField<String>(
       key: ValueKey('treatment-$selected'),
       initialValue: selected,

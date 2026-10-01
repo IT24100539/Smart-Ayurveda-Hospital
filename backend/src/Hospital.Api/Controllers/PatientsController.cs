@@ -27,6 +27,7 @@ public sealed class PatientsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin,Doctor,FrontDeskStaff")]
     public async Task<ActionResult<PagedResult<PatientDto>>> Search(
         [FromQuery] string? q,
         [FromQuery] int page = 1,
@@ -35,10 +36,12 @@ public sealed class PatientsController : ControllerBase
         Ok(await _patients.SearchAsync(q, page, pageSize, cancellationToken));
 
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Admin,Doctor,FrontDeskStaff")]
     public async Task<ActionResult<PatientDto>> Get(Guid id, CancellationToken cancellationToken) =>
         Ok(await _patients.GetByIdAsync(id, cancellationToken));
 
     [HttpPost]
+    [Authorize(Roles = "Admin,Doctor,FrontDeskStaff")]
     public async Task<ActionResult<PatientDto>> Create(CreatePatientRequest request, CancellationToken cancellationToken)
     {
         await _createValidator.ValidateAndThrowAsync(request, cancellationToken);
@@ -47,6 +50,7 @@ public sealed class PatientsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Doctor,FrontDeskStaff")]
     public async Task<ActionResult<PatientDto>> Update(Guid id, UpdatePatientRequest request, CancellationToken cancellationToken)
     {
         await _updateValidator.ValidateAndThrowAsync(request, cancellationToken);

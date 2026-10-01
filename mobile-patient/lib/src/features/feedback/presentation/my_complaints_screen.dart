@@ -36,7 +36,10 @@ class MyComplaintsScreen extends ConsumerWidget {
         ),
         data: (items) {
           if (items.isEmpty) {
-            return EmptyState(message: l10n.complaintsEmpty);
+            return EmptyState(
+              message: l10n.complaintsEmpty,
+              imageAsset: 'assets/images/empty-feedback.png',
+            );
           }
           return RefreshIndicator(
             onRefresh: () => ref.refresh(myComplaintsProvider.future),

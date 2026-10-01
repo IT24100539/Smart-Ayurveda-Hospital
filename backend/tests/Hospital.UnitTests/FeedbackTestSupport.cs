@@ -220,6 +220,13 @@ internal sealed class FeedbackHarness
             DateOnly? onDate, Guid? patientId, Guid? doctorId, int page, int pageSize, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
+        public Task<AppointmentDto> RescheduleAsync(
+            Guid id,
+            RescheduleAppointmentRequest request,
+            Guid? requestingPatientId,
+            CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
         public Task<AppointmentDto> UpdateStatusAsync(Guid id, UpdateAppointmentStatusRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
     }
@@ -291,6 +298,19 @@ internal sealed class FeedbackHarness
             }
 
             return Task.FromResult(new TreatmentInfoAgentResponse(Reply, [], false, Guid.NewGuid().ToString()));
+        }
+
+        public Task<PatientInfoAgentResponse> AskPatientInfoAsync(
+            PatientInfoAgentRequest request,
+            CancellationToken cancellationToken)
+        {
+            Calls++;
+            if (Failure is not null)
+            {
+                throw Failure;
+            }
+
+            return Task.FromResult(new PatientInfoAgentResponse(Reply, false, Guid.NewGuid().ToString()));
         }
     }
 

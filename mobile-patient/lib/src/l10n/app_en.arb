@@ -345,5 +345,39 @@
   "escalatedOn": "Escalated",
   "@escalatedOn": {},
   "saveChanges": "Save changes",
-  "@saveChanges": {}
+  "@saveChanges": {},
+  "myHealthHubTitle": "My Health Hub",
+  "@myHealthHubTitle": {},
+  "myHealthHubSubtitle": "Your therapy sessions and registration summary.",
+  "@myHealthHubSubtitle": {},
+  "myTherapySessionsTitle": "My therapy sessions",
+  "@myTherapySessionsTitle": {},
+  "noTherapySessionsFound": "No therapy sessions recorded yet.",
+  "@noTherapySessionsFound": {},
+  "nextSessionLabel": "Next Session",
+  "@nextSessionLabel": {},
+  "myRegistrationSummaryTitle": "My registration summary",
+  "@myRegistrationSummaryTitle": {},
+  "uhidLabel": "UHID",
+  "@uhidLabel": {},
+  "prakritiLabel": "Prakriti",
+  "@prakritiLabel": {},
+  "vikritiLabel": "Vikriti",
+  "@vikritiLabel": {},
+  "allergiesLabel": "Allergies",
+  "@allergiesLabel": {},
+  "bloodGroupLabel": "Blood Group",
+  "@bloodGroupLabel": {},
+  "notRecorded": "Not recorded",
+  "@notRecorded": {},
+  "healthHubError": "Could not load health records.",
+  "@healthHubError": {},
+  "sessionsCount": "{count, plural, =1{1 session} other{{count} sessions}}",
+  "@sessionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

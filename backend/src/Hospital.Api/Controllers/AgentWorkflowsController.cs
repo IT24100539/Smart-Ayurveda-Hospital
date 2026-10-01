@@ -30,6 +30,7 @@ public sealed class AgentWorkflowsController : ControllerBase
     }
 
     [HttpPost("start")]
+    [Authorize(Roles = "Admin,Doctor,FrontDeskStaff")]
     public async Task<ActionResult<CoordinatorAgentResponse>> Start(
         StartAgentWorkflowRequest request,
         CancellationToken cancellationToken)
@@ -53,7 +54,25 @@ public sealed class AgentWorkflowsController : ControllerBase
         return Ok(await _workflows.AskTreatmentAsync(request, cancellationToken));
     }
 
+    /// <summary>
+    /// Patient ask for the patient-info agent (administrative details such as UHID, district, address).
+    /// Medical-advice questions come back refused.
+    /// </summary>
+    [HttpPost("ask-patient")]
+    [Authorize(Roles = "Patient")]
+    public async Task<ActionResult<AskPatientInfoResponse>> AskPatient(
+        AskPatientInfoRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Question))
+        {
+            return BadRequest("Question is required.");
+        }
+        return Ok(await _workflows.AskPatientInfoAsync(request, cancellationToken));
+    }
+
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Admin,Doctor,FrontDeskStaff")]
     public async Task<ActionResult<WorkflowExecutionDto>> Get(Guid id, CancellationToken cancellationToken) =>
         Ok(await _workflows.GetAsync(id, cancellationToken));
 
