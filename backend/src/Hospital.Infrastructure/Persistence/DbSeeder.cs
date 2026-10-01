@@ -7,7 +7,7 @@ namespace Hospital.Infrastructure.Persistence;
 
 public static class DbSeeder
 {
-    public static async Task SeedAsync(HospitalDbContext db, ILogger logger, CancellationToken cancellationToken = default)
+    public static async Task SeedAsync(HospitalDbContext db, ILogger logger, bool isDevelopment = true, CancellationToken cancellationToken = default)
     {
         if (db.Database.IsRelational())
         {
@@ -26,72 +26,116 @@ public static class DbSeeder
             await db.Database.EnsureCreatedAsync(cancellationToken);
         }
 
-        if (!await db.Users.AnyAsync(cancellationToken))
+        if (isDevelopment)
         {
-            db.Users.AddRange(
-                new User
-                {
-                    Email = "admin@smartayurveda.local",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Admin1"),
-                    FullName = "Hospital Administrator",
-                    PhoneNumber = "0000000000",
-                    Role = UserRole.Admin
-                },
-                new User
-                {
-                    Email = "doctor@smartayurveda.local",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Doctor1"),
-                    FullName = "Dr. Ananya Sharma",
-                    PhoneNumber = "0000000001",
-                    Role = UserRole.Doctor
-                });
-        }
-
-        if (!await db.Users.AnyAsync(u => u.Email == "therapist@smartayurveda.local", cancellationToken))
-        {
-            db.Users.Add(new User
+            if (!await db.Users.AnyAsync(cancellationToken))
             {
-                Email = "therapist@smartayurveda.local",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Therapist1"),
-                FullName = "Nimali Perera",
-                PhoneNumber = "0000000002",
-                Role = UserRole.Therapist
-            });
-        }
+                db.Users.AddRange(
+                    new User
+                    {
+                        Email = "admin@smartayurveda.local",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Admin1"),
+                        FullName = "Hospital Administrator",
+                        PhoneNumber = "0000000000",
+                        Role = UserRole.Admin,
+                        TokenVersion = 1,
+                        MustChangePassword = false
+                    },
+                    new User
+                    {
+                        Email = "doctor@smartayurveda.local",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Doctor1"),
+                        FullName = "Dr. Ananya Sharma",
+                        PhoneNumber = "0000000001",
+                        Role = UserRole.Doctor,
+                        TokenVersion = 1,
+                        MustChangePassword = false
+                    });
+            }
 
-        const string patientLoginEmail = "meera.nair@example.local";
-        if (!await db.Users.AnyAsync(x => x.Email == patientLoginEmail, cancellationToken))
-        {
-            db.Users.Add(new User
+            if (!await db.Users.AnyAsync(u => u.Email == "therapist@smartayurveda.local", cancellationToken))
             {
-                Email = patientLoginEmail,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Patient1"),
-                FullName = "Meera Nair",
-                PhoneNumber = "9876500001",
-                Role = UserRole.Patient
-            });
-        }
-
-        if (!await db.StaffUsers.AnyAsync(cancellationToken))
-        {
-            db.StaffUsers.AddRange(
-                new StaffUser
+                db.Users.Add(new User
                 {
-                    Email = "admin@smartayurveda.local",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Admin1"),
-                    FullName = "Hospital Administrator",
-                    Role = StaffRole.Admin,
-                    Phone = "0000000000"
-                },
-                new StaffUser
-                {
-                    Email = "doctor@smartayurveda.local",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Doctor1"),
-                    FullName = "Dr. Ananya Sharma",
-                    Role = StaffRole.Doctor,
-                    Specialization = "Kayachikitsa",
-                    Phone = "0000000001"
+                    Email = "therapist@smartayurveda.local",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Therapist1"),
+                    FullName = "Nimali Perera",
+                    PhoneNumber = "0000000002",
+                    Role = UserRole.Therapist,
+                    TokenVersion = 1,
+                    MustChangePassword = false
                 });
+            }
+
+            const string patientLoginEmail = "meera.nair@example.local";
+            if (!await db.Users.AnyAsync(x => x.Email == patientLoginEmail, cancellationToken))
+            {
+                db.Users.Add(new User
+                {
+                    Email = patientLoginEmail,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Patient1"),
+                    FullName = "Meera Nair",
+                    PhoneNumber = "9876500001",
+                    Role = UserRole.Patient,
+                    TokenVersion = 1,
+                    MustChangePassword = false
+                });
+            }
+
+            if (!await db.StaffUsers.AnyAsync(cancellationToken))
+            {
+                db.StaffUsers.AddRange(
+                    new StaffUser
+                    {
+                        Email = "admin@smartayurveda.local",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Admin1"),
+                        FullName = "Hospital Administrator",
+                        Role = StaffRole.Admin,
+                        Phone = "0000000000"
+                    },
+                    new StaffUser
+                    {
+                        Email = "doctor@smartayurveda.local",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Doctor1"),
+                        FullName = "Dr. Ananya Sharma",
+                        Role = StaffRole.Doctor,
+                        Specialization = "Kayachikitsa",
+                        Phone = "0000000001"
+                    });
+            }
+        }
+        else
+        {
+            // Production / Staging: Seed accounts exist only in Development.
+            // Require initial-admin setup via environment variables.
+            var hasAdmin = await db.Users.AnyAsync(u => u.Role == UserRole.Admin, cancellationToken);
+            if (!hasAdmin)
+            {
+                var adminEmail = Environment.GetEnvironmentVariable("ADMIN_INITIAL_EMAIL");
+                var adminPassword = Environment.GetEnvironmentVariable("ADMIN_INITIAL_PASSWORD");
+                var adminName = Environment.GetEnvironmentVariable("ADMIN_INITIAL_NAME") ?? "System Administrator";
+                var adminPhone = Environment.GetEnvironmentVariable("ADMIN_INITIAL_PHONE") ?? "0000000000";
+
+                if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
+                {
+                    logger.LogInformation("Provisioning initial Production administrator for {Email}", adminEmail);
+                    db.Users.Add(new User
+                    {
+                        Email = adminEmail.Trim().ToLowerInvariant(),
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                        FullName = adminName.Trim(),
+                        PhoneNumber = adminPhone.Trim(),
+                        Role = UserRole.Admin,
+                        IsActive = true,
+                        TokenVersion = 1,
+                        MustChangePassword = true
+                    });
+                }
+                else
+                {
+                    logger.LogWarning("Production environment detected but no Admin user exists and ADMIN_INITIAL_EMAIL / ADMIN_INITIAL_PASSWORD are not set.");
+                }
+            }
         }
 
         await db.SaveChangesAsync(cancellationToken);

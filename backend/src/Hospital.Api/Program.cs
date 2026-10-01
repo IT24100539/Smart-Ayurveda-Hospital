@@ -12,6 +12,7 @@ using Hospital.Infrastructure;
 using Hospital.Infrastructure.Identity;
 using Hospital.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
@@ -103,6 +104,40 @@ try
                 RoleClaimType = ClaimTypes.Role,
                 NameClaimType = ClaimTypes.Name
             };
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = async context =>
+                {
+                    var db = context.HttpContext.RequestServices.GetRequiredService<HospitalDbContext>();
+                    var sub = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                        ?? context.Principal?.FindFirst("UserId")?.Value;
+
+                    if (!Guid.TryParse(sub, out var userId))
+                    {
+                        return;
+                    }
+
+                    var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                    if (user is not null)
+                    {
+                        if (!user.IsActive)
+                        {
+                            context.Fail("User account has been deactivated.");
+                            return;
+                        }
+
+                        var tokenVersionClaim = context.Principal?.FindFirst("token_version")?.Value;
+                        if (!string.IsNullOrEmpty(tokenVersionClaim) && int.TryParse(tokenVersionClaim, out var tokenVersion))
+                        {
+                            if (tokenVersion != user.TokenVersion)
+                            {
+                                context.Fail("Token has been revoked.");
+                                return;
+                            }
+                        }
+                    }
+                }
+            };
         })
         .AddScheme<AuthenticationSchemeOptions, InternalServiceAuthenticationHandler>(
             InternalServiceAuthenticationHandler.SchemeName, _ => { });
@@ -172,7 +207,7 @@ try
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
-        await DbSeeder.SeedAsync(db, logger);
+        await DbSeeder.SeedAsync(db, logger, app.Environment.IsDevelopment());
     }
 
     app.Run();

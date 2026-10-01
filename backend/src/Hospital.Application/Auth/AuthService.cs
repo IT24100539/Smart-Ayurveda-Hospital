@@ -165,6 +165,48 @@ public sealed class AuthService : IAuthService
         return CreateResponse(user);
     }
 
+    public async Task<AuthResponse> ChangePasswordAsync(
+        Guid userId,
+        ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await _users.GetByIdAsync(userId, cancellationToken)
+            ?? throw new UnauthorizedException("User not found.");
+
+        if (!user.IsActive)
+        {
+            throw new UnauthorizedException("User account is inactive.");
+        }
+
+        if (!_passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+        {
+            throw new BadRequestException("Current password is incorrect.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+        {
+            throw new BadRequestException("New password must be at least 8 characters long.");
+        }
+
+        if (request.NewPassword != request.ConfirmPassword)
+        {
+            throw new BadRequestException("New password and confirmation do not match.");
+        }
+
+        if (request.CurrentPassword == request.NewPassword)
+        {
+            throw new BadRequestException("New password cannot be the same as the current password.");
+        }
+
+        user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
+        user.MustChangePassword = false;
+        user.TokenVersion++;
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return CreateResponse(user);
+    }
+
     /// <summary>
     /// Silently links the login email to an existing patient record that was
     /// staff-created by phone (no email on the patient row). No-ops when the
@@ -194,7 +236,7 @@ public sealed class AuthService : IAuthService
         return new AuthResponse(
             token,
             expiresAt,
-            new UserSummary(user.Id, user.FullName, user.Email, user.PhoneNumber, user.Role));
+            new UserSummary(user.Id, user.FullName, user.Email, user.PhoneNumber, user.Role, user.MustChangePassword));
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();

@@ -120,6 +120,26 @@ public sealed class AuthServiceTests
             Items.Add(user);
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<User>> ListStaffAsync(string? query, UserRole? role, bool? isActive, int skip, int take, CancellationToken cancellationToken)
+        {
+            var q = Items.Where(x => x.Role != UserRole.Patient);
+            if (role.HasValue) q = q.Where(x => x.Role == role.Value);
+            if (isActive.HasValue) q = q.Where(x => x.IsActive == isActive.Value);
+            IReadOnlyList<User> list = q.Skip(skip).Take(take).ToList();
+            return Task.FromResult(list);
+        }
+
+        public Task<int> CountStaffAsync(string? query, UserRole? role, bool? isActive, CancellationToken cancellationToken)
+        {
+            var q = Items.Where(x => x.Role != UserRole.Patient);
+            if (role.HasValue) q = q.Where(x => x.Role == role.Value);
+            if (isActive.HasValue) q = q.Where(x => x.IsActive == isActive.Value);
+            return Task.FromResult(q.Count());
+        }
+
+        public Task<int> CountActiveAdminsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(Items.Count(x => x.Role == UserRole.Admin && x.IsActive));
     }
 
     private sealed class FakePatients : IPatientRepository

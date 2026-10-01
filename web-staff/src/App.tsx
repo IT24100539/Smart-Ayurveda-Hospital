@@ -11,6 +11,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { PatientsPage } from "./pages/PatientsPage";
 import { TreatmentsPage } from "./pages/TreatmentsPage";
 import { WardsPage } from "./pages/WardsPage";
+import { StaffManagementPage } from "./pages/StaffManagementPage";
 
 /**
  * Directs root and wildcard requests:
@@ -92,6 +93,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={ROUTE_ROLES.aiApprovals}>
               <AiApprovalsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff-management"
+          element={
+            <ProtectedRoute roles={ROUTE_ROLES.staffManagement}>
+              <StaffManagementPage />
             </ProtectedRoute>
           }
         />

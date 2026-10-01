@@ -26,6 +26,7 @@ public DbSet<Bed> Beds => Set<Bed>();
     public DbSet<Complaint> Complaints => Set<Complaint>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<WorkflowExecution> WorkflowExecutions => Set<WorkflowExecution>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

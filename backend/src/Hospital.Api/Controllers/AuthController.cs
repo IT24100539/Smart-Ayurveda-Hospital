@@ -47,6 +47,25 @@ public sealed class AuthController : ControllerBase
         return Ok(await _auth.LoginAsync(request, cancellationToken));
     }
 
+    [HttpPost("change-password")]
+    [Authorize]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AuthResponse>> ChangePassword(
+        ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("UserId");
+        if (!Guid.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var response = await _auth.ChangePasswordAsync(userId, request, cancellationToken);
+        return Ok(response);
+    }
+
     private UserRole? GetActorRole()
     {
         if (User.Identity?.IsAuthenticated != true)

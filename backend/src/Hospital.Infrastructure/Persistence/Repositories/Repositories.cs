@@ -76,6 +76,98 @@ public sealed class UserRepository : IUserRepository
 
     public async Task AddAsync(User user, CancellationToken cancellationToken) =>
         await _db.Users.AddAsync(user, cancellationToken);
+
+    public async Task<IReadOnlyList<User>> ListStaffAsync(
+        string? query,
+        UserRole? role,
+        bool? isActive,
+        int skip,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var q = _db.Users.AsNoTracking().Where(x => x.Role != UserRole.Patient);
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var trimmed = query.Trim().ToLower();
+            q = q.Where(x => x.FullName.ToLower().Contains(trimmed) ||
+                             x.Email.ToLower().Contains(trimmed) ||
+                             x.PhoneNumber.Contains(trimmed));
+        }
+
+        if (role.HasValue)
+        {
+            q = q.Where(x => x.Role == role.Value);
+        }
+
+        if (isActive.HasValue)
+        {
+            q = q.Where(x => x.IsActive == isActive.Value);
+        }
+
+        return await q.OrderByDescending(x => x.CreatedAt)
+                      .Skip(skip)
+                      .Take(take)
+                      .ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> CountStaffAsync(
+        string? query,
+        UserRole? role,
+        bool? isActive,
+        CancellationToken cancellationToken)
+    {
+        var q = _db.Users.AsNoTracking().Where(x => x.Role != UserRole.Patient);
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var trimmed = query.Trim().ToLower();
+            q = q.Where(x => x.FullName.ToLower().Contains(trimmed) ||
+                             x.Email.ToLower().Contains(trimmed) ||
+                             x.PhoneNumber.Contains(trimmed));
+        }
+
+        if (role.HasValue)
+        {
+            q = q.Where(x => x.Role == role.Value);
+        }
+
+        if (isActive.HasValue)
+        {
+            q = q.Where(x => x.IsActive == isActive.Value);
+        }
+
+        return await q.CountAsync(cancellationToken);
+    }
+
+    public Task<int> CountActiveAdminsAsync(CancellationToken cancellationToken) =>
+        _db.Users.AsNoTracking().CountAsync(x => x.Role == UserRole.Admin && x.IsActive, cancellationToken);
+}
+
+public sealed class AuditLogRepository : IAuditLogRepository
+{
+    private readonly HospitalDbContext _db;
+
+    public AuditLogRepository(HospitalDbContext db) => _db = db;
+
+    public async Task AddAsync(AuditLog log, CancellationToken cancellationToken) =>
+        await _db.AuditLogs.AddAsync(log, cancellationToken);
+
+    public async Task<(IReadOnlyList<AuditLog> Items, int Total)> ListAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var total = await _db.AuditLogs.CountAsync(cancellationToken);
+        var items = await _db.AuditLogs
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
 }
 
 public sealed class StaffUserRepository : IStaffUserRepository

@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { ROUTE_ROLES } from "../auth/roles";
 import { useAuthStore } from "../store/authStore";
 import { HospitalLogo, LeafImageSlide } from "./HospitalMark";
+import { MustChangePasswordModal } from "./MustChangePasswordModal";
 import { Button } from "./ui";
 
 function Icon({ children }: { children: ReactNode }) {
@@ -20,7 +21,8 @@ const NAV = [
   { to: "/appointments", label: "Appointments", roles: ROUTE_ROLES.appointments, icon: <Icon><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></Icon> },
   { to: "/wards", label: "Wards", roles: ROUTE_ROLES.wards, icon: <Icon><path d="M4 19V9l8-4 8 4v10" /><path d="M9 19v-5h6v5" /></Icon> },
   { to: "/feedback", label: "Feedback", roles: ROUTE_ROLES.feedback, icon: <Icon><path d="M5 6h14v9H8l-3 3V6Z" /></Icon> },
-  { to: "/ai-approvals", label: "AI approvals", roles: ROUTE_ROLES.aiApprovals, icon: <Icon><path d="M12 3v3M12 18v3M4.9 6.2l2.1 2.1M17 15.7l2.1 2.1M3 12h3M18 12h3M4.9 17.8 7 15.7M17 8.3l2.1-2.1" /><circle cx="12" cy="12" r="3" /></Icon> }
+  { to: "/ai-approvals", label: "AI approvals", roles: ROUTE_ROLES.aiApprovals, icon: <Icon><path d="M12 3v3M12 18v3M4.9 6.2l2.1 2.1M17 15.7l2.1 2.1M3 12h3M18 12h3M4.9 17.8 7 15.7M17 8.3l2.1-2.1" /><circle cx="12" cy="12" r="3" /></Icon> },
+  { to: "/staff-management", label: "Staff management", roles: ROUTE_ROLES.staffManagement, icon: <Icon><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></Icon> }
 ] as const;
 
 export function AppShell() {
@@ -129,6 +131,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <MustChangePasswordModal />
     </div>
   );
 }

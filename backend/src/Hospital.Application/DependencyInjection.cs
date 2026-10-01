@@ -36,6 +36,7 @@ services.AddScoped<IComplaintService, ComplaintService>();
 services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IWorkflowExecutionService, WorkflowExecutionService>();
         services.AddScoped<IAgentWorkflowService, AgentWorkflowService>();
+        services.AddScoped<Hospital.Application.StaffManagement.IStaffManagementService, Hospital.Application.StaffManagement.StaffManagementService>();
         return services;
     }
 }

@@ -18,9 +18,15 @@ public sealed record UserSummary(
     string FullName,
     string Email,
     string PhoneNumber,
-    UserRole Role);
+    UserRole Role,
+    bool MustChangePassword = false);
 
 public sealed record AuthResponse(
     string Token,
     DateTimeOffset ExpiresAt,
     UserSummary User);
+
+public sealed record ChangePasswordRequest(
+    string CurrentPassword,
+    string NewPassword,
+    string ConfirmPassword);

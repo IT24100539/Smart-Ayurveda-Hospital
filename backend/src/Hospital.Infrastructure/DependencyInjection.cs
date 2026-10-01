@@ -36,6 +36,7 @@ services.AddScoped<IFeedbackReplyRepository, FeedbackReplyRepository>();
 services.AddScoped<IComplaintRepository, ComplaintRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IWorkflowExecutionRepository, WorkflowExecutionRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 services.AddScoped<ITreatmentCatalog, TreatmentCatalog>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();

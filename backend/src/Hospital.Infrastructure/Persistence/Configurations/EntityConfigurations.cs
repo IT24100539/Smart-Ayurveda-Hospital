@@ -17,6 +17,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.PasswordHash).HasMaxLength(256).IsRequired();
         builder.Property(x => x.Role).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(x => x.IsActive).IsRequired();
+        builder.Property(x => x.TokenVersion).IsRequired().HasDefaultValue(1);
+        builder.Property(x => x.MustChangePassword).IsRequired().HasDefaultValue(false);
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.UpdatedAt).IsRequired();
     }
@@ -282,5 +284,21 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
         builder.HasIndex(x => x.CreatedAt);
         builder.HasOne(x => x.Patient).WithMany(x => x.Notifications).HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.StaffRecipient).WithMany().HasForeignKey(x => x.StaffUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
+{
+    public void Configure(EntityTypeBuilder<AuditLog> builder)
+    {
+        builder.ToTable("audit_logs");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.ActorEmail).HasMaxLength(256);
+        builder.Property(x => x.Action).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.TargetEmail).HasMaxLength(256).IsRequired();
+        builder.Property(x => x.Details).HasMaxLength(2000);
+        builder.HasIndex(x => x.ActorUserId);
+        builder.HasIndex(x => x.TargetUserId);
+        builder.HasIndex(x => x.CreatedAt);
     }
 }
