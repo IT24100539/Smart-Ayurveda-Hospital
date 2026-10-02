@@ -27,6 +27,12 @@ public DbSet<Bed> Beds => Set<Bed>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<WorkflowExecution> WorkflowExecutions => Set<WorkflowExecution>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<DoctorRoster> DoctorRosters => Set<DoctorRoster>();
+    public DbSet<Prescription> Prescriptions => Set<Prescription>();
+    public DbSet<PrescriptionItem> PrescriptionItems => Set<PrescriptionItem>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+    public DbSet<MedicalDocument> MedicalDocuments => Set<MedicalDocument>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
