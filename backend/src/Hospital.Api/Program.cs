@@ -172,6 +172,25 @@ try
         });
     });
 
+    if (builder.Environment.IsProduction())
+    {
+        var dbConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
+        var jwtKey = builder.Configuration["Jwt:SigningKey"] ?? "";
+        var agentSecret = builder.Configuration["AgentService:SharedSecret"] ?? "";
+
+        var isDefaultDbPass = dbConn.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase) ||
+                              dbConn.Contains("postgres:postgres", StringComparison.OrdinalIgnoreCase);
+        var isDefaultJwt = jwtKey.Contains("dev-only-change-me", StringComparison.OrdinalIgnoreCase) || jwtKey.Length < 32;
+        var isDefaultAgent = agentSecret.Contains("dev-internal-agent-secret", StringComparison.OrdinalIgnoreCase);
+
+        if (isDefaultDbPass || isDefaultJwt || isDefaultAgent)
+        {
+            throw new InvalidOperationException(
+                "FATAL: Production environment detected with missing or default development secrets! " +
+                "Set environment variables DB_PASSWORD, JWT_SIGNING_KEY, and AGENT_SHARED_SECRET.");
+        }
+    }
+
     var app = builder.Build();
 
     if (serilogEnabled)
@@ -180,18 +199,25 @@ try
     }
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        if (!builder.Environment.IsDevelopment())
+        {
+            context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+        }
+        await next();
+    });
+
     if (!app.Environment.IsEnvironment("Testing"))
     {
         app.UseSwagger();
         app.UseSwaggerUI();
     }
 
-    // The local staff portal calls the HTTP development endpoint. Redirecting that
-    // request to HTTPS makes browser requests fail when the ASP.NET development
-    // certificate has not been trusted. Keep HTTPS enforcement for non-development
-    // environments, where a trusted certificate is expected.
-    // Render and Railway set PORT and terminate TLS in front of the container.
-    // Redirecting that plain HTTP traffic breaks the platform health check.
     if (!app.Environment.IsDevelopment() && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PORT")))
     {
         app.UseHttpsRedirection();

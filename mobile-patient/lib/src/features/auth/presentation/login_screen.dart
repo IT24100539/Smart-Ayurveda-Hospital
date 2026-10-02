@@ -3,10 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../core/config/app_config.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/language_switcher.dart';
+import '../../../router/app_routes.dart';
 import '../../../theme/app_theme.dart';
 import '../application/auth_controller.dart';
 
@@ -401,6 +404,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         return null;
                       },
                     ),
+
+                    if (!_isRegister)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _isSubmitting
+                              ? null
+                              : () => context.push(AppRoutes.forgotPassword),
+                          child: const Text('Forgot Password?'),
+                        ),
+                      ),
 
                     const SizedBox(height: 28),
                     FilledButton(

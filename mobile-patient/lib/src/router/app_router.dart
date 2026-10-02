@@ -6,7 +6,9 @@ import '../features/appointments/presentation/appointments_screen.dart';
 import '../features/appointments/presentation/book_appointment_flow.dart';
 import '../features/appointments/domain/appointment_models.dart';
 import '../features/auth/application/auth_controller.dart';
+import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
 import '../features/charaka_chat/presentation/charaka_chat_screen.dart';
 import '../features/contact/presentation/contact_location_screen.dart';
@@ -108,6 +110,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        builder: (context, state) => ResetPasswordScreen(
+          email: state.uri.queryParameters['email'],
+          token: state.uri.queryParameters['token'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.faq,

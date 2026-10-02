@@ -1,6 +1,8 @@
 abstract final class AppRoutes {
   static const splash = '/';
   static const login = '/login';
+  static const forgotPassword = '/forgot-password';
+  static const resetPassword = '/reset-password';
   static const home = '/home';
   static const treatments = '/treatments';
   static const treatmentDetail = '/treatments/:id';
@@ -30,6 +32,8 @@ abstract final class AppRoutes {
   static bool isPublic(String location) {
     if (location == splash ||
         location == login ||
+        location == forgotPassword ||
+        location == resetPassword ||
         location == onboarding ||
         location == faq ||
         location == contact ||

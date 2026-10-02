@@ -253,13 +253,16 @@ public sealed class StaffManagementService : IStaffManagementService
 
         var dtos = items.Select(x => new AuditLogDto(
             x.Id,
-            x.CreatedAt,
             x.ActorUserId,
             x.ActorEmail,
+            x.ActorRole,
             x.Action,
+            x.EntityName ?? "User",
+            x.EntityId ?? x.TargetUserId.ToString(),
             x.TargetUserId,
             x.TargetEmail,
-            x.Details)).ToList();
+            x.Details,
+            x.CreatedAt)).ToList();
 
         return (dtos, total);
     }

@@ -43,6 +43,9 @@ services.AddScoped<ITreatmentCatalog, TreatmentCatalog>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<IUhidGenerator, SequentialUhidGenerator>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IEmailSender, Services.DevEmailSender>();
+        services.AddScoped<ISmsSender, Services.DevSmsSender>();
+        services.AddScoped<IAuditLogService, Services.AuditLogService>();
 
         var agentOptions = configuration.GetSection(AgentServiceOptions.SectionName).Get<AgentServiceOptions>()
             ?? new AgentServiceOptions();

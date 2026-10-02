@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Hospital.Api.Controllers;
+using Hospital.Application.Abstractions;
 using Hospital.Application.Auth.Dtos;
 using Hospital.Application.StaffManagement.Dtos;
 using Hospital.Domain.Entities;

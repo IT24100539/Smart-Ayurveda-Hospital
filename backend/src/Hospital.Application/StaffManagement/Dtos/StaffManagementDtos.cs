@@ -30,13 +30,3 @@ public sealed record ForcePasswordResetResponse(
     Guid UserId,
     string Email,
     string TemporaryPassword);
-
-public sealed record AuditLogDto(
-    Guid Id,
-    DateTimeOffset Timestamp,
-    Guid? ActorUserId,
-    string ActorEmail,
-    string Action,
-    Guid TargetUserId,
-    string TargetEmail,
-    string Details);

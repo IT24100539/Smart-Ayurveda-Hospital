@@ -15,15 +15,21 @@ public sealed class AuthController : ControllerBase
     private readonly IAuthService _auth;
     private readonly IValidator<RegisterRequest> _registerValidator;
     private readonly IValidator<LoginRequest> _loginValidator;
+    private readonly IValidator<ForgotPasswordRequest> _forgotValidator;
+    private readonly IValidator<ResetPasswordRequest> _resetValidator;
 
     public AuthController(
         IAuthService auth,
         IValidator<RegisterRequest> registerValidator,
-        IValidator<LoginRequest> loginValidator)
+        IValidator<LoginRequest> loginValidator,
+        IValidator<ForgotPasswordRequest> forgotValidator,
+        IValidator<ResetPasswordRequest> resetValidator)
     {
         _auth = auth;
         _registerValidator = registerValidator;
         _loginValidator = loginValidator;
+        _forgotValidator = forgotValidator;
+        _resetValidator = resetValidator;
     }
 
     [HttpPost("register")]
@@ -45,6 +51,31 @@ public sealed class AuthController : ControllerBase
     {
         await _loginValidator.ValidateAndThrowAsync(request, cancellationToken);
         return Ok(await _auth.LoginAsync(request, cancellationToken));
+    }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ForgotPasswordResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ForgotPasswordResponse>> ForgotPassword(
+        ForgotPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _forgotValidator.ValidateAndThrowAsync(request, cancellationToken);
+        var baseUrl = $"{Request.Scheme}://{Request.Host}/reset-password";
+        return Ok(await _auth.ForgotPasswordAsync(request, baseUrl, cancellationToken));
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ResetPasswordResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ResetPasswordResponse>> ResetPassword(
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _resetValidator.ValidateAndThrowAsync(request, cancellationToken);
+        return Ok(await _auth.ResetPasswordAsync(request, cancellationToken));
     }
 
     [HttpPost("change-password")]

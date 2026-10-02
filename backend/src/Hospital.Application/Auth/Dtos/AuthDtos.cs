@@ -30,3 +30,15 @@ public sealed record ChangePasswordRequest(
     string CurrentPassword,
     string NewPassword,
     string ConfirmPassword);
+
+public sealed record ForgotPasswordRequest(string Email);
+
+public sealed record ForgotPasswordResponse(string Message);
+
+public sealed record ResetPasswordRequest(
+    string Email,
+    string Token,
+    string NewPassword,
+    string ConfirmPassword);
+
+public sealed record ResetPasswordResponse(string Message);

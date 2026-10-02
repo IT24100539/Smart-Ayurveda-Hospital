@@ -13,7 +13,8 @@ public sealed class AuthService : IAuthService
     private readonly IUhidGenerator _uhid;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwt;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IEmailSender? _emailSender;
+    private readonly IUnitOfWork? _unitOfWork;
 
     public AuthService(
         IUserRepository users,
@@ -21,13 +22,15 @@ public sealed class AuthService : IAuthService
         IUhidGenerator uhid,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwt,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork? unitOfWork = null,
+        IEmailSender? emailSender = null)
     {
         _users = users;
         _patients = patients;
         _uhid = uhid;
         _passwordHasher = passwordHasher;
         _jwt = jwt;
+        _emailSender = emailSender;
         _unitOfWork = unitOfWork;
     }
 
@@ -66,7 +69,7 @@ public sealed class AuthService : IAuthService
         }
 
         await _users.AddAsync(user, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return CreateResponse(user);
     }
@@ -149,10 +152,29 @@ public sealed class AuthService : IAuthService
     {
         var email = NormalizeEmail(request.Email);
         var user = await _users.GetByEmailAsync(email, cancellationToken);
-        if (user is null || !user.IsActive || !_passwordHasher.Verify(request.Password, user.PasswordHash))
+        if (user is null || !user.IsActive)
         {
             throw new UnauthorizedException("Invalid email or password.");
         }
+
+        if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
+        {
+            throw new UnauthorizedException("Account is temporarily locked due to repeated failed login attempts. Please try again later.");
+        }
+
+        if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
+        {
+            user.FailedLoginCount++;
+            if (user.FailedLoginCount >= 5)
+            {
+                user.LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(15);
+            }
+            if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
+            throw new UnauthorizedException("Invalid email or password.");
+        }
+
+        user.FailedLoginCount = 0;
+        user.LockoutEnd = null;
 
         // Heal missing email link: if the patient record was created by staff
         // (e.g., via phone number only) and has no email yet, stamp the login
@@ -162,7 +184,78 @@ public sealed class AuthService : IAuthService
             await LinkPatientEmailIfMissingAsync(user, cancellationToken);
         }
 
+        if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
+
         return CreateResponse(user);
+    }
+
+    public async Task<ForgotPasswordResponse> ForgotPasswordAsync(
+        ForgotPasswordRequest request,
+        string resetBaseUrl,
+        CancellationToken cancellationToken)
+    {
+        const string genericMessage = "If an account with that email exists, a password reset link has been sent.";
+        var email = NormalizeEmail(request.Email);
+        var user = await _users.GetByEmailAsync(email, cancellationToken);
+        if (user is null || !user.IsActive)
+        {
+            return new ForgotPasswordResponse(genericMessage);
+        }
+
+        var rawToken = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        user.PasswordResetTokenHash = HashToken(rawToken);
+        user.PasswordResetTokenExpiresAt = DateTimeOffset.UtcNow.AddMinutes(30);
+
+        if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (_emailSender != null)
+        {
+            await _emailSender.SendPasswordResetEmailAsync(user.Email, rawToken, resetBaseUrl, cancellationToken);
+        }
+
+        return new ForgotPasswordResponse(genericMessage);
+    }
+
+    public async Task<ResetPasswordResponse> ResetPasswordAsync(
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var email = NormalizeEmail(request.Email);
+        var user = await _users.GetByEmailAsync(email, cancellationToken);
+        if (user is null || !user.IsActive || string.IsNullOrWhiteSpace(user.PasswordResetTokenHash))
+        {
+            throw new BadRequestException("Invalid or expired password reset token.");
+        }
+
+        if (!user.PasswordResetTokenExpiresAt.HasValue || user.PasswordResetTokenExpiresAt.Value < DateTimeOffset.UtcNow)
+        {
+            throw new BadRequestException("Invalid or expired password reset token.");
+        }
+
+        var tokenHash = HashToken(request.Token.Trim());
+        if (!string.Equals(user.PasswordResetTokenHash, tokenHash, StringComparison.Ordinal))
+        {
+            throw new BadRequestException("Invalid or expired password reset token.");
+        }
+
+        user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
+        user.PasswordResetTokenHash = null;
+        user.PasswordResetTokenExpiresAt = null;
+        user.MustChangePassword = false;
+        user.FailedLoginCount = 0;
+        user.LockoutEnd = null;
+        user.TokenVersion++;
+
+        if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new ResetPasswordResponse("Password has been reset successfully. You can now log in with your new password.");
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(token);
+        var hash = System.Security.Cryptography.SHA256.HashData(bytes);
+        return Convert.ToHexString(hash);
     }
 
     public async Task<AuthResponse> ChangePasswordAsync(
@@ -202,7 +295,7 @@ public sealed class AuthService : IAuthService
         user.MustChangePassword = false;
         user.TokenVersion++;
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return CreateResponse(user);
     }
@@ -226,7 +319,7 @@ public sealed class AuthService : IAuthService
         if (byPhone is not null && string.IsNullOrWhiteSpace(byPhone.Email))
         {
             byPhone.Email = user.Email;
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 
