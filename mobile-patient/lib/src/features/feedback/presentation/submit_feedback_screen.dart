@@ -12,6 +12,8 @@ import '../../treatments/application/treatments_provider.dart';
 import '../../treatments/domain/treatment_models.dart';
 import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../shared/widgets/unlinked_patient_card.dart';
 import 'feedback_banner.dart';
 import 'feedback_keys.dart';
 import 'feedback_messages.dart';
@@ -167,6 +169,14 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
         ? l10n.yourName
         : fullName;
 
+    final appointmentsAsync = ref.watch(myAppointmentsProvider);
+    final isUnlinked = appointmentsAsync.when(
+      data: (_) => false,
+      loading: () => false,
+      error: (err, _) => err.toString().contains('No patient record is linked') ||
+          (err is ApiException && (err.message?.contains('No patient record is linked') ?? false)),
+    );
+
     return Scaffold(
       appBar: AppBar(title: Text(l10n.submitFeedbackTitle)),
       body: Form(
@@ -183,93 +193,113 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
               body: l10n.commentHint,
             ),
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _FeedbackLinkSelector(
-                link: _link,
-                appointmentId: _selectedAppointmentId,
-                treatmentId: _selectedTreatmentId,
-                onLink: (value) => setState(() => _link = value),
-                onAppointment: (value) =>
-                    setState(() => _selectedAppointmentId = value),
-                onTreatment: (value) =>
-                    setState(() => _selectedTreatmentId = value),
-              ),
-            ),
-            Text(
-              l10n.ratingLabel,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            StarRating(
-              value: _rating,
-              onChanged: (value) => setState(() => _rating = value),
-            ),
-            if (_attempted && _rating < 1)
-              Text(
-                l10n.ratingRequired,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            const SizedBox(height: 12),
-            TextFormField(
-              key: FeedbackKeys.comment,
-              controller: _comment,
-              minLines: 4,
-              maxLines: 8,
-              maxLength: 2000,
-              decoration: InputDecoration(
-                labelText: l10n.commentLabel,
-                hintText: l10n.commentHint,
-                alignLabelWithHint: true,
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return l10n.commentRequired;
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              key: FeedbackKeys.anonymousToggle,
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.anonymousLabel),
-              subtitle: Text(l10n.anonymousHelp),
-              value: _anonymous,
-              onChanged: (value) => setState(() => _anonymous = value),
-            ),
-            if (!_anonymous)
+            if (isUnlinked) ...[
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: InputDecorator(
-                  decoration: InputDecoration(labelText: l10n.postedAsLabel),
-                  child: Text(previewName, key: FeedbackKeys.namePreview),
+                child: UnlinkedPatientCard(
+                  onRetry: () => ref.invalidate(myAppointmentsProvider),
                 ),
               ),
-            if (_attempted && !_hasLink)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  l10n.feedbackNeedsLink,
-                  key: const Key('feedback_link_required'),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
+            ],
+            IgnorePointer(
+              ignoring: isUnlinked,
+              child: Opacity(
+                opacity: isUnlinked ? 0.5 : 1.0,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _FeedbackLinkSelector(
+                        link: _link,
+                        appointmentId: _selectedAppointmentId,
+                        treatmentId: _selectedTreatmentId,
+                        onLink: (value) => setState(() => _link = value),
+                        onAppointment: (value) =>
+                            setState(() => _selectedAppointmentId = value),
+                        onTreatment: (value) =>
+                            setState(() => _selectedTreatmentId = value),
+                      ),
+                    ),
+                    Text(
+                      l10n.ratingLabel,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    StarRating(
+                      value: _rating,
+                      onChanged: (value) => setState(() => _rating = value),
+                    ),
+                    if (_attempted && _rating < 1)
+                      Text(
+                        l10n.ratingRequired,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: FeedbackKeys.comment,
+                      controller: _comment,
+                      enabled: !isUnlinked,
+                      minLines: 4,
+                      maxLines: 8,
+                      maxLength: 2000,
+                      decoration: InputDecoration(
+                        labelText: l10n.commentLabel,
+                        hintText: l10n.commentHint,
+                        alignLabelWithHint: true,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return l10n.commentRequired;
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      key: FeedbackKeys.anonymousToggle,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(l10n.anonymousLabel),
+                      subtitle: Text(l10n.anonymousHelp),
+                      value: _anonymous,
+                      onChanged: isUnlinked ? null : (value) => setState(() => _anonymous = value),
+                    ),
+                    if (!_anonymous)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: InputDecorator(
+                          decoration: InputDecoration(labelText: l10n.postedAsLabel),
+                          child: Text(previewName, key: FeedbackKeys.namePreview),
+                        ),
+                      ),
+                    if (_attempted && !_hasLink)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          l10n.feedbackNeedsLink,
+                          key: const Key('feedback_link_required'),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    FilledButton(
+                      key: FeedbackKeys.submit,
+                      onPressed: (_submitting || isUnlinked) ? null : _submit,
+                      child: _submitting
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(l10n.submitFeedback),
+                    ),
+                  ],
                 ),
               ),
-            FilledButton(
-              key: FeedbackKeys.submit,
-              onPressed: _submitting ? null : _submit,
-              child: _submitting
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(l10n.submitFeedback),
             ),
             ],
           ),

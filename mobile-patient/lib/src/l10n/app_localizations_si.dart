@@ -490,4 +490,15 @@ class AppLocalizationsSi extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get noPatientRecordLinked =>
+      'මෙම ගිණුමට සම්බන්ධ රෝගී වාර්තාවක් හමු නොවීය.';
+
+  @override
+  String get noPatientRecordLinkedHelp =>
+      'සායනික වාර්තාව එකම විද්‍යුත් තැපැල් ලිපිනය භාවිතා කළ යුතුය. කරුණාකර වාර්තාව සම්බන්ධ කිරීමට රෝහල් පිළිගැනීමේ කවුන්ටරය අමතන්න.';
+
+  @override
+  String get unlinkedRecordRetry => 'නැවත පරීක්ෂා කරන්න';
 }

@@ -161,11 +161,8 @@ public sealed class AppointmentService : IAppointmentService
         string slot) => new()
         {
             PatientId = patient.Id,
-            Patient = patient,
             TreatmentId = treatment.Id,
-            Treatment = treatment,
             ScheduleId = schedule?.Id,
-            Schedule = schedule,
             RequestedDate = request.RequestedDate,
             RequestedTimeSlot = slot,
             Status = AppointmentStatus.Pending

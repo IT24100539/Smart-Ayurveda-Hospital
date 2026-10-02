@@ -162,5 +162,8 @@
   "bloodGroupLabel": "රුධිර වර්ගය",
   "notRecorded": "වාර්තා වී නැත",
   "healthHubError": "සෞඛ්‍ය වාර්තා ලබාගත නොහැක.",
-  "sessionsCount": "{count, plural, =1{සැසි 1} other{සැසි {count}}}"
+  "sessionsCount": "{count, plural, =1{සැසි 1} other{සැසි {count}}}",
+  "noPatientRecordLinked": "මෙම ගිණුමට සම්බන්ධ රෝගී වාර්තාවක් හමු නොවීය.",
+  "noPatientRecordLinkedHelp": "සායනික වාර්තාව එකම විද්‍යුත් තැපැල් ලිපිනය භාවිතා කළ යුතුය. කරුණාකර වාර්තාව සම්බන්ධ කිරීමට රෝහල් පිළිගැනීමේ කවුන්ටරය අමතන්න.",
+  "unlinkedRecordRetry": "නැවත පරීක්ෂා කරන්න"
 }

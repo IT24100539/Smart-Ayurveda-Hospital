@@ -489,4 +489,15 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get noPatientRecordLinked =>
+      'No patient record is linked to this login.';
+
+  @override
+  String get noPatientRecordLinkedHelp =>
+      'The clinical record must use the same email address. Please contact reception or update your profile to link your clinical record.';
+
+  @override
+  String get unlinkedRecordRetry => 'Check again';
 }

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentAssertions;
+using Hospital.Domain.Entities;
 using Hospital.Domain.Enums;
 using Hospital.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -699,6 +700,164 @@ public sealed class HealthAndAuthTests
                 }
             }
         }
+    }
+
+    [Fact]
+    public async Task Register_ThenBookAppointment_Succeeds()
+    {
+        Guid treatmentId;
+        Guid scheduleId;
+        const string timeSlot = "09:00-10:00";
+        var nextMonday = DateOnly.FromDateTime(DateTime.Today.AddDays(7));
+        while (nextMonday.DayOfWeek != DayOfWeek.Monday)
+        {
+            nextMonday = nextMonday.AddDays(1);
+        }
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+            var treatment = new Treatment
+            {
+                Name = $"Integration Panchakarma {Guid.NewGuid():N}",
+                Description = "Detox therapy",
+                DurationMinutes = 60,
+                UnitPrice = 3500
+            };
+            var schedule = new TreatmentSchedule
+            {
+                Treatment = treatment,
+                DayOfWeek = DayOfWeek.Monday,
+                TimeSlot = timeSlot,
+                MaxPatients = 5,
+                IsActive = true
+            };
+            db.Treatments.Add(treatment);
+            db.TreatmentSchedules.Add(schedule);
+            await db.SaveChangesAsync();
+            treatmentId = treatment.Id;
+            scheduleId = schedule.Id;
+        }
+
+        var client = _factory.CreateClient();
+        var email = $"book.patient.{Guid.NewGuid():N}@example.local";
+        var regRes = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            fullName = "Kumara Sangakkara",
+            email,
+            phoneNumber = $"077{Random.Shared.Next(1000000, 9999999)}",
+            password = "ChangeMe!Patient1",
+            dateOfBirth = new DateOnly(1985, 5, 20),
+            gender = Gender.Male
+        });
+        regRes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = await regRes.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", auth!.Token);
+
+        var bookRes = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = Guid.NewGuid(),
+            treatmentId,
+            scheduleId,
+            requestedDate = nextMonday,
+            requestedTimeSlot = timeSlot
+        });
+        bookRes.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var myApptsRes = await client.GetAsync("/api/appointments/me");
+        myApptsRes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await myApptsRes.Content.ReadAsStringAsync();
+        body.Should().Contain(treatmentId.ToString());
+    }
+
+    [Fact]
+    public async Task Register_ThenSubmitFeedback_Succeeds()
+    {
+        Guid treatmentId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+            var treatment = new Treatment
+            {
+                Name = $"Ayurvedic Therapy {Guid.NewGuid():N}",
+                Description = "Rejuvenation",
+                DurationMinutes = 45,
+                UnitPrice = 2500
+            };
+            db.Treatments.Add(treatment);
+            await db.SaveChangesAsync();
+            treatmentId = treatment.Id;
+        }
+
+        var client = _factory.CreateClient();
+        var email = $"feedback.patient.{Guid.NewGuid():N}@example.local";
+        var regRes = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            fullName = "Mahela Jayawardene",
+            email,
+            phoneNumber = $"071{Random.Shared.Next(1000000, 9999999)}",
+            password = "ChangeMe!Patient1",
+            dateOfBirth = new DateOnly(1984, 8, 15),
+            gender = Gender.Male
+        });
+        regRes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = await regRes.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", auth!.Token);
+
+        var feedbackRes = await client.PostAsJsonAsync("/api/feedback", new
+        {
+            treatmentId,
+            rating = 5,
+            comment = "Outstanding care and soothing herbal oils.",
+            isAnonymous = false
+        });
+        feedbackRes.StatusCode.Should().Be(HttpStatusCode.Created);
+        var content = await feedbackRes.Content.ReadAsStringAsync();
+        content.Should().Contain("Outstanding care and soothing herbal oils.");
+    }
+
+    [Fact]
+    public async Task Register_ThenOpenHealthHub_Succeeds()
+    {
+        var client = _factory.CreateClient();
+        var email = $"healthhub.patient.{Guid.NewGuid():N}@example.local";
+        var regRes = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            fullName = "Anoma Perera",
+            email,
+            phoneNumber = $"072{Random.Shared.Next(1000000, 9999999)}",
+            password = "ChangeMe!Patient1",
+            dateOfBirth = new DateOnly(1993, 11, 12),
+            gender = Gender.Female
+        });
+        regRes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = await regRes.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", auth!.Token);
+
+        var summaryRes = await client.GetAsync("/api/patients/me/registration-summary");
+        summaryRes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var summaryBody = await summaryRes.Content.ReadAsStringAsync();
+        summaryBody.Should().Contain("Anoma Perera");
+        summaryBody.Should().Contain(email);
+        summaryBody.Should().Contain("SAH-");
+
+        var plansRes = await client.GetAsync("/api/patients/me/treatment-plans");
+        plansRes.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task UnlinkedUser_AccessingPatientEndpoint_ReturnsClearError()
+    {
+        var unlinkedClient = _factory.CreateAuthenticatedClient(Guid.NewGuid(), UserRole.Patient);
+
+        var res = await unlinkedClient.GetAsync("/api/patients/me/registration-summary");
+        res.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var body = await res.Content.ReadAsStringAsync();
+        body.Should().Contain("No patient record is linked to this login. The clinical record must use the same email address.");
     }
 
     private sealed record LoginPayload(string Token);

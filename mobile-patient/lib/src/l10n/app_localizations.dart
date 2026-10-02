@@ -997,6 +997,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 session} other{{count} sessions}}'**
   String sessionsCount(int count);
+
+  /// No description provided for @noPatientRecordLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'No patient record is linked to this login.'**
+  String get noPatientRecordLinked;
+
+  /// No description provided for @noPatientRecordLinkedHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The clinical record must use the same email address. Please contact reception or update your profile to link your clinical record.'**
+  String get noPatientRecordLinkedHelp;
+
+  /// No description provided for @unlinkedRecordRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get unlinkedRecordRetry;
 }
 
 class _AppLocalizationsDelegate

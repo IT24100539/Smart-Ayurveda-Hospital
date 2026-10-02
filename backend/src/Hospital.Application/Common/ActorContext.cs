@@ -59,13 +59,16 @@ public sealed class ActorContext : IActorContext
             return patient;
         }
 
-        // 2. Healing path: patient record was staff-created by phone with no email.
+        // 2. Healing path: patient record was staff-created by phone with no email or differing case.
         //    Stamp the login email now so every subsequent request uses the fast path.
         var byPhone = await _patients.GetByPhoneAsync(user.PhoneNumber, cancellationToken);
-        if (byPhone is not null && string.IsNullOrWhiteSpace(byPhone.Email))
+        if (byPhone is not null && (string.IsNullOrWhiteSpace(byPhone.Email) || string.Equals(byPhone.Email.Trim(), user.Email.Trim(), StringComparison.OrdinalIgnoreCase)))
         {
-            byPhone.Email = user.Email;
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(byPhone.Email) || byPhone.Email != user.Email)
+            {
+                byPhone.Email = user.Email;
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
             return byPhone;
         }
 

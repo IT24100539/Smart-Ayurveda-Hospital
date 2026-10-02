@@ -379,5 +379,11 @@
         "type": "int"
       }
     }
-  }
+  },
+  "noPatientRecordLinked": "No patient record is linked to this login.",
+  "@noPatientRecordLinked": {},
+  "noPatientRecordLinkedHelp": "The clinical record must use the same email address. Please contact reception or update your profile to link your clinical record.",
+  "@noPatientRecordLinkedHelp": {},
+  "unlinkedRecordRetry": "Check again",
+  "@unlinkedRecordRetry": {}
 }
