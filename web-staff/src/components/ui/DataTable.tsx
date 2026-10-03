@@ -54,7 +54,7 @@ export function DataTable<T>({
   emptyDescription
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-sm">
+    <div className="overflow-hidden rounded-card border border-surface-border bg-surface-raised shadow-card">
       {filter ? <div className="border-b border-surface-border px-4 py-3">{filter}</div> : null}
       {loading ? (
         <div className="p-4">
@@ -69,10 +69,10 @@ export function DataTable<T>({
           <EmptyState title={emptyTitle} description={emptyDescription} />
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="data-table">
             <caption className="sr-only">{caption}</caption>
-            <thead className="bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-muted">
+            <thead>
               <tr>
                 {columns.map((column) => {
                   const active = sort?.columnId === column.id;
@@ -92,7 +92,7 @@ export function DataTable<T>({
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-surface-border">
+            <tbody>
               {rows.map((row) => (
                 <tr key={getRowId(row)}>
                   {columns.map((column) => (

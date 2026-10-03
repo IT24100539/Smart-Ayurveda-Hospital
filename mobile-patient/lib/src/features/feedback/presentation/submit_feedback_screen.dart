@@ -12,7 +12,8 @@ import '../../treatments/application/treatments_provider.dart';
 import '../../treatments/domain/treatment_models.dart';
 import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
-import '../../../core/network/api_exception.dart';
+import '../../../shared/widgets/page_layout.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/unlinked_patient_card.dart';
 import 'feedback_banner.dart';
 import 'feedback_keys.dart';
@@ -173,17 +174,18 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
     final isUnlinked = appointmentsAsync.when(
       data: (_) => false,
       loading: () => false,
-      error: (err, _) => err.toString().contains('No patient record is linked') ||
-          (err is ApiException && (err.message?.contains('No patient record is linked') ?? false)),
+      error: (err, _) => isUnlinkedPatientError(err),
     );
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.submitFeedbackTitle)),
       body: Form(
         key: _formKey,
-        child: SingleChildScrollView(
+        child: PageScrollView(
+          maxWidth: 640,
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: Column(
+          children: [
+            Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
             FeedbackBanner(
@@ -198,6 +200,7 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
                 padding: const EdgeInsets.only(bottom: 16),
                 child: UnlinkedPatientCard(
                   onRetry: () => ref.invalidate(myAppointmentsProvider),
+                  onHelp: () => context.push(AppRoutes.contact),
                 ),
               ),
             ],
@@ -211,6 +214,7 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: _FeedbackLinkSelector(
+                        enabled: !isUnlinked,
                         link: _link,
                         appointmentId: _selectedAppointmentId,
                         treatmentId: _selectedTreatmentId,
@@ -229,7 +233,7 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
                     ),
                     StarRating(
                       value: _rating,
-                      onChanged: (value) => setState(() => _rating = value),
+                      onChanged: isUnlinked ? null : (value) => setState(() => _rating = value),
                     ),
                     if (_attempted && _rating < 1)
                       Text(
@@ -290,10 +294,13 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
                       key: FeedbackKeys.submit,
                       onPressed: (_submitting || isUnlinked) ? null : _submit,
                       child: _submitting
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 22,
                               width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: theme.colorScheme.onPrimary,
+                              ),
                             )
                           : Text(l10n.submitFeedback),
                     ),
@@ -303,6 +310,7 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
             ),
             ],
           ),
+          ],
         ),
       ),
     );
@@ -311,6 +319,7 @@ class _SubmitFeedbackScreenState extends ConsumerState<SubmitFeedbackScreen> {
 
 class _FeedbackLinkSelector extends ConsumerWidget {
   const _FeedbackLinkSelector({
+    required this.enabled,
     required this.link,
     required this.appointmentId,
     required this.treatmentId,
@@ -319,6 +328,7 @@ class _FeedbackLinkSelector extends ConsumerWidget {
     required this.onTreatment,
   });
 
+  final bool enabled;
   final _FeedbackLink link;
   final String? appointmentId;
   final String? treatmentId;
@@ -345,17 +355,19 @@ class _FeedbackLinkSelector extends ConsumerWidget {
             ),
           ],
           selected: {link},
-          onSelectionChanged: (selection) => onLink(selection.first),
+          onSelectionChanged: enabled ? (selection) => onLink(selection.first) : null,
         ),
         const SizedBox(height: 12),
         if (link == _FeedbackLink.visit)
           _VisitMenu(
+            enabled: enabled,
             selectedId: appointmentId,
             onSelected: onAppointment,
             onSwitchToTreatment: () => onLink(_FeedbackLink.treatment),
           )
         else
           _TreatmentMenu(
+            enabled: enabled,
             selectedId: treatmentId,
             onSelected: onTreatment,
           ),
@@ -366,11 +378,13 @@ class _FeedbackLinkSelector extends ConsumerWidget {
 
 class _VisitMenu extends ConsumerWidget {
   const _VisitMenu({
+    required this.enabled,
     required this.selectedId,
     required this.onSelected,
     this.onSwitchToTreatment,
   });
 
+  final bool enabled;
   final String? selectedId;
   final ValueChanged<String?> onSelected;
   final VoidCallback? onSwitchToTreatment;
@@ -381,20 +395,23 @@ class _VisitMenu extends ConsumerWidget {
     final theme = Theme.of(context);
     final visits = ref.watch(myAppointmentsProvider);
     return visits.when(
-      loading: () => const LinearProgressIndicator(),
-      error: (error, _) => Text(
-        feedbackErrorText(error, l10n),
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.error,
-        ),
-      ),
+      loading: () => const _FieldSkeleton(),
+      error: (error, _) {
+        if (isUnlinkedPatientError(error)) return const SizedBox.shrink();
+        return Text(
+          feedbackErrorText(error, l10n),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.error,
+          ),
+        );
+      },
       data: (items) {
         final completed = items
             .where((visit) => visit.status == AppointmentStatus.completed)
             .toList();
         if (completed.isEmpty) {
           return InkWell(
-            onTap: onSwitchToTreatment,
+            onTap: enabled ? onSwitchToTreatment : null,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text(
@@ -425,7 +442,7 @@ class _VisitMenu extends ConsumerWidget {
                 child: Text(visit.treatmentName),
               ),
           ],
-          onChanged: onSelected,
+          onChanged: enabled ? onSelected : null,
         );
       },
     );
@@ -433,8 +450,13 @@ class _VisitMenu extends ConsumerWidget {
 }
 
 class _TreatmentMenu extends ConsumerWidget {
-  const _TreatmentMenu({required this.selectedId, required this.onSelected});
+  const _TreatmentMenu({
+    required this.enabled,
+    required this.selectedId,
+    required this.onSelected,
+  });
 
+  final bool enabled;
   final String? selectedId;
   final ValueChanged<String?> onSelected;
 
@@ -444,7 +466,7 @@ class _TreatmentMenu extends ConsumerWidget {
     final theme = Theme.of(context);
     final treatments = ref.watch(treatmentsProvider);
     return treatments.when(
-      loading: () => const LinearProgressIndicator(),
+      loading: () => const _FieldSkeleton(),
       error: (error, _) => Text(
         feedbackErrorText(error, l10n),
         style: theme.textTheme.bodySmall?.copyWith(
@@ -475,7 +497,17 @@ class _TreatmentMenu extends ConsumerWidget {
             child: Text(treatment.nameEnglish),
           ),
       ],
-      onChanged: onSelected,
+      onChanged: enabled ? onSelected : null,
     );
+  }
+}
+
+/// Placeholder for a dropdown while its choices load.
+class _FieldSkeleton extends StatelessWidget {
+  const _FieldSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SkeletonScope(child: SkeletonBone(height: 56, radius: 14));
   }
 }

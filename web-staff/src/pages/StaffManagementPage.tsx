@@ -217,7 +217,7 @@ export function StaffManagementPage() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="field"
               />
             </div>
             <div>
@@ -228,7 +228,7 @@ export function StaffManagementPage() {
                   setRoleFilter(e.target.value);
                   setPage(1);
                 }}
-                className="rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink shadow-sm"
+                className="field w-auto"
               >
                 <option value="">All Roles</option>
                 <option value="Admin">Admin</option>
@@ -244,7 +244,7 @@ export function StaffManagementPage() {
                   setStatusFilter(e.target.value);
                   setPage(1);
                 }}
-                className="rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink shadow-sm"
+                className="field w-auto"
               >
                 <option value="">All Statuses</option>
                 <option value="active">Active Only</option>
@@ -255,7 +255,7 @@ export function StaffManagementPage() {
 
           {/* Error Notice */}
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="rounded-xl border border-status-error-fg/30 bg-status-error-bg p-4 text-sm text-status-error-fg">
               {error}
             </div>
           )}
@@ -301,8 +301,8 @@ export function StaffManagementPage() {
                           <td className="px-4 py-3 text-muted">{item.phoneNumber || "—"}</td>
                           <td className="px-4 py-3">
                             {item.isActive ? (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-status-approved-bg px-2.5 py-0.5 text-xs font-medium text-status-approved-fg">
+                                <span className="h-1.5 w-1.5 rounded-full bg-status-approved-fg" />
                                 Active
                               </span>
                             ) : (
@@ -314,7 +314,7 @@ export function StaffManagementPage() {
                           </td>
                           <td className="px-4 py-3">
                             {item.mustChangePassword ? (
-                              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              <span className="inline-flex items-center rounded-full bg-status-pending-bg px-2 py-0.5 text-xs font-medium text-status-pending-fg">
                                 Must Change Password
                               </span>
                             ) : (
@@ -344,7 +344,7 @@ export function StaffManagementPage() {
                                   setShowStatusModal(item);
                                   setStatusError(null);
                                 }}
-                                className={`text-xs py-1 px-2.5 ${item.isActive ? "hover:text-red-700" : "hover:text-emerald-700"}`}
+                                className={`text-xs py-1 px-2.5 ${item.isActive ? "hover:text-status-error-fg" : "hover:text-status-approved-fg"}`}
                                 title={isSelf ? "You cannot deactivate yourself" : item.isActive ? "Deactivate account" : "Reactivate account"}
                               >
                                 {item.isActive ? "Deactivate" : "Activate"}
@@ -429,7 +429,7 @@ export function StaffManagementPage() {
                   {auditLogs.map((log) => (
                     <tr key={log.id} className="transition hover:bg-surface/50">
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-muted">
-                        {new Date(log.timestamp).toLocaleString()}
+                        {new Date(log.createdAt).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 font-medium text-ink">{log.actorEmail}</td>
                       <td className="px-4 py-3">
@@ -437,7 +437,7 @@ export function StaffManagementPage() {
                           {log.action}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-ink-muted">{log.targetEmail}</td>
+                      <td className="px-4 py-3 text-muted">{log.targetEmail}</td>
                       <td className="px-4 py-3 text-xs text-muted">{log.details}</td>
                     </tr>
                   ))}
@@ -450,7 +450,7 @@ export function StaffManagementPage() {
 
       {/* CREATE STAFF MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-xl">
             <h3 className="font-display text-lg font-semibold text-ink">Add New Staff Member</h3>
             <p className="mt-1 text-xs text-muted">
@@ -458,7 +458,7 @@ export function StaffManagementPage() {
             </p>
 
             {createError && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+              <div className="mt-3 rounded-lg border border-status-error-fg/30 bg-status-error-bg p-3 text-xs text-status-error-fg">
                 {createError}
               </div>
             )}
@@ -471,7 +471,7 @@ export function StaffManagementPage() {
                   value={createName}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCreateName(e.target.value)}
                   placeholder="e.g. Dr. Haritha Bandara"
-                  className="mt-1 w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="field mt-1"
                 />
               </div>
 
@@ -483,7 +483,7 @@ export function StaffManagementPage() {
                   value={createEmail}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCreateEmail(e.target.value)}
                   placeholder="e.g. haritha@smartayurveda.local"
-                  className="mt-1 w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="field mt-1"
                 />
               </div>
 
@@ -494,7 +494,7 @@ export function StaffManagementPage() {
                   value={createPhone}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCreatePhone(e.target.value)}
                   placeholder="e.g. 0771234567"
-                  className="mt-1 w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="field mt-1"
                 />
               </div>
 
@@ -504,7 +504,7 @@ export function StaffManagementPage() {
                   aria-label="Staff role selection"
                   value={createRole}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setCreateRole(e.target.value as UserRole)}
-                  className="mt-1 w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink shadow-sm"
+                  className="field mt-1"
                 >
                   {STAFF_ROLES.map((r) => (
                     <option key={r} value={r}>
@@ -523,7 +523,7 @@ export function StaffManagementPage() {
                   value={createTempPass}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCreateTempPass(e.target.value)}
                   placeholder="Leave empty to auto-generate"
-                  className="mt-1 w-full rounded-lg border border-surface-border bg-surface px-3 py-2 font-mono text-sm text-ink shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="field mt-1 font-mono"
                 />
               </div>
 
@@ -546,7 +546,7 @@ export function StaffManagementPage() {
 
       {/* CHANGE ROLE MODAL */}
       {showRoleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-xl">
             <h3 className="font-display text-lg font-semibold text-ink">Change Staff Role</h3>
             <p className="mt-1 text-xs text-muted">
@@ -554,7 +554,7 @@ export function StaffManagementPage() {
             </p>
 
             {roleError && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+              <div className="mt-3 rounded-lg border border-status-error-fg/30 bg-status-error-bg p-3 text-xs text-status-error-fg">
                 {roleError}
               </div>
             )}
@@ -566,7 +566,7 @@ export function StaffManagementPage() {
                   aria-label="New role assignment"
                   value={newRole}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewRole(e.target.value as UserRole)}
-                  className="mt-1 w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink shadow-sm"
+                  className="field mt-1"
                 >
                   {STAFF_ROLES.map((r) => (
                     <option key={r} value={r}>
@@ -595,23 +595,23 @@ export function StaffManagementPage() {
 
       {/* DEACTIVATE / REACTIVATE CONFIRMATION MODAL */}
       {showStatusModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-xl">
             <h3 className="font-display text-lg font-semibold text-ink">
               {showStatusModal.isActive ? "Deactivate Account" : "Reactivate Account"}
             </h3>
-            <p className="mt-2 text-sm text-ink-muted">
+            <p className="mt-2 text-sm text-muted">
               Are you sure you want to {showStatusModal.isActive ? "deactivate" : "reactivate"} the account of{" "}
               <span className="font-semibold text-ink">{showStatusModal.fullName}</span> ({showStatusModal.email})?
             </p>
             {showStatusModal.isActive && (
-              <p className="mt-1 text-xs text-amber-700">
+              <p className="mt-1 text-xs text-status-pending-fg">
                 Note: Deactivating will immediately invalidate all active login sessions and tokens for this user.
               </p>
             )}
 
             {statusError && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+              <div className="mt-3 rounded-lg border border-status-error-fg/30 bg-status-error-bg p-3 text-xs text-status-error-fg">
                 {statusError}
               </div>
             )}
@@ -629,7 +629,7 @@ export function StaffManagementPage() {
                 variant={showStatusModal.isActive ? "secondary" : "primary"}
                 onClick={handleStatusSubmit}
                 disabled={statusLoading}
-                className={showStatusModal.isActive ? "border-red-300 text-red-700 hover:bg-red-50" : ""}
+                className={showStatusModal.isActive ? "border-status-error-fg/30 text-status-error-fg hover:bg-status-error-bg" : ""}
               >
                 {statusLoading ? "Updating..." : showStatusModal.isActive ? "Confirm Deactivation" : "Confirm Reactivation"}
               </Button>
@@ -640,7 +640,7 @@ export function StaffManagementPage() {
 
       {/* FORCE PASSWORD RESET MODAL */}
       {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-xl">
             <h3 className="font-display text-lg font-semibold text-ink">Force Password Reset</h3>
             <p className="mt-1 text-xs text-muted">
@@ -649,7 +649,7 @@ export function StaffManagementPage() {
             </p>
 
             {resetError && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+              <div className="mt-3 rounded-lg border border-status-error-fg/30 bg-status-error-bg p-3 text-xs text-status-error-fg">
                 {resetError}
               </div>
             )}
@@ -664,7 +664,7 @@ export function StaffManagementPage() {
                   value={resetPassInput}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setResetPassInput(e.target.value)}
                   placeholder="Leave empty for auto-generated password"
-                  className="mt-1 w-full rounded-lg border border-surface-border bg-surface px-3 py-2 font-mono text-sm text-ink shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="field mt-1 font-mono"
                 />
               </div>
 
@@ -687,10 +687,10 @@ export function StaffManagementPage() {
 
       {/* PASSWORD RESET SUCCESS MODAL */}
       {resetSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-xl">
-            <h3 className="font-display text-lg font-semibold text-emerald-800">Password Reset Generated</h3>
-            <p className="mt-2 text-sm text-ink-muted">
+            <h3 className="font-display text-lg font-semibold text-status-approved-fg">Password Reset Generated</h3>
+            <p className="mt-2 text-sm text-muted">
               The temporary password for <span className="font-semibold text-ink">{resetSuccessModal.email}</span> has been set. Share this credential securely:
             </p>
 

@@ -47,7 +47,7 @@ describe("PatientsPage", () => {
   it("lists patients and creates a new record", async () => {
     render(<PatientsPage />);
 
-    expect(await screen.findByText("Meera Nair")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Meera Nair" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "New patient" }));
     fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Nimal" } });
@@ -66,6 +66,6 @@ describe("PatientsPage", () => {
         })
       );
     });
-    expect(await screen.findByText("Nimal Silva")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Nimal Silva" })).toBeInTheDocument();
   });
 });

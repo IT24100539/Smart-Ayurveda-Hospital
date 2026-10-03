@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../l10n/feature_localizations.dart';
+import '../../../shared/widgets/clinic_widgets.dart';
 import '../../../theme/app_theme.dart';
 import '../../auth/application/auth_controller.dart';
 import '../data/charaka_chat_repository.dart';
@@ -16,6 +17,8 @@ abstract final class CharakaChatKeys {
   static const typingIndicator = ValueKey('charaka-typing-indicator');
   static const retryButton = ValueKey('charaka-retry-button');
   static const refusalBadge = ValueKey('charaka-refusal-badge');
+  static const statusPill = ValueKey('charaka-status-pill');
+  static const panel = ValueKey('charaka-chat-panel');
 }
 
 class CharakaChatScreen extends ConsumerStatefulWidget {
@@ -42,7 +45,8 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
     _messages.add(
       CharakaChatMessage(
         id: 'welcome-initial',
-        text: '', // Will be resolved dynamically with localization in build/didChangeDependencies
+        text:
+            '', // Will be resolved dynamically with localization in build/didChangeDependencies
         isUser: false,
         timestamp: DateTime.now(),
         topic: CharakaTopic.treatments,
@@ -157,7 +161,8 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
       _scrollToBottom();
     } catch (e) {
       if (!mounted) return;
-      final bool isNetErr = (e is ApiException &&
+      final bool isNetErr =
+          (e is ApiException &&
               (e.isNetworkError ||
                   e.statusCode == 502 ||
                   e.statusCode == 503 ||
@@ -198,6 +203,7 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
   Widget build(BuildContext context) {
     final copy = FeatureLocalizations.of(context);
     final theme = Theme.of(context);
+    final brand = AyurvedaThemeExtension.of(context);
     final authState = ref.watch(authControllerProvider);
     final isPatientSignedIn = authState.isAuthenticated;
 
@@ -208,14 +214,10 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AyurvedaColors.forest.withValues(alpha: 0.15),
+                color: theme.colorScheme.primaryContainer,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.spa,
-                color: AyurvedaColors.forest,
-                size: 20,
-              ),
+              child: Icon(Icons.spa, color: brand.teal, size: 20),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -228,11 +230,14 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(
-                    copy.text('Hospital assistant', 'රෝහල් සහායක'),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AyurvedaColors.forest,
-                      fontWeight: FontWeight.w500,
+                  const SizedBox(height: 2),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: PillChip(
+                      key: CharakaChatKeys.statusPill,
+                      label: copy.text('Hospital assistant', 'රෝහල් සහායක'),
+                      background: brand.neutralBackground,
+                      foreground: brand.neutralForeground,
                     ),
                   ),
                 ],
@@ -242,239 +247,194 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
         ),
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Mode / Topic Selector
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-              child: SegmentedButton<CharakaTopic>(
-                segments: [
-                  ButtonSegment(
-                    value: CharakaTopic.treatments,
-                    icon: const Icon(Icons.local_hospital_outlined, size: 18),
-                    label: Text(copy.charakaTopicTreatments),
-                  ),
-                  ButtonSegment(
-                    value: CharakaTopic.patientInfo,
-                    icon: const Icon(Icons.person_pin_outlined, size: 18),
-                    label: Text(copy.charakaTopicPatient),
-                  ),
-                ],
-                selected: {_currentTopic},
-                onSelectionChanged: (selected) {
-                  setState(() {
-                    _currentTopic = selected.first;
-                  });
-                },
-                style: SegmentedButton.styleFrom(
-                  selectedBackgroundColor: AyurvedaColors.forest.withValues(alpha: 0.15),
-                  selectedForegroundColor: AyurvedaColors.forestDark,
-                ),
-              ),
-            ),
-
-            // Medical Disclaimer Notice Banner
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AyurvedaColors.cream,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AyurvedaColors.gold.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    color: AyurvedaColors.gold,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      copy.charakaDisclaimer,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurfaceVariant,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 820),
+            child: Column(
+              children: [
+                // Mode / Topic Selector
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+                  child: SegmentedButton<CharakaTopic>(
+                    segments: [
+                      ButtonSegment(
+                        value: CharakaTopic.treatments,
+                        icon: const Icon(
+                          Icons.local_hospital_outlined,
+                          size: 18,
+                        ),
+                        label: Text(copy.charakaTopicTreatments),
                       ),
+                      ButtonSegment(
+                        value: CharakaTopic.patientInfo,
+                        icon: const Icon(Icons.person_pin_outlined, size: 18),
+                        label: Text(copy.charakaTopicPatient),
+                      ),
+                    ],
+                    selected: {_currentTopic},
+                    onSelectionChanged: (selected) {
+                      setState(() {
+                        _currentTopic = selected.first;
+                      });
+                    },
+                    style: SegmentedButton.styleFrom(
+                      selectedBackgroundColor:
+                          theme.colorScheme.primaryContainer,
+                      selectedForegroundColor: brand.teal,
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // Offline / Unreachable Banner
-            if (_isOffline)
-              Container(
-                key: CharakaChatKeys.offlineBanner,
-                margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.colorScheme.error),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.wifi_off_rounded,
-                      color: theme.colorScheme.onErrorContainer,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _offlineReason ?? copy.charakaOfflineBanner,
-                        style: TextStyle(
-                          color: theme.colorScheme.onErrorContainer,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
+
+                // Medical Disclaimer Notice Banner
+                Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: brand.pillBackground,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: brand.goldAccent),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: brand.pillForeground,
+                        size: 18,
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      tooltip: 'Dismiss',
-                      onPressed: () => setState(() => _isOffline = false),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Chat Messages Area
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                itemCount: _messages.length + (_isLoading ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == _messages.length && _isLoading) {
-                    return _TypingBubble(copy: copy);
-                  }
-
-                  final msg = _messages[index];
-                  // If it's the first welcome message, substitute localized text
-                  final displayText = msg.id == 'welcome-initial'
-                      ? (_currentTopic == CharakaTopic.treatments
-                          ? copy.charakaWelcomeTreatments
-                          : copy.charakaWelcomePatient)
-                      : msg.text;
-
-                  return _MessageBubble(
-                    message: msg.copyWith(text: displayText),
-                    onRetry: msg.isError
-                        ? () {
-                            final original = _messages.firstWhere(
-                              (m) => m.id == msg.errorMessage,
-                              orElse: () => msg,
-                            );
-                            _retryMessage(original);
-                          }
-                        : null,
-                  );
-                },
-              ),
-            ),
-
-            // Suggested Prompts Chips
-            SizedBox(
-              height: 44,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                children: _suggestedPromptsFor(_currentTopic).map((prompt) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ActionChip(
-                      avatar: const Icon(Icons.chat_bubble_outline, size: 14),
-                      label: Text(
-                        prompt,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      backgroundColor: theme.colorScheme.surface,
-                      side: BorderSide(
-                        color: AyurvedaColors.forest.withValues(alpha: 0.3),
-                      ),
-                      onPressed: _isLoading ? null : () => _sendMessage(prompt),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-
-            const Divider(height: 1),
-
-            // Bottom Input Bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: CharakaChatKeys.input,
-                      controller: _textController,
-                      enabled: !_isLoading && isPatientSignedIn,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                      decoration: InputDecoration(
-                        hintText: isPatientSignedIn
-                            ? copy.charakaInputHint
-                            : copy.askSignInRequired,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        filled: true,
-                        fillColor: theme.colorScheme.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(
-                            color: theme.colorScheme.outline.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(
-                            color: theme.colorScheme.outline.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: const BorderSide(
-                            color: AyurvedaColors.forest,
-                            width: 1.5,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          copy.charakaDisclaimer,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    key: CharakaChatKeys.sendButton,
-                    icon: _isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                ),
+
+                // Offline / Unreachable Banner
+                if (_isOffline)
+                  Container(
+                    key: CharakaChatKeys.offlineBanner,
+                    margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: theme.colorScheme.error),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.wifi_off_rounded,
+                          color: theme.colorScheme.error,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _offlineReason ?? copy.charakaOfflineBanner,
+                            style: TextStyle(
+                              color: theme.colorScheme.error,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
-                          )
-                        : const Icon(Icons.send_rounded, size: 20),
-                    style: IconButton.styleFrom(
-                      backgroundColor: AyurvedaColors.forest,
-                      foregroundColor: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          tooltip: 'Dismiss',
+                          onPressed: () => setState(() => _isOffline = false),
+                        ),
+                      ],
                     ),
-                    onPressed: (!_isLoading && isPatientSignedIn)
-                        ? () => _sendMessage()
-                        : null,
                   ),
-                ],
-              ),
+
+                // Large rounded panel: messages, suggestions, and the input
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+                    child: RoundedPanel(
+                      key: CharakaChatKeys.panel,
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              itemCount:
+                                  _messages.length + (_isLoading ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (index == _messages.length && _isLoading) {
+                                  return _TypingBubble(copy: copy);
+                                }
+
+                                final msg = _messages[index];
+                                // If it's the first welcome message, substitute localized text
+                                final displayText = msg.id == 'welcome-initial'
+                                    ? (_currentTopic == CharakaTopic.treatments
+                                          ? copy.charakaWelcomeTreatments
+                                          : copy.charakaWelcomePatient)
+                                    : msg.text;
+
+                                return _MessageBubble(
+                                  message: msg.copyWith(text: displayText),
+                                  onRetry: msg.isError
+                                      ? () {
+                                          final original = _messages.firstWhere(
+                                            (m) => m.id == msg.errorMessage,
+                                            orElse: () => msg,
+                                          );
+                                          _retryMessage(original);
+                                        }
+                                      : null,
+                                );
+                              },
+                            ),
+                          ),
+                          SuggestionChips(
+                            labels: _suggestedPromptsFor(_currentTopic),
+                            enabled: !_isLoading,
+                            onSelected: _sendMessage,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+                            child: PillSendField(
+                              fieldKey: CharakaChatKeys.input,
+                              sendKey: CharakaChatKeys.sendButton,
+                              controller: _textController,
+                              enabled: !_isLoading && isPatientSignedIn,
+                              busy: _isLoading,
+                              hint: isPatientSignedIn
+                                  ? copy.charakaInputHint
+                                  : copy.askSignInRequired,
+                              sendLabel: copy.text('Send', 'යවන්න'),
+                              onSend: _sendMessage,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -482,10 +442,7 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({
-    required this.message,
-    this.onRetry,
-  });
+  const _MessageBubble({required this.message, this.onRetry});
 
   final CharakaChatMessage message;
   final VoidCallback? onRetry;
@@ -520,7 +477,9 @@ class _MessageBubble extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+                  color: theme.colorScheme.errorContainer.withValues(
+                    alpha: 0.5,
+                  ),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: theme.colorScheme.error.withValues(alpha: 0.3),
@@ -532,7 +491,7 @@ class _MessageBubble extends StatelessWidget {
                     Text(
                       message.text,
                       style: TextStyle(
-                        color: theme.colorScheme.onErrorContainer,
+                        color: theme.colorScheme.error,
                         fontSize: 13,
                       ),
                     ),
@@ -560,64 +519,41 @@ class _MessageBubble extends StatelessWidget {
       );
     }
 
+    final brand = AyurvedaThemeExtension.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AyurvedaColors.forest.withValues(alpha: 0.12),
+                color: theme.colorScheme.primaryContainer,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.spa_outlined,
-                color: AyurvedaColors.forest,
-                size: 18,
-              ),
+              child: Icon(Icons.spa_outlined, color: brand.teal, size: 18),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
-                // Medical advice refused badge if applicable
                 if (message.refused)
-                  Container(
-                    key: CharakaChatKeys.refusalBadge,
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AyurvedaColors.terracotta.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AyurvedaColors.terracotta.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.health_and_safety_outlined,
-                          size: 14,
-                          color: AyurvedaColors.terracotta,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          copy.medicalAdviceRefused,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AyurvedaColors.terracotta,
-                          ),
-                        ),
-                      ],
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: PillChip(
+                      key: CharakaChatKeys.refusalBadge,
+                      icon: Icons.health_and_safety_outlined,
+                      label: copy.medicalAdviceRefused,
+                      background: brand.terracottaBackground,
+                      foreground: brand.terracottaAccent,
                     ),
                   ),
 
@@ -628,8 +564,11 @@ class _MessageBubble extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isUser
-                        ? AyurvedaColors.forest
-                        : theme.colorScheme.surfaceContainerHighest,
+                        ? brand.teal
+                        : theme.colorScheme.surfaceContainerHigh,
+                    border: isUser
+                        ? null
+                        : Border.all(color: brand.cardBorderColor),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),
@@ -645,7 +584,7 @@ class _MessageBubble extends StatelessWidget {
                     message.text,
                     style: TextStyle(
                       color: isUser
-                          ? Colors.white
+                          ? brand.onTeal
                           : theme.colorScheme.onSurface,
                       fontSize: 14,
                       height: 1.4,
@@ -677,6 +616,7 @@ class _TypingBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final brand = AyurvedaThemeExtension.of(context);
     return Padding(
       key: CharakaChatKeys.typingIndicator,
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -686,20 +626,16 @@ class _TypingBubble extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AyurvedaColors.forest.withValues(alpha: 0.12),
+              color: theme.colorScheme.primaryContainer,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.spa_outlined,
-              color: AyurvedaColors.forest,
-              size: 18,
-            ),
+            child: Icon(Icons.spa_outlined, color: brand.teal, size: 18),
           ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
+              color: theme.colorScheme.surfaceContainerHigh,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(18),
                 topRight: Radius.circular(18),
@@ -710,12 +646,12 @@ class _TypingBubble extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 14,
                   height: 14,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AyurvedaColors.forest,
+                    color: brand.teal,
                   ),
                 ),
                 const SizedBox(width: 10),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../l10n/feature_localizations.dart';
+import '../../../../shared/widgets/clinic_widgets.dart';
+import '../../../../shared/widgets/skeleton.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../appointments/domain/appointment_models.dart';
 import '../../../appointments/presentation/appointments_screen.dart';
@@ -13,6 +15,8 @@ class UpcomingAppointmentCard extends StatelessWidget {
     required this.isLoading,
     required this.onTap,
     required this.onBookConsultation,
+    this.hasError = false,
+    this.onRetry,
   });
 
   final Appointment? appointment;
@@ -20,86 +24,81 @@ class UpcomingAppointmentCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onBookConsultation;
 
+  /// The appointment list failed to load. Shows a retry row, not the empty state.
+  final bool hasError;
+  final VoidCallback? onRetry;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final featureCopy = FeatureLocalizations.of(context);
+    final brand = AyurvedaThemeExtension.of(context);
+    final copy = FeatureLocalizations.of(context);
 
-    if (isLoading) {
-      return Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        child: const Padding(
-          padding: EdgeInsets.all(20),
-          child: Center(
-            child: SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
+    if (isLoading) return const _UpcomingSkeleton();
+
+    if (hasError && appointment == null) {
+      return ClinicCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(Icons.cloud_off_outlined, color: theme.colorScheme.error),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                copy.text(
+                  'Could not load your appointments.',
+                  'ඔබගේ හමුවීම් පූරණය කළ නොහැකි විය.',
+                ),
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ),
+            if (onRetry != null)
+              TextButton(onPressed: onRetry, child: Text(copy.tryAgain)),
+          ],
         ),
       );
     }
 
     if (appointment == null) {
-      return Card(
-        elevation: 1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(
-            color: theme.colorScheme.outline.withValues(alpha: 0.35),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AyurvedaColors.sageMuted,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.calendar_month_outlined,
-                  color: AyurvedaColors.forest,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      featureCopy.text('No Upcoming Appointments', 'ඉදිරි වෙන්කිරීම් නොමැත'),
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+      return ClinicCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            _IconTile(icon: Icons.calendar_month_outlined, brand: brand),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    copy.text(
+                      'No Upcoming Appointments',
+                      'ඉදිරි වෙන්කිරීම් නොමැත',
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      featureCopy.text(
-                        'Schedule your consultation or wellness session',
-                        'ඔබේ උපදේශනය හෝ ප්‍රතිකාරය වෙන්කරවා ගන්න',
-                      ),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    copy.text(
+                      'Request a consultation or therapy visit',
+                      'උපදේශනයක් හෝ ප්‍රතිකාර හමුවක් ඉල්ලන්න',
                     ),
-                  ],
-                ),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: onBookConsultation,
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                ),
-                child: Text(featureCopy.bookAppointment),
-              ),
-            ],
-          ),
+            ),
+            TextButton(
+              onPressed: onBookConsultation,
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              child: Text(copy.bookAppointment),
+            ),
+          ],
         ),
       );
     }
@@ -107,84 +106,50 @@ class UpcomingAppointmentCard extends StatelessWidget {
     final appt = appointment!;
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
-    final apptDay = DateTime(appt.requestedDate.year, appt.requestedDate.month, appt.requestedDate.day);
+    final apptDay = DateTime(
+      appt.requestedDate.year,
+      appt.requestedDate.month,
+      appt.requestedDate.day,
+    );
     final diffDays = apptDay.difference(todayStart).inDays;
 
     final countdownBadge = switch (diffDays) {
-      0 => featureCopy.text('Today', 'අද'),
-      1 => featureCopy.text('Tomorrow', 'හෙට'),
-      _ => featureCopy.text('In $diffDays days', 'දින $diffDays කින්'),
+      0 => copy.text('Today', 'අද'),
+      1 => copy.text('Tomorrow', 'හෙට'),
+      _ => copy.text('In $diffDays days', 'දින $diffDays කින්'),
     };
 
     final dateFormatted = DateFormat('EEE, MMM d').format(appt.requestedDate);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: AyurvedaColors.forest, width: 1.2),
-      ),
+    return ClinicCard(
+      padding: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.alarm_outlined,
-                        color: AyurvedaColors.forest,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        featureCopy.text('Upcoming Appointment', 'ඉදිරි හමුවීම'),
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AyurvedaColors.forestDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AyurvedaColors.goldMuted,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  Icon(Icons.alarm_outlined, color: brand.teal, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(
                     child: Text(
-                      countdownBadge,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: AyurvedaColors.forestDark,
-                      ),
+                      copy
+                          .text('Upcoming Appointment', 'ඉදිරි හමුවීම')
+                          .toUpperCase(),
+                      style: AyurvedaType.eyebrow(context, color: brand.teal),
                     ),
                   ),
+                  PillChip(label: countdownBadge),
                 ],
               ),
-              const Divider(height: 18),
+              const Divider(height: 24),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AyurvedaColors.forest.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.spa_outlined,
-                      color: AyurvedaColors.forest,
-                      size: 24,
-                    ),
-                  ),
+                  _IconTile(icon: Icons.spa_outlined, brand: brand),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -192,53 +157,113 @@ class UpcomingAppointmentCard extends StatelessWidget {
                       children: [
                         Text(
                           appt.treatmentName,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'serif',
-                          ),
+                          style: theme.textTheme.titleMedium,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 14,
+                          runSpacing: 4,
                           children: [
-                            const Icon(
-                              Icons.calendar_today,
-                              size: 13,
-                              color: AyurvedaColors.inkMuted,
+                            _MetaItem(
+                              icon: Icons.calendar_today,
+                              text: dateFormatted,
+                              strong: true,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              dateFormatted,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
+                            if (appt.requestedTimeSlot.isNotEmpty)
+                              _MetaItem(
+                                icon: Icons.access_time,
+                                text: appt.requestedTimeSlot,
                               ),
-                            ),
-                            if (appt.requestedTimeSlot.isNotEmpty) ...[
-                              const SizedBox(width: 10),
-                              const Icon(
-                                Icons.access_time,
-                                size: 13,
-                                color: AyurvedaColors.inkMuted,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                appt.requestedTimeSlot,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
+                            AppointmentStatusChip(status: appt.status),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  AppointmentStatusChip(status: appt.status),
                 ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IconTile extends StatelessWidget {
+  const _IconTile({required this.icon, required this.brand});
+
+  final IconData icon;
+  final AyurvedaThemeExtension brand;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, color: brand.teal, size: 22),
+    );
+  }
+}
+
+class _MetaItem extends StatelessWidget {
+  const _MetaItem({required this.icon, required this.text, this.strong = false});
+
+  final IconData icon;
+  final String text;
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: muted),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: strong ? FontWeight.w600 : FontWeight.w400,
+              color: strong ? null : muted,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _UpcomingSkeleton extends StatelessWidget {
+  const _UpcomingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SkeletonScope(
+      child: ClinicCard(
+        child: Row(
+          children: [
+            SkeletonBone(height: 44, circle: true),
+            SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SkeletonBone(height: 16, width: 160),
+                  SizedBox(height: 10),
+                  SkeletonBone(height: 12, width: 220),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

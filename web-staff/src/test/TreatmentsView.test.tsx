@@ -118,4 +118,15 @@ describe('TreatmentsView', () => {
       }));
     });
   });
+
+  it('shows the catalogue error instead of writing it to the console', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (api.getTreatments as any).mockRejectedValue(new Error('network down'));
+
+    render(<TreatmentsView />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load treatments.');
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
 });

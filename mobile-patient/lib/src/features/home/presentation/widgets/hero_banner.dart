@@ -18,94 +18,92 @@ class HeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+    final brand = AyurvedaThemeExtension.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Taller on tablets and web so the photo is not a thin strip.
+        final height = constraints.maxWidth >= 600 ? 280.0 : 210.0;
+        return Container(
+          height: height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(brand.headerRadius),
+            border: Border.all(color: brand.cardBorderColor),
           ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Image.asset(
-            'assets/images/hero-ayurveda-wellness.png',
-            height: 210,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => Image.asset(
-              'assets/images/ayurveda-courtyard.png',
-              height: 210,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.2),
-                    Colors.black.withValues(alpha: 0.82),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                'assets/images/hero-ayurveda-wellness.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Image.asset(
+                  'assets/images/ayurveda-courtyard.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      ColoredBox(color: brand.headerGradientStart),
+                ),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AyurvedaColors.scrim.withValues(alpha: 0.2),
+                      AyurvedaColors.scrim.withValues(alpha: 0.82),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 18,
+                left: 20,
+                right: 20,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: AyurvedaColors.onScrim,
+                        fontSize: 22,
+                        height: 1.15,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: AyurvedaFonts.serif,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AyurvedaColors.onScrim,
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ElevatedButton.icon(
+                      onPressed: onBookPressed,
+                      icon: const Icon(Icons.calendar_today, size: 16),
+                      label: Text(ctaLabel),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: brand.teal,
+                        foregroundColor: brand.onTeal,
+                        minimumSize: const Size(180, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        shape: const StadiumBorder(),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
-          Positioned(
-            bottom: 16,
-            left: 18,
-            right: 18,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'serif',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: onBookPressed,
-                  icon: const Icon(Icons.calendar_today, size: 16),
-                  label: Text(ctaLabel),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AyurvedaColors.gold,
-                    foregroundColor: AyurvedaColors.forestDark,
-                    minimumSize: const Size(180, 42),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

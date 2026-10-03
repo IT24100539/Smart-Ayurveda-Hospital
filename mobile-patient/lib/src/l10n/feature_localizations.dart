@@ -21,6 +21,16 @@ class FeatureLocalizations {
 
   String get bookAppointment =>
       text('Book appointment', 'හමුවක් වෙන්කරවා ගන්න');
+  String get therapyStep => text('Therapy', 'ප්‍රතිකාරය');
+  String get confirmStep => text('Confirm', 'තහවුරු');
+  String get chooseTherapy =>
+      text('Choose a therapy', 'ප්‍රතිකාරයක් තෝරන්න');
+  String get noTherapies => text(
+    'No therapies are available to book right now.',
+    'මේ මොහොතේ වෙන්කරවා ගැනීමට ප්‍රතිකාර නොමැත.',
+  );
+  String get loadTherapiesError =>
+      text('Could not load therapies.', 'ප්‍රතිකාර පූරණය කළ නොහැක.');
   String get chooseDate => text('Choose a date', 'දිනයක් තෝරන්න');
   String get unavailableGrey => text(
     'Unavailable days are shown in grey.',
@@ -190,7 +200,7 @@ class FeatureLocalizations {
   String get charakaTopicPatient =>
       text('My Patient Info', 'මගේ රෝගී තොරතුරු');
   String get charakaWelcomeTreatments => text(
-    'Ayubowan! I am Charaka, your hospital assistant. You can ask about our authentic Ayurvedic therapies, fees, schedules, and treatment durations.',
+    'Ayubowan! I am Charaka, your hospital assistant. You can ask about hospital therapies, fees, schedules, and treatment durations.',
     'ආයුබෝවන්! මම ඔබගේ රෝහල් සහායක චරක. ඔබට අපගේ ආයුර්වේද ප්‍රතිකාර, ගාස්තු, කාලසටහන් සහ ප්‍රතිකාර කාලසීමාවන් ගැන විමසිය හැක.',
   );
   String get charakaWelcomePatient => text(

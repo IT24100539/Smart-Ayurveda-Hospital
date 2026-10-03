@@ -4,7 +4,7 @@ import { ApiError, api } from "../api/client";
 import { getFeedbackStats, type FeedbackStats } from "../api/feedback";
 import { listWorkflows, type WorkflowExecution } from "../api/workflows";
 import { useAuthStore } from "../store/authStore";
-import { Badge, Card, ErrorState, LoadingState, type BadgeTone } from "../components/ui";
+import { Badge, Card, ErrorState, LoadingState, SafeImage, type BadgeTone } from "../components/ui";
 
 type AppointmentStatus = "Pending" | "Approved" | "Rejected" | "Cancelled" | "Completed";
 
@@ -173,30 +173,30 @@ export function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <section className="relative overflow-hidden rounded-2xl bg-primary-dark text-white shadow-lg">
+      <section className="relative overflow-hidden rounded-2xl on-dark bg-hero text-white shadow-lg">
         <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10" aria-hidden="true" />
         <div className="pointer-events-none absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-amber-300/80 via-amber-200/30 to-transparent" aria-hidden="true" />
-        <img
+        <SafeImage
           src="/images/ayurveda-courtyard.png"
           alt="Courtyard of the Ayurveda hospital"
           className="h-44 w-full object-cover sm:h-52"
         />
         <div className="relative grid gap-6 p-6 md:grid-cols-[1.5fr_0.8fr] md:p-8">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-muted">Hospital operations</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-hero-muted">Hospital operations</p>
             <h1 className="mt-2 text-3xl text-white">
               {greeting(now)}, {displayName(user?.fullName)}
             </h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-primary-muted">
+            <p className="mt-3 max-w-xl text-sm leading-6 text-hero-muted">
               Today’s panchakarma schedule, ward beds, and the decisions still waiting on staff.
             </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/10 p-5">
-            <p className="text-sm text-primary-muted">
+            <p className="text-sm text-hero-muted">
               {now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
             </p>
             <p className="mt-2 font-display text-2xl">{roleLabel(user?.role)}</p>
-            <p className="mt-1 text-sm text-primary-muted">{openComplaints.length} open complaints</p>
+            <p className="mt-1 text-sm text-hero-muted">{openComplaints.length} open complaints</p>
           </div>
         </div>
       </section>
@@ -217,20 +217,33 @@ export function DashboardPage() {
             {metrics.map((metric) => (
               <Link key={metric.label} to={metric.to} className="block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                 <Card className="relative h-full overflow-hidden p-5 pt-6 transition hover:-translate-y-0.5 hover:shadow-lg">
-                  <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 to-primary" aria-hidden="true" />
+                  <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gold to-primary" aria-hidden="true" />
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{metric.label}</p>
-                  <p className="mt-2 font-display text-3xl text-primary-dark">{metric.value}</p>
+                  <p className="mt-2 font-display text-3xl text-heading">{metric.value}</p>
                   <p className="mt-1 text-sm text-muted">{metric.detail}</p>
                 </Card>
               </Link>
             ))}
           </section>
 
+          <section className="grid gap-6 xl:grid-cols-5" aria-label="Hospital charts">
+            <Card className="p-5 xl:col-span-3">
+              <h2 className="font-display text-xl text-heading">Visit mix today</h2>
+              <p className="mt-1 text-sm text-muted">How today’s booked therapies sit across the schedule.</p>
+              <VisitMixChart appointments={snapshot.appointments} />
+            </Card>
+            <Card className="flex flex-col items-center justify-center p-5 xl:col-span-2">
+              <h2 className="self-start font-display text-xl text-heading">Beds in use</h2>
+              <p className="mt-1 self-start text-sm text-muted">Filled beds across every ward.</p>
+              <OccupancyRing occupied={occupied} capacity={capacity} percent={occupancy} />
+            </Card>
+          </section>
+
           <div className="grid gap-6 xl:grid-cols-5">
             <Card className="p-5 xl:col-span-3">
               <div className="flex items-end justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl text-primary-dark">Today’s schedule</h2>
+                  <h2 className="font-display text-xl text-heading">Today’s schedule</h2>
                   <p className="mt-1 text-sm text-muted">Consultations and therapies booked for this date.</p>
                 </div>
                 <Link to="/appointments" className="text-sm font-semibold text-primary hover:text-primary-dark">
@@ -258,7 +271,7 @@ export function DashboardPage() {
             </Card>
 
             <Card className="p-5 xl:col-span-2">
-              <h2 className="font-display text-xl text-primary-dark">Needs a decision</h2>
+              <h2 className="font-display text-xl text-heading">Needs a decision</h2>
               <p className="mt-1 text-sm text-muted">Requests that stay pending until staff act.</p>
               <ul className="mt-4 space-y-3">
                 <AttentionRow to="/appointments" label="Appointment requests" count={pendingAppointments.length} />
@@ -279,7 +292,7 @@ export function DashboardPage() {
           <Card className="p-5">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <h2 className="font-display text-xl text-primary-dark">Patient feedback</h2>
+                <h2 className="font-display text-xl text-heading">Patient feedback</h2>
                 <p className="mt-1 text-sm text-muted">
                   Latest comments on care
                   {snapshot.feedback ? `, averaging ${snapshot.feedback.averageRating.toFixed(1)} out of 5` : ""}.
@@ -294,11 +307,11 @@ export function DashboardPage() {
             ) : (
               <ul className="mt-4 space-y-3">
                 {snapshot.comments.map((item) => (
-                  <li key={item.id} className="rounded-2xl border border-white/80 bg-white/70 px-4 py-4 shadow-sm">
+                  <li key={item.id} className="rounded-2xl border border-surface-border bg-surface-raised px-4 py-4 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-semibold text-ink">{item.isAnonymous ? "Anonymous patient" : item.patientName}</p>
                       <div className="flex items-center gap-2">
-                        <span className="tracking-wide text-amber-600" aria-label={`${item.rating} out of 5`}>
+                        <span className="tracking-wide text-gold" aria-label={`${item.rating} out of 5`}>
                           {"★".repeat(item.rating)}
                           <span className="text-surface-border">{"★".repeat(Math.max(0, 5 - item.rating))}</span>
                         </span>
@@ -307,7 +320,7 @@ export function DashboardPage() {
                         </Badge>
                       </div>
                     </div>
-                    <blockquote className="mt-3 border-l-4 border-amber-300 pl-3 font-display text-base leading-7 text-ink">
+                    <blockquote className="mt-3 border-l-4 border-status-pending-fg/40 pl-3 font-display text-base leading-7 text-ink">
                       {item.comment}
                     </blockquote>
                   </li>
@@ -319,7 +332,7 @@ export function DashboardPage() {
           <Card className="p-5">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <h2 className="font-display text-xl text-primary-dark">Ward occupancy</h2>
+                <h2 className="font-display text-xl text-heading">Ward occupancy</h2>
                 <p className="mt-1 text-sm text-muted">Filled beds across the hospital.</p>
               </div>
               <Link to="/wards" className="text-sm font-semibold text-primary hover:text-primary-dark">
@@ -355,12 +368,70 @@ export function DashboardPage() {
   );
 }
 
+const VISIT_ORDER: AppointmentStatus[] = ["Pending", "Approved", "Completed", "Rejected", "Cancelled"];
+
+function VisitMixChart({ appointments }: { appointments: Appointment[] }) {
+  const counts = VISIT_ORDER.map((status) => ({
+    status,
+    count: appointments.filter((item) => item.status === status).length
+  }));
+  const max = Math.max(1, ...counts.map((item) => item.count));
+
+  return (
+    <ul className="mt-5 space-y-3" aria-label="Appointments by status">
+      {counts.map((item) => (
+        <li key={item.status} className="grid grid-cols-[7rem_1fr_2rem] items-center gap-3 text-sm">
+          <span className="font-medium text-ink">{item.status}</span>
+          <div className="h-2.5 overflow-hidden rounded-full bg-primary-muted" aria-hidden="true">
+            <div
+              className="h-full rounded-full bg-primary"
+              style={{ width: `${Math.round((item.count / max) * 100)}%` }}
+            />
+          </div>
+          <span className="text-right tabular-nums text-muted">{item.count}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function OccupancyRing({ occupied, capacity, percent }: { occupied: number; capacity: number; percent: number }) {
+  const radius = 36;
+  const circumference = 2 * Math.PI * radius;
+  const filled = capacity === 0 ? 0 : (percent / 100) * circumference;
+
+  return (
+    <figure className="mt-4 flex flex-col items-center">
+      <svg viewBox="0 0 100 100" className="h-40 w-40" role="img" aria-label={capacity === 0 ? "No wards configured" : `${occupied} of ${capacity} beds filled`}>
+        <circle cx="50" cy="50" r={radius} fill="none" className="chart-track" strokeWidth="10" />
+        <circle
+          cx="50"
+          cy="50"
+          r={radius}
+          fill="none"
+          className="chart-value"
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={`${filled} ${circumference}`}
+          transform="rotate(-90 50 50)"
+        />
+        <text x="50" y="48" textAnchor="middle" className="chart-label font-display text-2xl font-semibold">
+          {capacity === 0 ? "—" : `${percent}%`}
+        </text>
+        <text x="50" y="64" textAnchor="middle" className="chart-sub text-[10px]">
+          {capacity === 0 ? "No beds" : `${occupied} / ${capacity}`}
+        </text>
+      </svg>
+    </figure>
+  );
+}
+
 function AttentionRow({ to, label, count }: { to: string; label: string; count: number }) {
   return (
     <li>
       <Link to={to} className="flex items-center justify-between rounded-lg bg-surface px-3 py-3 text-sm hover:bg-primary-muted">
         <span className="font-medium text-ink">{label}</span>
-        <span className="font-display text-lg text-primary-dark">{count}</span>
+        <span className="font-display text-lg text-heading">{count}</span>
       </Link>
     </li>
   );

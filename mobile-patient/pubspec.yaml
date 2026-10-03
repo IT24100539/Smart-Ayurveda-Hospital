@@ -69,6 +69,21 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/brand/
+    - assets/fonts/SourceSans3-OFL.txt
+    - assets/fonts/SourceSerif4-OFL.txt
+    - assets/fonts/NotoSansSinhala-OFL.txt
+
+  fonts:
+    - family: Source Sans 3
+      fonts:
+        - asset: assets/fonts/SourceSans3-Variable.ttf
+    - family: Source Serif 4
+      fonts:
+        - asset: assets/fonts/SourceSerif4-Variable.ttf
+    - family: Noto Sans Sinhala
+      fonts:
+        - asset: assets/fonts/NotoSansSinhala-Variable.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

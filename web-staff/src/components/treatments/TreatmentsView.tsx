@@ -18,7 +18,7 @@ import type {
   WeekdayName
 } from '../../api/treatments';
 import { ApiError } from '../../api/client';
-import { Badge, Button, Card, EmptyState, LoadingState, PageHeader } from '../ui';
+import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, SafeImage } from '../ui';
 
 // --- Shared UI SVG Icons ---
 const IconPlus = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>;
@@ -42,14 +42,17 @@ export function TreatmentsView() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchTreatments = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await getTreatments({ page: 1, pageSize: 50 });
       setTreatments(data.items || []);
-    } catch (e: any) {
-      console.error(e);
+    } catch (e: unknown) {
+      setTreatments([]);
+      setLoadError(errorMessage(e, 'Unable to load treatments.'));
     } finally {
       setLoading(false);
     }
@@ -83,13 +86,13 @@ export function TreatmentsView() {
         title="Treatments"
         description="Therapies, duration, and the days each treatment is offered."
         action={
-          <Button onClick={() => setDrawerOpen(true)} className="w-full !bg-white !text-primary-dark hover:!bg-primary-muted sm:w-auto">
+          <Button onClick={() => setDrawerOpen(true)} className="w-full !bg-hero-button !text-hero-deep hover:!bg-hero-button-hover sm:w-auto">
             <IconPlus /> New Treatment
           </Button>
         }
       />
 
-      <img
+      <SafeImage
         src="/images/herbal-oils.png"
         alt="Brass bowl of herbal oil with tulsi and neem"
         className="mb-6 h-44 w-full rounded-2xl object-cover shadow-md"
@@ -106,7 +109,7 @@ export function TreatmentsView() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search treatments..."
-              className="min-h-11 w-full rounded-md border border-surface-border bg-surface-raised py-2 pl-10 pr-4 text-ink outline-none ring-primary focus:ring-2"
+              className="field pl-10 pr-4"
             />
           </div>
         </div>
@@ -114,6 +117,10 @@ export function TreatmentsView() {
         {loading ? (
           <div className="p-4">
             <LoadingState label="Loading treatments…" />
+          </div>
+        ) : loadError ? (
+          <div className="p-4">
+            <ErrorState message={loadError} onRetry={() => void fetchTreatments()} />
           </div>
         ) : visible.length === 0 ? (
           <div className="p-4">
@@ -123,10 +130,10 @@ export function TreatmentsView() {
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[40rem] border-collapse text-left">
+          <div className="table-scroll">
+          <table className="data-table min-w-[40rem]">
             <thead>
-              <tr className="bg-neutral-50 text-sm text-muted">
+              <tr>
                 <th className="border-b border-surface-border px-4 py-3 font-semibold">Name</th>
                 <th className="border-b border-surface-border px-4 py-3 font-semibold">Category</th>
                 <th className="border-b border-surface-border px-4 py-3 font-semibold">Status</th>
@@ -138,7 +145,7 @@ export function TreatmentsView() {
               {visible.map(t => (
                 <React.Fragment key={t.id}>
                   <tr 
-                    className="cursor-pointer border-b border-surface-border transition hover:bg-neutral-50"
+                    className="cursor-pointer"
                     onClick={() => setExpandedRow(expandedRow === t.id ? null : t.id)}
                   >
                     <td className="px-4 py-4">
@@ -154,7 +161,7 @@ export function TreatmentsView() {
                         {dayLabels.map((label, i) => (
                           <div
                             key={label}
-                            className={`flex h-6 w-6 items-center justify-center rounded text-xs ${t.availableDays?.includes(WEEKDAYS[i]!) ? "bg-primary-muted font-bold text-primary-dark" : "text-neutral-300"}`}
+                            className={`flex h-6 w-6 items-center justify-center rounded text-xs ${t.availableDays?.includes(WEEKDAYS[i]!) ? "bg-primary-muted font-bold text-heading" : "text-neutral-300"}`}
                           >
                             {t.availableDays?.includes(WEEKDAYS[i]!) ? "✓" : "—"}
                           </div>
@@ -190,7 +197,7 @@ export function TreatmentsView() {
 
       {drawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-ink/20" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute inset-0 bg-scrim/40" onClick={() => setDrawerOpen(false)} />
           <div className="relative flex w-full max-w-md flex-col bg-surface-raised shadow-lg">
             <div className="flex items-center justify-between border-b border-surface-border p-6">
               <h2 className="font-display text-xl font-semibold text-ink">New Treatment</h2>
@@ -252,15 +259,15 @@ function TreatmentForm({ onSuccess }: { onSuccess: () => void }) {
       ) : null}
       <div>
         <label className="mb-1 block text-sm font-medium text-ink">Name</label>
-        <input required maxLength={160} type="text" className="min-h-11 w-full rounded-md border border-surface-border p-2" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+        <input required maxLength={160} type="text" className="field" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-ink">Name (Sinhala)</label>
-        <input required maxLength={160} type="text" className="min-h-11 w-full rounded-md border border-surface-border p-2" value={formData.nameSinhala} onChange={e => setFormData({...formData, nameSinhala: e.target.value})} />
+        <input required maxLength={160} type="text" className="field" value={formData.nameSinhala} onChange={e => setFormData({...formData, nameSinhala: e.target.value})} />
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-ink">Category</label>
-        <select className="min-h-11 w-full rounded-md border border-surface-border p-2" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as TreatmentCategory})}>
+        <select className="field" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as TreatmentCategory})}>
           {TREATMENT_CATEGORIES.map((category) => (
             <option key={category} value={category}>{formatCategory(category)}</option>
           ))}
@@ -268,19 +275,19 @@ function TreatmentForm({ onSuccess }: { onSuccess: () => void }) {
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-ink">Description</label>
-        <textarea required maxLength={2000} className="w-full rounded-md border border-surface-border p-2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+        <textarea required maxLength={2000} className="field" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-ink">Description (Sinhala)</label>
-        <textarea required maxLength={2000} className="w-full rounded-md border border-surface-border p-2" value={formData.descriptionSinhala} onChange={e => setFormData({...formData, descriptionSinhala: e.target.value})} />
+        <textarea required maxLength={2000} className="field" value={formData.descriptionSinhala} onChange={e => setFormData({...formData, descriptionSinhala: e.target.value})} />
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-ink">Duration (minutes)</label>
-        <input required min={5} max={1440} type="number" className="min-h-11 w-full rounded-md border border-surface-border p-2" value={formData.durationMinutes} onChange={e => setFormData({...formData, durationMinutes: Number(e.target.value)})} />
+        <input required min={5} max={1440} type="number" className="field" value={formData.durationMinutes} onChange={e => setFormData({...formData, durationMinutes: Number(e.target.value)})} />
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-ink">Unit price (LKR)</label>
-        <input required min={0} step="0.01" type="number" className="min-h-11 w-full rounded-md border border-surface-border p-2" value={formData.unitPrice} onChange={e => setFormData({...formData, unitPrice: Number(e.target.value)})} />
+        <input required min={0} step="0.01" type="number" className="field" value={formData.unitPrice} onChange={e => setFormData({...formData, unitPrice: Number(e.target.value)})} />
       </div>
       <div className="pt-4">
         <Button type="submit" className="w-full" disabled={saving}>{saving ? 'Creating...' : 'Create Treatment'}</Button>
@@ -392,15 +399,15 @@ function InlineScheduleEditor({ treatmentId, onSave, onCancel }: { treatmentId: 
               <div className={`space-y-2 transition-all ${state.enabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
                 <div>
                   <label className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Start</label>
-                  <input type="time" className="min-h-11 w-full rounded-md border border-surface-border p-1 text-xs" value={state.startTime.substring(0, 5)} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, startTime: e.target.value + ':00'}}))} />
+                  <input type="time" className="field p-1 text-xs" value={state.startTime.substring(0, 5)} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, startTime: e.target.value + ':00'}}))} />
                 </div>
                 <div>
                   <label className="mb-1 block text-[10px] uppercase tracking-wider text-muted">End</label>
-                  <input type="time" className="min-h-11 w-full rounded-md border border-surface-border p-1 text-xs" value={state.endTime.substring(0, 5)} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, endTime: e.target.value + ':00'}}))} />
+                  <input type="time" className="field p-1 text-xs" value={state.endTime.substring(0, 5)} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, endTime: e.target.value + ':00'}}))} />
                 </div>
                 <div>
                   <label className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Slots</label>
-                  <input type="number" min="1" className="min-h-11 w-full rounded-md border border-surface-border p-1 text-xs" value={state.maxSlots} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, maxSlots: parseInt(e.target.value) || 0}}))} />
+                  <input type="number" min="1" className="field p-1 text-xs" value={state.maxSlots} onChange={e => setEditedDays(prev => ({...prev, [i]: {...prev[i]!, maxSlots: parseInt(e.target.value) || 0}}))} />
                 </div>
               </div>
             </div>

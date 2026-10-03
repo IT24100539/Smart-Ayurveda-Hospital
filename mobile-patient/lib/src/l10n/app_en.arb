@@ -111,9 +111,17 @@
   "@invalidCredentialsMessage": {
     "description": "Shown when login returns 401"
   },
-  "emailAlreadyRegisteredMessage": "An account already exists for this email.",
-  "@emailAlreadyRegisteredMessage": {
-    "description": "Shown when register returns 409"
+  "registrationUnavailableMessage": "Unable to create an account with the details provided.",
+  "@registrationUnavailableMessage": {
+    "description": "Shown when register is rejected without revealing whether the email exists"
+  },
+  "accountTemporarilyLocked": "This account is temporarily locked. Please try again later.",
+  "@accountTemporarilyLocked": {
+    "description": "Shown when login returns 401 because the account is locked"
+  },
+  "tooManyAttempts": "Too many attempts. Please try again later.",
+  "@tooManyAttempts": {
+    "description": "Shown when login, register, or password reset is rate limited"
   },
   "genericErrorMessage": "Something went wrong. Please try again.",
   "@genericErrorMessage": {
@@ -151,7 +159,7 @@
   "@homeGreetingGeneric": {
     "description": "Greeting used when the patient's name is not known yet"
   },
-  "homeSubtitle": "Book consultations, follow your panchakarma plan, and track your herbal medicines.",
+  "homeSubtitle": "Book consultations, follow your treatment schedule, and review your registration summary.",
   "@homeSubtitle": {},
   "homeHospitalName": "Smart Ayurveda Hospital",
   "@homeHospitalName": {
@@ -310,6 +318,18 @@
   "@notificationEscalated": {},
   "notificationGeneral": "Notice",
   "@notificationGeneral": {},
+  "notificationAppointmentApproved": "Appointment approved",
+  "@notificationAppointmentApproved": {},
+  "notificationAppointmentRejected": "Appointment not approved",
+  "@notificationAppointmentRejected": {},
+  "notificationAppointmentRescheduled": "Appointment rescheduled",
+  "@notificationAppointmentRescheduled": {},
+  "notificationAppointmentCancelled": "Appointment cancelled",
+  "@notificationAppointmentCancelled": {},
+  "notificationPrescriptionIssued": "Prescription issued",
+  "@notificationPrescriptionIssued": {},
+  "notificationInvoiceIssued": "Invoice issued",
+  "@notificationInvoiceIssued": {},
   "retry": "Try again",
   "@retry": {},
   "myFeedbackTitle": "My feedback",
@@ -348,7 +368,7 @@
   "@saveChanges": {},
   "myHealthHubTitle": "My Health Hub",
   "@myHealthHubTitle": {},
-  "myHealthHubSubtitle": "Your therapy sessions and registration summary.",
+  "myHealthHubSubtitle": "Therapy sessions, prescriptions, invoices, and documents.",
   "@myHealthHubSubtitle": {},
   "myTherapySessionsTitle": "My therapy sessions",
   "@myTherapySessionsTitle": {},
@@ -385,5 +405,299 @@
   "noPatientRecordLinkedHelp": "The clinical record must use the same email address. Please contact reception or update your profile to link your clinical record.",
   "@noPatientRecordLinkedHelp": {},
   "unlinkedRecordRetry": "Check again",
-  "@unlinkedRecordRetry": {}
+  "@unlinkedRecordRetry": {},
+  "unlinkedRecordHelpAction": "Contact reception",
+  "@unlinkedRecordHelpAction": {},
+
+  "forgotPasswordLink": "Forgot password?",
+  "@forgotPasswordLink": {
+    "description": "Link on the login form that opens the forgot-password screen"
+  },
+  "forgotPasswordTitle": "Reset password",
+  "@forgotPasswordTitle": {
+    "description": "App bar title of the forgot-password screen"
+  },
+  "forgotPasswordHeading": "Forgot your password?",
+  "@forgotPasswordHeading": {},
+  "forgotPasswordBody": "Enter the email on your account. If it is registered, we will send a reset link.",
+  "@forgotPasswordBody": {
+    "description": "Explains the request-reset step without revealing whether the email exists"
+  },
+  "forgotPasswordSubmit": "Send reset link",
+  "@forgotPasswordSubmit": {},
+  "forgotPasswordBackToSignIn": "Back to sign in",
+  "@forgotPasswordBackToSignIn": {},
+  "forgotPasswordSuccess": "If an account with that email exists, a password reset link has been sent.",
+  "@forgotPasswordSuccess": {
+    "description": "Same wording whether or not the email is registered, matching the API"
+  },
+  "forgotPasswordError": "Could not send a reset request. Check your connection and try again.",
+  "@forgotPasswordError": {},
+  "resetPasswordTitle": "New password",
+  "@resetPasswordTitle": {
+    "description": "App bar title of the complete-reset screen"
+  },
+  "resetPasswordHeading": "Create a new password",
+  "@resetPasswordHeading": {},
+  "resetPasswordBody": "Enter the reset token from your email and choose a new password.",
+  "@resetPasswordBody": {},
+  "resetTokenLabel": "Reset token",
+  "@resetTokenLabel": {},
+  "resetTokenRequired": "Enter the reset token from your email",
+  "@resetTokenRequired": {},
+  "newPasswordLabel": "New password",
+  "@newPasswordLabel": {},
+  "confirmPasswordLabel": "Confirm password",
+  "@confirmPasswordLabel": {},
+  "confirmPasswordRequired": "Please confirm your password",
+  "@confirmPasswordRequired": {},
+  "passwordsDoNotMatch": "Passwords do not match",
+  "@passwordsDoNotMatch": {},
+  "resetPasswordSubmit": "Reset password",
+  "@resetPasswordSubmit": {},
+  "resetPasswordSuccess": "Your password has been reset. You can now sign in with the new password.",
+  "@resetPasswordSuccess": {},
+  "resetPasswordError": "Could not reset the password. The token may be invalid or expired.",
+  "@resetPasswordError": {},
+  "resetPasswordSignInNow": "Sign in now",
+  "@resetPasswordSignInNow": {},
+  "passwordNeedsUppercase": "Password must contain at least one uppercase letter",
+  "@passwordNeedsUppercase": {
+    "description": "Mirrors the Hospital.Api password policy"
+  },
+  "passwordNeedsLowercase": "Password must contain at least one lowercase letter",
+  "@passwordNeedsLowercase": {
+    "description": "Mirrors the Hospital.Api password policy"
+  },
+  "passwordNeedsDigit": "Password must contain at least one digit",
+  "@passwordNeedsDigit": {
+    "description": "Mirrors the Hospital.Api password policy"
+  },
+  "passwordNeedsSpecial": "Password must contain at least one special character",
+  "@passwordNeedsSpecial": {
+    "description": "Mirrors the Hospital.Api password policy"
+  },
+  "showPassword": "Show password",
+  "@showPassword": {
+    "description": "Semantics label for the reveal-password icon button"
+  },
+  "hidePassword": "Hide password",
+  "@hidePassword": {
+    "description": "Semantics label for the hide-password icon button"
+  },
+
+  "doctorsTitle": "Physicians",
+  "@doctorsTitle": {
+    "description": "Title of the physician directory and its navigation entry"
+  },
+  "doctorsSubtitle": "Vaidyas who consult at the hospital.",
+  "@doctorsSubtitle": {
+    "description": "Intro on the physician directory"
+  },
+  "doctorsNavSubtitle": "Meet the vaidya team",
+  "@doctorsNavSubtitle": {
+    "description": "Subtitle on the home and profile links to the physician directory"
+  },
+  "doctorsSearchHint": "Search by name or specialty",
+  "@doctorsSearchHint": {},
+  "doctorsEmpty": "No physicians are listed yet.",
+  "@doctorsEmpty": {},
+  "doctorsSearchEmpty": "No physicians match your search.",
+  "@doctorsSearchEmpty": {},
+  "doctorsLoadError": "Could not load physicians.",
+  "@doctorsLoadError": {},
+  "doctorProfileLoadError": "Could not load this physician.",
+  "@doctorProfileLoadError": {},
+  "doctorQualificationsLabel": "Qualifications",
+  "@doctorQualificationsLabel": {},
+  "doctorAboutLabel": "About",
+  "@doctorAboutLabel": {},
+  "healthHubUpcomingTab": "Upcoming",
+  "@healthHubUpcomingTab": {},
+  "healthHubTherapyTab": "Therapy",
+  "@healthHubTherapyTab": {},
+  "healthHubRegistrationTab": "Registration",
+  "@healthHubRegistrationTab": {},
+  "healthHubUpcomingEmpty": "No upcoming appointments.",
+  "@healthHubUpcomingEmpty": {},
+  "healthHubPrescriptionsTab": "Prescriptions",
+  "@healthHubPrescriptionsTab": {},
+  "healthHubInvoicesTab": "Invoices",
+  "@healthHubInvoicesTab": {},
+  "healthHubDocumentsTab": "Documents",
+  "@healthHubDocumentsTab": {},
+  "myPrescriptionsTitle": "My prescriptions",
+  "@myPrescriptionsTitle": {},
+  "prescriptionsEmpty": "No prescriptions have been issued yet.",
+  "@prescriptionsEmpty": {},
+  "prescriptionsLoadError": "Could not load prescriptions.",
+  "@prescriptionsLoadError": {},
+  "prescriptionIssuedOn": "Issued {date}",
+  "@prescriptionIssuedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Oct 2, 2026"
+      }
+    }
+  },
+  "prescriptionRevision": "Revision {number}",
+  "@prescriptionRevision": {
+    "placeholders": {
+      "number": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "prescriptionStatusIssued": "Issued",
+  "@prescriptionStatusIssued": {},
+  "prescriptionStatusSuperseded": "Superseded",
+  "@prescriptionStatusSuperseded": {},
+  "prescriptionStatusCancelled": "Cancelled",
+  "@prescriptionStatusCancelled": {},
+  "prescriptionStatusDraft": "Draft",
+  "@prescriptionStatusDraft": {},
+  "myInvoicesTitle": "My invoices",
+  "@myInvoicesTitle": {},
+  "invoicesEmpty": "No invoices have been issued yet.",
+  "@invoicesEmpty": {},
+  "invoicesLoadError": "Could not load invoices.",
+  "@invoicesLoadError": {},
+  "paymentHistoryTitle": "Payment history",
+  "@paymentHistoryTitle": {},
+  "paymentsEmpty": "No payments recorded.",
+  "@paymentsEmpty": {},
+  "invoiceTotalLabel": "Total",
+  "@invoiceTotalLabel": {},
+  "amountPaidLabel": "Paid",
+  "@amountPaidLabel": {},
+  "balanceLabel": "Balance",
+  "@balanceLabel": {},
+  "invoiceStatusIssued": "Issued",
+  "@invoiceStatusIssued": {},
+  "invoiceStatusPaid": "Paid",
+  "@invoiceStatusPaid": {},
+  "invoiceStatusCancelled": "Cancelled",
+  "@invoiceStatusCancelled": {},
+  "invoiceStatusDraft": "Draft",
+  "@invoiceStatusDraft": {},
+  "paymentMethodCash": "Cash",
+  "@paymentMethodCash": {},
+  "paymentMethodCard": "Card",
+  "@paymentMethodCard": {},
+  "paymentMethodBankTransfer": "Bank transfer",
+  "@paymentMethodBankTransfer": {},
+  "myDocumentsTitle": "My documents",
+  "@myDocumentsTitle": {},
+  "documentsEmpty": "No documents have been uploaded yet.",
+  "@documentsEmpty": {},
+  "documentsLoadError": "Could not load documents.",
+  "@documentsLoadError": {},
+  "documentView": "View",
+  "@documentView": {},
+  "documentDownload": "Download",
+  "@documentDownload": {},
+  "documentSaved": "Saved {fileName}",
+  "@documentSaved": {
+    "placeholders": {
+      "fileName": {
+        "type": "String",
+        "example": "document.pdf"
+      }
+    }
+  },
+  "documentDownloadError": "Could not download this document.",
+  "@documentDownloadError": {},
+  "documentOpenError": "Could not open this document.",
+  "@documentOpenError": {},
+  "documentPdfNotice": "This PDF is available to download.",
+  "@documentPdfNotice": {},
+  "documentFileNotice": "This file is available to download.",
+  "@documentFileNotice": {},
+  "documentCategoryLabReport": "Lab report",
+  "@documentCategoryLabReport": {},
+  "documentCategoryPrescriptionScan": "Prescription scan",
+  "@documentCategoryPrescriptionScan": {},
+  "documentCategoryDiagnosticScan": "Diagnostic scan",
+  "@documentCategoryDiagnosticScan": {},
+  "documentCategoryDischargeSummary": "Discharge summary",
+  "@documentCategoryDischargeSummary": {},
+  "documentCategoryTreatmentPlan": "Treatment plan",
+  "@documentCategoryTreatmentPlan": {},
+  "documentCategoryGeneral": "General",
+  "@documentCategoryGeneral": {},
+  "doctorRatingSummary": "{rating} from {count, plural, =1{1 review} other{{count} reviews}}",
+  "@doctorRatingSummary": {
+    "description": "Shown only when the doctors API returns a real feedback average",
+    "placeholders": {
+      "rating": {
+        "type": "String",
+        "example": "4.5"
+      },
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+
+  "appearanceSectionTitle": "Appearance",
+  "@appearanceSectionTitle": {},
+  "themeSystem": "System",
+  "@themeSystem": {
+    "description": "Theme follows the device setting"
+  },
+  "themeLight": "Light",
+  "@themeLight": {},
+  "themeDark": "Dark",
+  "@themeDark": {},
+
+  "privacySectionTitle": "Privacy",
+  "@privacySectionTitle": {},
+  "privacyPolicyTitle": "Privacy policy",
+  "@privacyPolicyTitle": {},
+  "privacyPolicySubtitle": "How your care record is handled in this app.",
+  "@privacyPolicySubtitle": {},
+  "termsOfUseTitle": "Terms of use",
+  "@termsOfUseTitle": {},
+  "termsOfUseSubtitle": "The rules for using the patient app.",
+  "@termsOfUseSubtitle": {},
+  "legalPlaceholderBanner": "ASK ME for the real text",
+  "@legalPlaceholderBanner": {
+    "description": "Visible marker until the hospital supplies the approved legal copy"
+  },
+  "legalPlaceholderHint": "Placeholder. Replace this screen with the hospital's approved wording.",
+  "@legalPlaceholderHint": {},
+  "privacyPolicyBody": "This is placeholder copy, not the hospital privacy policy.\n\nIt will describe how Smart Ayurveda Hospital uses your prakriti profile, appointments, prescriptions, invoices, and clinical documents inside this app.",
+  "@privacyPolicyBody": {},
+  "termsOfUseBody": "This is placeholder copy, not the hospital terms of use.\n\nIt will cover appointment requests, Charaka answers, and your responsibilities when using the patient app.",
+  "@termsOfUseBody": {},
+  "retentionTitle": "Data and chat retention",
+  "@retentionTitle": {},
+  "retentionNote": "Care records and Charaka chat messages are kept only for the period the hospital retention policy will set. That period is not written yet.",
+  "@retentionNote": {
+    "description": "Placeholder until the hospital confirms how long records and Charaka chats are kept"
+  },
+
+  "devGalleryTitle": "Component gallery",
+  "@devGalleryTitle": { "description": "Debug-only design system screen" },
+  "devGalleryHint": "Debug only. These samples are not hospital records.",
+  "devGallerySampleName": "Sample",
+  "devGallerySampleUhid": "UHID",
+  "devGallerySection": "Shared components",
+  "devGalleryOpen": "Open",
+  "devGalleryKicker": "Therapy session",
+  "devGalleryFact": "Date",
+  "devGalleryFactValue": "From the appointment",
+  "devGalleryPrice": "From catalogue",
+  "devGalleryDuration": "From catalogue",
+  "devGalleryCategory": "Therapy",
+  "devGalleryKpi": "Loaded count",
+  "devGalleryEmpty": "Nothing here",
+  "devGalleryError": "Could not load this sample.",
+  "devGalleryStepTherapy": "Therapy",
+  "devGalleryStepDate": "Date",
+  "devGalleryStepTime": "Time",
+  "devGalleryStepConfirm": "Confirm"
 }

@@ -6,6 +6,8 @@ import 'package:patient_app/src/features/appointments/domain/appointment_models.
 import 'package:patient_app/src/features/appointments/presentation/appointments_screen.dart';
 import 'package:patient_app/src/features/auth/application/auth_controller.dart';
 import 'package:patient_app/src/features/auth/domain/auth_models.dart';
+import 'package:patient_app/src/features/feedback/application/communication_providers.dart';
+import 'package:patient_app/src/features/feedback/domain/communication_models.dart';
 import 'package:patient_app/src/features/home/presentation/home_screen.dart';
 import 'package:patient_app/src/features/treatments/application/treatments_provider.dart';
 import 'package:patient_app/src/features/treatments/domain/treatment_models.dart';
@@ -51,6 +53,9 @@ Widget _buildHomeTestHarness({
       authControllerProvider.overrideWith(() => _FakeAuth()),
       treatmentsProvider.overrideWith((ref) => Future.value(_mockTreatments)),
       myAppointmentsProvider.overrideWith((ref) => Future.value(appointments)),
+      notificationsProvider.overrideWith(
+        (ref) async => const <PatientNotification>[],
+      ),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
@@ -73,7 +78,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No Upcoming Appointments'), findsOneWidget);
-    expect(find.text('Schedule your consultation or wellness session'),
+    expect(find.text('Request a consultation or therapy visit'),
         findsOneWidget);
     expect(find.text('Featured Therapies'), findsOneWidget);
     expect(find.text('Panchakarma Detox'), findsOneWidget);
@@ -94,7 +99,7 @@ void main() {
     await tester.pumpWidget(_buildHomeTestHarness(appointments: [futureAppt]));
     await tester.pumpAndSettle();
 
-    expect(find.text('Upcoming Appointment'), findsOneWidget);
+    expect(find.text('UPCOMING APPOINTMENT'), findsOneWidget);
     expect(find.text('Tomorrow'), findsOneWidget);
     expect(find.text('Shirodhara Wellness'), findsOneWidget);
     expect(find.text('10:00 - 11:00'), findsOneWidget);

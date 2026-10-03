@@ -5,7 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/feature_localizations.dart';
 import '../../../router/app_routes.dart';
+import '../../../shared/release_text_input.dart';
+import '../../../shared/widgets/clinic_widgets.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_layout.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../theme/app_theme.dart';
 import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
@@ -13,6 +17,7 @@ import '../domain/communication_models.dart';
 import 'feedback_banner.dart';
 import 'feedback_keys.dart';
 import 'feedback_messages.dart';
+import 'quote_block.dart';
 import 'star_rating.dart';
 
 String _editWindowLabel(AppLocalizations l10n, PatientFeedback item) {
@@ -36,21 +41,22 @@ class MyFeedbackScreen extends ConsumerWidget {
     return Scaffold(
       appBar: embedded ? null : AppBar(title: Text(l10n.myFeedbackTitle)),
       body: feedback.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SkeletonList(
+          lines: 3,
+          listKey: FeedbackKeys.mineSkeleton,
+        ),
         error: (error, _) => ErrorState(
           message: feedbackErrorText(error, l10n),
           actionLabel: l10n.retry,
+          actionKey: FeedbackKeys.mineRetry,
           onAction: () => ref.invalidate(myFeedbackProvider),
         ),
         data: (items) {
           final copy = FeatureLocalizations.of(context);
           return RefreshIndicator(
             onRefresh: () => ref.refresh(myFeedbackProvider.future),
-            child: ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: PageListView.builder(
               itemCount: items.isEmpty ? 2 : items.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return Column(
@@ -82,15 +88,10 @@ class MyFeedbackScreen extends ConsumerWidget {
                   );
                 }
                 if (items.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 28),
-                    child: Text(
-                      l10n.myFeedbackEmpty,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                  return EmptyState(
+                    compact: true,
+                    icon: Icons.edit_note_outlined,
+                    message: l10n.myFeedbackEmpty,
                   );
                 }
                 return _OwnFeedbackCard(item: items[index - 1]);
@@ -146,13 +147,19 @@ class _OwnFeedbackCard extends ConsumerWidget {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context, false),
+                  onPressed: () {
+                    releaseTextInput();
+                    Navigator.pop(context, false);
+                  },
                   child: Text(
                     MaterialLocalizations.of(context).cancelButtonLabel,
                   ),
                 ),
                 FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
+                  onPressed: () {
+                    releaseTextInput();
+                    Navigator.pop(context, true);
+                  },
                   child: Text(l10n.saveChanges),
                 ),
               ],
@@ -234,20 +241,13 @@ class _OwnFeedbackCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    return ClinicCard(
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                for (var star = 1; star <= 5; star++)
-                  Icon(
-                    star <= item.rating ? Icons.star : Icons.star_border,
-                    size: 16,
-                    color: AyurvedaColors.gold,
-                  ),
+                StarDisplay(rating: item.rating),
                 const Spacer(),
                 Text(
                   formatWhen(item.createdAt),
@@ -256,26 +256,12 @@ class _OwnFeedbackCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              decoration: const BoxDecoration(
-                color: AyurvedaColors.cream,
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-                border: Border(
-                  left: BorderSide(color: AyurvedaColors.gold, width: 3),
-                ),
-              ),
-              child: Text(
-                item.comment,
-                style: theme.textTheme.bodyLarge?.copyWith(height: 1.45),
-              ),
-            ),
+            QuoteBlock(text: item.comment),
             const SizedBox(height: 8),
             Text(
               feedbackStatusLabel(l10n, item.status),
               style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.primary,
+                color: AyurvedaThemeExtension.of(context).teal,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -342,7 +328,6 @@ class _OwnFeedbackCard extends ConsumerWidget {
                   ),
                 ),
           ],
-        ),
       ),
     );
   }

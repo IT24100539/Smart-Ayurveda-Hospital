@@ -10,8 +10,11 @@ import '../../../core/network/api_exception.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/language_switcher.dart';
 import '../../../router/app_routes.dart';
+import '../../../shared/release_text_input.dart';
+import '../../../shared/widgets/clinic_widgets.dart';
 import '../../../theme/app_theme.dart';
 import '../application/auth_controller.dart';
+import '../domain/auth_form_rules.dart';
 
 enum AuthFormMode { login, register }
 
@@ -23,6 +26,7 @@ abstract final class LoginScreenKeys {
   static const phoneNumber = Key('login_phone_number_field');
   static const submit = Key('login_submit_button');
   static const modeToggle = Key('login_mode_toggle');
+  static const forgotPassword = Key('login_forgot_password_link');
 }
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -50,6 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    releaseTextInput();
     _fullNameController.dispose();
     _emailController.dispose();
     _phoneNumberController.dispose();
@@ -82,6 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    releaseTextInput();
 
     setState(() {
       _isSubmitting = true;
@@ -123,10 +129,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String _describe(ApiException error) {
     final l10n = AppLocalizations.of(context);
     if (error.isNetworkError) return l10n.networkErrorMessage;
-    if (error.isUnauthorized) return l10n.invalidCredentialsMessage;
-    if (error.isConflict) {
-      return error.message ?? l10n.emailAlreadyRegisteredMessage;
+    if (error.statusCode == 429) return l10n.tooManyAttempts;
+    if (error.isUnauthorized) {
+      final detail = error.detail?.toLowerCase() ?? '';
+      if (detail.contains('locked')) return l10n.accountTemporarilyLocked;
+      return l10n.invalidCredentialsMessage;
     }
+    if (error.isConflict) return l10n.registrationUnavailableMessage;
     return error.message ?? l10n.genericErrorMessage;
   }
 
@@ -134,6 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final brand = AyurvedaThemeExtension.of(context);
     final sessionExpired = ref.watch(authControllerProvider).sessionExpired;
 
     return Scaffold(
@@ -142,8 +152,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: _AuthFrame(
+                child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -153,18 +164,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       height: 52,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        gradient: const LinearGradient(
-                          colors: [AyurvedaColors.forest, AyurvedaColors.forestDark],
+                        gradient: LinearGradient(
+                          colors: [
+                            brand.headerGradientStart,
+                            brand.headerGradientEnd,
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x181B4332),
-                            blurRadius: 10,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: Stack(
@@ -188,16 +195,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 padding: const EdgeInsets.all(5),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  border: Border.all(color: AyurvedaColors.gold, width: 1.2),
+                                  color: brand.onHeader.withValues(alpha: 0.15),
+                                  border: Border.all(color: brand.avatarBackground, width: 1.2),
                                 ),
-                                child: const Icon(Icons.spa, size: 16, color: AyurvedaColors.gold),
+                                child: Icon(Icons.spa, size: 16, color: brand.avatarBackground),
                               ),
                               const SizedBox(width: 8),
-                              const Text(
+                              Text(
                                 'SMART AYURVEDA',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: brand.onHeader,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                   letterSpacing: 2,
@@ -245,8 +252,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (_errorMessage != null)
                       _MessageBanner(
                         message: _errorMessage!,
-                        color: AyurvedaColors.danger.withValues(alpha: 0.10),
-                        textColor: AyurvedaColors.danger,
+                        color: theme.colorScheme.errorContainer,
+                        textColor: theme.colorScheme.error,
                         icon: Icons.error_outline,
                       ),
 
@@ -334,6 +341,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: _gender,
+                        isExpanded: true,
                         decoration: InputDecoration(
                           labelText: l10n.genderLabel,
                           prefixIcon: const Icon(Icons.wc_outlined),
@@ -376,6 +384,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onFieldSubmitted: (_) => _submit(),
                       decoration: InputDecoration(
                         labelText: l10n.passwordLabel,
+                        helperText: _isRegister ? registerPasswordHint(l10n) : null,
+                        helperMaxLines: 6,
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           onPressed: () => setState(
@@ -389,6 +399,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       validator: (value) {
+                        if (_isRegister) return validateNewPassword(value, l10n);
                         final password = value ?? '';
                         if (password.isEmpty) return l10n.passwordRequired;
                         if (password.length < AppConfig.minPasswordLength) {
@@ -408,11 +419,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (!_isRegister)
                       Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _isSubmitting
-                              ? null
-                              : () => context.push(AppRoutes.forgotPassword),
-                          child: const Text('Forgot Password?'),
+                        child: Semantics(
+                          button: true,
+                          label: l10n.forgotPasswordLink,
+                          child: TextButton(
+                            key: LoginScreenKeys.forgotPassword,
+                            onPressed: _isSubmitting
+                                ? null
+                                : () => context.push(AppRoutes.forgotPassword),
+                            child: Text(l10n.forgotPasswordLink),
+                          ),
                         ),
                       ),
 
@@ -441,11 +457,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
               ),
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// Phones keep the form on the plain page. Tablets and web wrap it in a rounded panel.
+class _AuthFrame extends StatelessWidget {
+  const _AuthFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).width >= 600;
+    if (!wide) return child;
+    return RoundedPanel(padding: const EdgeInsets.all(28), child: child);
   }
 }
 

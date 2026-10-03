@@ -3,6 +3,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../l10n/feature_localizations.dart';
 import '../../../router/app_routes.dart';
+import '../../../shared/widgets/clinic_widgets.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_layout.dart';
+import '../../../shared/widgets/safe_asset_image.dart';
 import '../../../theme/app_theme.dart';
 
 abstract final class FaqKeys {
@@ -99,8 +103,8 @@ class _FaqScreenState extends State<FaqScreen> {
           'චරක සහායකයාට වෛද්‍ය උපදෙස් හෝ බෙහෙත් නියම කළ හැකිද?',
         ),
         answer: copy.text(
-          'No. Charaka is an informational assistant and by strict safety policy cannot prescribe treatments or diagnose illnesses. If you require medical evaluation, please book a consultation with our qualified Ayurvedic doctors.',
-          'නැත. චරක යනු තොරතුරු සහායකයෙකු පමණක් වන අතර රෝග විනිශ්චය කිරීම හෝ ඖෂධ නියම කිරීම සිදු නොකරයි. වෛද්‍ය පරීක්ෂණයක් අවශ්‍ය නම් කරුණාකර අපගේ සුදුසුකම් ලත් ආයුර්වේද වෛද්‍යවරයෙකු හමුවන්න.',
+          'No. Charaka is an informational assistant and cannot prescribe treatments or diagnose illnesses. If you need a medical evaluation, book a consultation with a hospital vaidya.',
+          'නැත. චරක යනු තොරතුරු සහායකයෙකු පමණක් වන අතර රෝග විනිශ්චය කිරීම හෝ ඖෂධ නියම කිරීම සිදු නොකරයි. වෛද්‍ය පරීක්ෂණයක් අවශ්‍ය නම් රෝහලේ වෛද්‍යවරයෙකු හමුවන්න.',
         ),
       ),
       _FaqItem(
@@ -112,8 +116,8 @@ class _FaqScreenState extends State<FaqScreen> {
           'රෝහල් වාට්ටුවල ඇඳන් පවතින බව පරීක්ෂා කරන්නේ කෙසේද?',
         ),
         answer: copy.text(
-          'You can view live bed availability across General, Semi-Private, and Private wards directly from the Wards screen accessible via the hospital menu or quick actions.',
-          'සාමාන්‍ය, අර්ධ-පුද්ගලික සහ පුද්ගලික වාට්ටුවල සජීවී ඇඳන් පවතින බව රෝහල් මෙනුව හෝ කෙටිමං හරහා වාට්ටු අංශයට පිවිස පරීක්ෂා කළ හැක.',
+          'Open the Wards screen from Home to see current bed occupancy. Only occupancy totals are shown.',
+          'මුල් පිටුවෙන් වාට්ටු තිරය විවෘත කර වත්මන් ඇඳන් ප්‍රමාණය බලන්න. පෙන්වන්නේ සමස්ත සංඛ්‍යා පමණි.',
         ),
       ),
     ];
@@ -127,6 +131,8 @@ class _FaqScreenState extends State<FaqScreen> {
                 item.category.toLowerCase().contains(q);
           }).toList();
 
+    final brand = AyurvedaThemeExtension.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -137,110 +143,104 @@ class _FaqScreenState extends State<FaqScreen> {
         child: Column(
           children: [
             // Search field
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: TextField(
-                key: FaqKeys.searchInput,
-                controller: _searchController,
-                onChanged: (val) => setState(() => _filterQuery = val.trim()),
-                decoration: InputDecoration(
-                  hintText: copy.text(
-                    'Search questions and answers…',
-                    'ප්‍රශ්න සහ පිළිතුරු සොයන්න…',
-                  ),
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _filterQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _filterQuery = '');
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.5,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+            CenteredContent(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                child: TextField(
+                  key: FaqKeys.searchInput,
+                  controller: _searchController,
+                  onChanged: (val) => setState(() => _filterQuery = val.trim()),
+                  decoration: InputDecoration(
+                    hintText: copy.text(
+                      'Search questions and answers…',
+                      'ප්‍රශ්න සහ පිළිතුරු සොයන්න…',
+                    ),
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _filterQuery.isNotEmpty
+                        ? IconButton(
+                            tooltip: MaterialLocalizations.of(
+                              context,
+                            ).deleteButtonTooltip,
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _filterQuery = '');
+                            },
+                          )
+                        : null,
                   ),
                 ),
               ),
             ),
 
-            // FAQ List
+            // FAQ list. The contact prompt sits at the end of the list, so it
+            // never covers a question on a short screen.
             Expanded(
-              child: filteredItems.isEmpty
-                  ? Center(
-                      child: Text(
-                        copy.text(
-                          'No matching questions found.',
-                          'ගැළපෙන ප්‍රශ්න හමු නොවීය.',
-                        ),
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+              child: PageScrollView(
+                maxWidth: contentWidth,
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(brand.cardRadius),
+                    child: const SafeAssetImage(
+                      asset: 'assets/images/herb-pharmacy.png',
+                      height: 140,
+                      width: double.infinity,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (filteredItems.isEmpty)
+                    EmptyState(
+                      compact: true,
+                      icon: Icons.search_off_outlined,
+                      message: copy.text(
+                        'No matching questions found.',
+                        'ගැළපෙන ප්‍රශ්න හමු නොවීය.',
                       ),
                     )
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      itemCount: filteredItems.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = filteredItems[index];
-                        return Card(
-                          key: item.key,
-                          elevation: 0,
-                          color: theme.colorScheme.surfaceContainerLow,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(
-                              color: theme.colorScheme.outlineVariant.withValues(
-                                alpha: 0.4,
+                  else
+                    for (final item in filteredItems) ...[
+                      ClinicCard(
+                        key: item.key,
+                        padding: EdgeInsets.zero,
+                        child: Theme(
+                          data: theme.copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            shape: const Border(),
+                            collapsedShape: const Border(),
+                            iconColor: brand.teal,
+                            collapsedIconColor: theme.colorScheme.onSurfaceVariant,
+                            tilePadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(item.icon, size: 20, color: brand.teal),
+                            ),
+                            title: Text(
+                              item.question,
+                              style: theme.textTheme.titleSmall,
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                item.category.toUpperCase(),
+                                style: AyurvedaType.eyebrow(
+                                  context,
+                                  color: brand.teal,
+                                ),
                               ),
                             ),
-                          ),
-                          child: Theme(
-                            data: theme.copyWith(dividerColor: Colors.transparent),
-                            child: ExpansionTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AyurvedaColors.forest.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  item.icon,
-                                  size: 20,
-                                  color: AyurvedaColors.forest,
-                                ),
-                              ),
-                              title: Text(
-                                item.question,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  item.category,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AyurvedaColors.forest,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
                                   child: Text(
                                     item.answer,
                                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -249,59 +249,56 @@ class _FaqScreenState extends State<FaqScreen> {
                                     ),
                                   ),
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  const SizedBox(height: 6),
+                  ClinicCard(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                copy.text(
+                                  'Still have questions?',
+                                  'තවත් ප්‍රශ්න තිබේද?',
+                                ),
+                                style: theme.textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                copy.text(
+                                  'View hospital location & contact details',
+                                  'රෝහල් ස්ථානය සහ සම්බන්ධතා බලන්න',
+                                ),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(80, 44),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
                             ),
                           ),
-                        );
-                      },
-                    ),
-            ),
-
-            // Bottom Contact Button
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                border: Border(
-                  top: BorderSide(
-                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          copy.text('Still have questions?', 'තවත් ප්‍රශ්න තිබේද?'),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          copy.text(
-                            'View hospital location & contact details',
-                            'රෝහල් ස්ථානය සහ සම්බන්ධතා බලන්න',
-                          ),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                          onPressed: () => context.push(AppRoutes.contact),
+                          icon: const Icon(Icons.place_outlined, size: 16),
+                          label: Text(copy.text('Contact', 'සම්බන්ධතා')),
                         ),
                       ],
                     ),
-                  ),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(80, 40),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                    ),
-                    onPressed: () => context.push(AppRoutes.contact),
-                    icon: const Icon(Icons.place_outlined, size: 16),
-                    label: Text(copy.text('Contact', 'සම්බන්ධතා')),
                   ),
                 ],
               ),
@@ -312,7 +309,6 @@ class _FaqScreenState extends State<FaqScreen> {
     );
   }
 }
-
 class _FaqItem {
   const _FaqItem({
     required this.key,

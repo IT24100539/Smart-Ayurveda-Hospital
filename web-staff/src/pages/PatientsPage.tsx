@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ApiError } from "../api/client";
 import { createPatient, searchPatients, type DoshaType, type Gender, type Patient } from "../api/patients";
-import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from "../components/ui";
+import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, PageHeader, PatientHeaderCard } from "../components/ui";
 
 const fieldClass =
-  "mt-1 min-h-11 w-full rounded-md border border-surface-border bg-surface-raised px-3 py-2 text-ink outline-none ring-primary focus:ring-2";
+  "field mt-1";
 
 const genders: Gender[] = ["Female", "Male", "Other", "Unspecified"];
 const doshas: DoshaType[] = ["Vata", "Pitta", "Kapha", "None"];
@@ -51,6 +51,7 @@ export function PatientsPage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   async function load(nextQuery = query) {
     setLoading(true);
@@ -58,6 +59,7 @@ export function PatientsPage() {
     try {
       const page = await searchPatients(nextQuery);
       setPatients(page.items);
+      setSelectedId((current) => (current && page.items.some((item) => item.id === current) ? current : page.items[0]?.id ?? null));
     } catch (error) {
       setLoadError(error instanceof ApiError ? error.message : "Unable to load patients.");
     } finally {
@@ -97,6 +99,7 @@ export function PatientsPage() {
         vikriti: draft.vikriti
       });
       setPatients((current) => [created, ...current.filter((item) => item.id !== created.id)]);
+      setSelectedId(created.id);
       setDraft(emptyDraft());
       setFormOpen(false);
     } catch (error) {
@@ -106,6 +109,8 @@ export function PatientsPage() {
     }
   }
 
+  const selected = patients.find((item) => item.id === selectedId) ?? null;
+
   return (
     <div className="mx-auto max-w-7xl">
       <PageHeader
@@ -113,7 +118,7 @@ export function PatientsPage() {
         title="Patients"
         description="Register a patient record and look up an existing UHID, prakriti, and vikriti."
         action={
-          <Button className="w-full !bg-white !text-primary-dark hover:!bg-primary-muted sm:w-auto" onClick={() => setFormOpen((open) => !open)}>
+          <Button className="w-full !bg-hero-button !text-hero-deep hover:!bg-hero-button-hover sm:w-auto" onClick={() => setFormOpen((open) => !open)}>
             {formOpen ? "Close form" : "New patient"}
           </Button>
         }
@@ -190,6 +195,12 @@ export function PatientsPage() {
         </Card>
       ) : null}
 
+      {selected ? (
+        <div className="mb-6">
+          <PatientHeaderCard patient={selected} />
+        </div>
+      ) : null}
+
       <Card className="overflow-hidden">
         <form
           className="border-b border-surface-border bg-neutral-50 p-4"
@@ -223,25 +234,42 @@ export function PatientsPage() {
             <EmptyState title="No patients found." description="Register a patient to open their hospital record." />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[40rem] border-collapse text-left">
+          <div className="table-scroll">
+            <table className="data-table min-w-[40rem]">
               <thead>
-                <tr className="bg-neutral-50 text-sm text-muted">
-                  <th className="border-b border-surface-border px-4 py-3 font-semibold">Patient</th>
-                  <th className="border-b border-surface-border px-4 py-3 font-semibold">UHID</th>
-                  <th className="border-b border-surface-border px-4 py-3 font-semibold">Phone</th>
-                  <th className="border-b border-surface-border px-4 py-3 font-semibold">Prakriti</th>
+                <tr>
+                  <th>Patient</th>
+                  <th>UHID</th>
+                  <th>Phone</th>
+                  <th>Prakriti</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {patients.map((patient) => (
-                  <tr key={patient.id}>
-                    <td className="border-b border-surface-border px-4 py-3 font-semibold text-ink">
-                      {patient.firstName} {patient.lastName}
+                  <tr
+                    key={patient.id}
+                    className={patient.id === selectedId ? "bg-primary-muted/50" : undefined}
+                    onClick={() => setSelectedId(patient.id)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-muted text-xs font-bold text-gold" aria-hidden="true">
+                          {(patient.firstName[0] ?? "") + (patient.lastName[0] ?? "")}
+                        </span>
+                        <button type="button" className="text-left font-semibold text-ink">
+                          {patient.firstName} {patient.lastName}
+                        </button>
+                      </div>
                     </td>
-                    <td className="border-b border-surface-border px-4 py-3">{patient.uhid}</td>
-                    <td className="border-b border-surface-border px-4 py-3">{patient.phone}</td>
-                    <td className="border-b border-surface-border px-4 py-3">{patient.prakriti}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted">{patient.uhid}</td>
+                    <td className="px-4 py-3 text-muted">{patient.phone}</td>
+                    <td className="px-4 py-3">
+                      <Badge tone="neutral">{patient.prakriti}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge tone={patient.isActive ? "approved" : "rejected"}>{patient.isActive ? "Active" : "Inactive"}</Badge>
+                    </td>
                   </tr>
                 ))}
               </tbody>

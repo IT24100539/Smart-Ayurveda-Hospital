@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../theme/app_theme.dart';
 import '../../application/treatments_provider.dart';
 import '../../domain/treatment_models.dart';
 
@@ -74,7 +75,7 @@ class TreatmentCard extends StatelessWidget {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withValues(alpha: 0.35),
+                          AyurvedaColors.scrim.withValues(alpha: 0.35),
                         ],
                       ),
                     ),
@@ -93,7 +94,7 @@ class TreatmentCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
+                                  color: AyurvedaColors.scrim.withValues(alpha: 0.2),
                                   blurRadius: 4,
                                 ),
                               ],
@@ -101,7 +102,7 @@ class TreatmentCard extends StatelessWidget {
                             child: const Text(
                               'Available Today',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: AyurvedaColors.onScrim,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -113,13 +114,13 @@ class TreatmentCard extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.black54,
+                              color: AyurvedaColors.scrim.withValues(alpha: 0.54),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(
                               'Not Today',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: AyurvedaColors.onScrim,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -138,7 +139,8 @@ class TreatmentCard extends StatelessWidget {
                     treatment.nameSinhala,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'serif',
+                      fontFamily: AyurvedaFonts.serif,
+                      fontFamilyFallback: AyurvedaFonts.fallback,
                     ),
                   ),
                   const SizedBox(height: 4),

@@ -16,7 +16,7 @@ class TreatmentSession {
   factory TreatmentSession.fromJson(Map<String, dynamic> json) {
     return TreatmentSession(
       appointmentId: (json['appointmentId'] ?? json['id'] ?? '').toString(),
-      date: DateTime.parse(json['date'].toString()),
+      date: DateTime.tryParse(json['date']?.toString() ?? '') ?? DateTime.now(),
       timeSlot: (json['timeSlot'] ?? '').toString(),
       status: AppointmentStatus.fromWire(json['status']),
     );
@@ -49,7 +49,7 @@ class TreatmentPlan {
       sessionCount: (json['sessionCount'] as num?)?.toInt() ?? rawSessions.length,
       lastStatus: AppointmentStatus.fromWire(json['lastStatus']),
       nextDate: nextDateRaw != null && nextDateRaw.toString().isNotEmpty
-          ? DateTime.parse(nextDateRaw.toString())
+          ? DateTime.tryParse(nextDateRaw.toString())
           : null,
       sessions: rawSessions
           .map((s) => TreatmentSession.fromJson(Map<String, dynamic>.from(s as Map)))
@@ -89,7 +89,7 @@ class RegistrationSummary {
       fullName: (json['fullName'] ?? '').toString(),
       phone: (json['phone'] ?? '').toString(),
       email: json['email']?.toString(),
-      dateOfBirth: DateTime.parse(json['dateOfBirth'].toString()),
+      dateOfBirth: DateTime.tryParse(json['dateOfBirth']?.toString() ?? '') ?? DateTime(1970),
       gender: (json['gender'] ?? '').toString(),
       prakriti: (json['prakriti'] ?? '').toString(),
       vikriti: (json['vikriti'] ?? '').toString(),

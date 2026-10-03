@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/feature_localizations.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/safe_asset_image.dart';
 import '../../../shared/widgets/section_banner.dart';
 import '../application/treatments_provider.dart';
 import 'widgets/ask_treatment_card.dart';
@@ -31,11 +32,10 @@ class TreatmentsScreen extends ConsumerWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      child: Image.asset(
-                        'assets/images/herbal-oils.png',
+                      child: SafeAssetImage(
+                        asset: 'assets/images/herbal-oils.png',
                         height: 140,
                         width: double.infinity,
-                        fit: BoxFit.cover,
                       ),
                     ),
                     const SizedBox(height: 12),

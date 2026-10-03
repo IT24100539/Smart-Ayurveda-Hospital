@@ -53,6 +53,7 @@ void main() {
     expect(find.byKey(LoginScreenKeys.email), findsOneWidget);
     expect(find.byKey(LoginScreenKeys.password), findsOneWidget);
     expect(find.byKey(LoginScreenKeys.submit), findsOneWidget);
+    expect(find.byKey(LoginScreenKeys.forgotPassword), findsOneWidget);
 
     // Registration-only fields stay hidden in login mode.
     expect(find.byKey(LoginScreenKeys.fullName), findsNothing);
@@ -105,6 +106,16 @@ void main() {
     expect(find.byKey(LoginScreenKeys.fullName), findsOneWidget);
     expect(find.byKey(LoginScreenKeys.phoneNumber), findsOneWidget);
     expect(find.byKey(LoginScreenKeys.submit), findsOneWidget);
+
+    final si = await AppLocalizations.delegate.load(const Locale('si'));
+    expect(find.text(si.passwordNeedsUppercase), findsNothing);
+
+    await tester.enterText(find.byKey(LoginScreenKeys.password), 'abcdefgh');
+    await tester.ensureVisible(find.byKey(LoginScreenKeys.submit));
+    await tester.tap(find.byKey(LoginScreenKeys.submit));
+    await tester.pumpAndSettle();
+
+    expect(find.text(si.passwordNeedsUppercase), findsOneWidget);
   });
 }
 

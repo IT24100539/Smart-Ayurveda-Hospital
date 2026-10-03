@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../l10n/feature_localizations.dart';
 import '../../../../router/app_routes.dart';
+import '../../../../shared/widgets/clinic_widgets.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../auth/application/auth_controller.dart';
 import '../../data/treatments_repository.dart';
@@ -130,25 +131,14 @@ class _AskTreatmentCardState extends ConsumerState<AskTreatmentCard> {
             ],
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AyurvedaColors.danger,
-                ),
-              ),
+              ErrorLine(message: _error!),
             ],
             if (_result != null) ...[
               const SizedBox(height: 12),
               if (_result!.refused)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    copy.medicalAdviceRefused,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: AyurvedaColors.danger,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: ErrorLine(message: copy.medicalAdviceRefused),
                 ),
               DecoratedBox(
                 decoration: BoxDecoration(

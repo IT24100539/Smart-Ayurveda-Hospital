@@ -2,250 +2,147 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/feature_localizations.dart';
+import '../../../router/app_routes.dart';
+import '../../../shared/widgets/clinic_widgets.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_banner.dart';
+import '../../../shared/widgets/responsive_columns.dart';
 import '../../../theme/app_theme.dart';
 import '../../appointments/presentation/appointments_screen.dart';
+import '../../records/application/records_provider.dart';
+import '../../records/presentation/documents_tab.dart';
+import '../../records/presentation/invoices_tab.dart';
+import '../../records/presentation/prescriptions_tab.dart';
+import '../../records/presentation/records_panel.dart';
+import '../application/upcoming_appointments.dart';
 import '../data/health_hub_repository.dart';
 import '../domain/health_hub_models.dart';
+import 'health_hub_cards.dart';
+
+abstract final class HealthHubTabKeys {
+  static const upcoming = ValueKey('health-hub-tab-upcoming');
+  static const therapy = ValueKey('health-hub-tab-therapy');
+  static const registration = ValueKey('health-hub-tab-registration');
+  static const prescriptions = ValueKey('health-hub-tab-prescriptions');
+  static const invoices = ValueKey('health-hub-tab-invoices');
+  static const documents = ValueKey('health-hub-tab-documents');
+}
+
+const _tabCount = 6;
+
+/// Upcoming is 0, therapy 1, registration 2, prescriptions 3, invoices 4,
+/// documents 5. Anything else opens upcoming.
+int healthHubTabIndex(String? tab) => switch (tab) {
+  'therapy' => 1,
+  'registration' => 2,
+  'prescriptions' => 3,
+  'invoices' => 4,
+  'documents' => 5,
+  _ => 0,
+};
+
+int? _loadedCount<T>(AsyncValue<List<T>> value) {
+  return value.maybeWhen(data: (items) => items.length, orElse: () => null);
+}
+
+/// Registered details only: gender and date of birth when they are on file.
+String _registeredLine(RegistrationSummary record) {
+  final parts = <String>[
+    if (record.gender.isNotEmpty) record.gender,
+    DateFormat.yMMMd().format(record.dateOfBirth),
+  ];
+  return parts.join(' · ');
+}
 
 class HealthHubScreen extends ConsumerWidget {
-  const HealthHubScreen({super.key});
+  const HealthHubScreen({this.initialTab = 0, super.key});
+
+  final int initialTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final plansAsync = ref.watch(treatmentPlansProvider);
-    final summaryAsync = ref.watch(registrationSummaryProvider);
+    final copy = FeatureLocalizations.of(context);
+    final brand = AyurvedaThemeExtension.of(context);
+    final index = initialTab.clamp(0, _tabCount - 1).toInt();
+    final summary = ref.watch(registrationSummaryProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.myHealthHubTitle),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(treatmentPlansProvider);
-          ref.invalidate(registrationSummaryProvider);
-          await Future.wait([
-            ref.read(treatmentPlansProvider.future),
-            ref.read(registrationSummaryProvider.future),
-          ]);
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SectionBanner(
-                kicker: l10n.appTitle,
-                title: l10n.myHealthHubTitle,
-                body: l10n.myHealthHubSubtitle,
-              ),
-              const SizedBox(height: 20),
-
-              // Section 1: My therapy sessions
-              Text(
-                l10n.myTherapySessionsTitle,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'serif',
-                ),
-              ),
-              const SizedBox(height: 10),
-              plansAsync.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, _) => ErrorState(
-                  message: l10n.healthHubError,
-                  actionLabel: l10n.retry,
-                  onAction: () => ref.invalidate(treatmentPlansProvider),
-                ),
-                data: (plans) {
-                  if (plans.isEmpty) {
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                        child: EmptyState(
-                          message: l10n.noTherapySessionsFound,
-                        ),
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    children: plans.map((plan) => _TreatmentPlanCard(plan: plan)).toList(),
-                  );
-                },
-              ),
-              const SizedBox(height: 28),
-
-              // Section 2: My registration summary
-              Text(
-                l10n.myRegistrationSummaryTitle,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'serif',
-                ),
-              ),
-              const SizedBox(height: 10),
-              summaryAsync.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, _) => ErrorState(
-                  message: l10n.healthHubError,
-                  actionLabel: l10n.retry,
-                  onAction: () => ref.invalidate(registrationSummaryProvider),
-                ),
-                data: (summary) => _RegistrationSummaryCard(summary: summary),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TreatmentPlanCard extends StatelessWidget {
-  const _TreatmentPlanCard({required this.plan});
-
-  final TreatmentPlan plan;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(
-          color: theme.colorScheme.outline.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DefaultTabController(
+      length: _tabCount,
+      initialIndex: index,
+      child: Scaffold(
+        appBar: AppBar(title: Text(l10n.myHealthHubTitle)),
+        body: Column(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AyurvedaColors.forest.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.spa_outlined,
-                    color: AyurvedaColors.forest,
-                    size: 22,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: summary.maybeWhen(
+                data: (record) => PatientHeaderCard(
+                  name: record.fullName,
+                  uhid: record.uhid,
+                  uhidLabel: l10n.uhidLabel,
+                  subtitle: _registeredLine(record),
+                  action: FilledButton(
+                    onPressed: () =>
+                        context.push(AppRoutes.chooseTherapyToBook),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: brand.avatarBackground,
+                      foregroundColor: brand.avatarForeground,
+                    ),
+                    child: Text(copy.bookNewAppointment),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    plan.treatmentName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'serif',
-                    ),
-                  ),
+                orElse: () => const SizedBox(height: 8),
+              ),
+            ),
+            UnderlineTabBar(
+              tabs: [
+                UnderlineTabItem(
+                  label: l10n.healthHubUpcomingTab,
+                  count: _loadedCount(ref.watch(upcomingAppointmentsProvider)),
+                  tabKey: HealthHubTabKeys.upcoming,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AyurvedaColors.sageMuted,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    l10n.sessionsCount(plan.sessionCount),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AyurvedaColors.forestDark,
-                    ),
-                  ),
+                UnderlineTabItem(
+                  label: l10n.healthHubTherapyTab,
+                  count: _loadedCount(ref.watch(treatmentPlansProvider)),
+                  tabKey: HealthHubTabKeys.therapy,
+                ),
+                UnderlineTabItem(
+                  label: l10n.healthHubRegistrationTab,
+                  tabKey: HealthHubTabKeys.registration,
+                ),
+                UnderlineTabItem(
+                  label: l10n.healthHubPrescriptionsTab,
+                  count: _loadedCount(ref.watch(prescriptionsProvider)),
+                  tabKey: HealthHubTabKeys.prescriptions,
+                ),
+                UnderlineTabItem(
+                  label: l10n.healthHubInvoicesTab,
+                  count: _loadedCount(ref.watch(invoicesProvider)),
+                  tabKey: HealthHubTabKeys.invoices,
+                ),
+                UnderlineTabItem(
+                  label: l10n.healthHubDocumentsTab,
+                  count: _loadedCount(ref.watch(documentsProvider)),
+                  tabKey: HealthHubTabKeys.documents,
                 ),
               ],
             ),
-            if (plan.nextDate != null) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AyurvedaColors.goldMuted.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AyurvedaColors.gold.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.event_outlined,
-                      size: 15,
-                      color: AyurvedaColors.forestDark,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${l10n.nextSessionLabel}: ${DateFormat('EEE, MMM d, yyyy').format(plan.nextDate!)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AyurvedaColors.forestDark,
-                      ),
-                    ),
-                  ],
-                ),
+            const Expanded(
+              child: TabBarView(
+                children: [
+                  _UpcomingTab(),
+                  _TherapyTab(),
+                  _RegistrationTab(),
+                  PrescriptionsTab(),
+                  InvoicesTab(),
+                  DocumentsTab(),
+                ],
               ),
-            ],
-            const Divider(height: 22),
-            ...plan.sessions.map((session) {
-              final formattedDate = DateFormat('MMM d, yyyy').format(session.date);
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.circle,
-                      size: 8,
-                      color: AyurvedaColors.forest,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        formattedDate,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    if (session.timeSlot.isNotEmpty) ...[
-                      Text(
-                        session.timeSlot,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
-                    AppointmentStatusChip(status: session.status),
-                  ],
-                ),
-              );
-            }),
+            ),
           ],
         ),
       ),
@@ -253,80 +150,144 @@ class _TreatmentPlanCard extends StatelessWidget {
   }
 }
 
-class _RegistrationSummaryCard extends StatelessWidget {
-  const _RegistrationSummaryCard({required this.summary});
+class _UpcomingTab extends ConsumerWidget {
+  const _UpcomingTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(myAppointmentsProvider);
+        await ref.read(myAppointmentsProvider.future);
+      },
+      child: RecordsPanel(
+        state: ref.watch(upcomingAppointmentsProvider),
+        errorMessage: l10n.healthHubError,
+        emptyMessage: l10n.healthHubUpcomingEmpty,
+        emptyIcon: Icons.event_note_outlined,
+        onRetry: () => ref.invalidate(myAppointmentsProvider),
+        itemBuilder: (appointment) =>
+            HealthHubAppointmentCard(appointment: appointment),
+      ),
+    );
+  }
+}
+
+class _TherapyTab extends ConsumerWidget {
+  const _TherapyTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(treatmentPlansProvider);
+        await ref.read(treatmentPlansProvider.future);
+      },
+      child: RecordsPanel(
+        state: ref.watch(treatmentPlansProvider),
+        errorMessage: l10n.healthHubError,
+        emptyMessage: l10n.noTherapySessionsFound,
+        emptyIcon: Icons.spa_outlined,
+        onRetry: () => ref.invalidate(treatmentPlansProvider),
+        itemBuilder: (plan) => HealthHubTherapyCard(plan: plan),
+      ),
+    );
+  }
+}
+
+class _RegistrationTab extends ConsumerWidget {
+  const _RegistrationTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final summaryAsync = ref.watch(registrationSummaryProvider);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(registrationSummaryProvider);
+        await ref.read(registrationSummaryProvider.future);
+      },
+      child: summaryAsync.when(
+        loading: () => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 80),
+            Center(child: CircularProgressIndicator()),
+          ],
+        ),
+        error: (error, _) => ErrorState(
+          message: l10n.healthHubError,
+          actionLabel: l10n.retry,
+          onAction: () => ref.invalidate(registrationSummaryProvider),
+          scrollable: true,
+        ),
+        data: (summary) => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          children: [_RegistrationSummary(summary: summary)],
+        ),
+      ),
+    );
+  }
+}
+
+class _RegistrationSummary extends StatelessWidget {
+  const _RegistrationSummary({required this.summary});
 
   final RegistrationSummary summary;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    String recorded(String? value) =>
+        value != null && value.isNotEmpty ? value : l10n.notRecorded;
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(
-          color: theme.colorScheme.outline.withValues(alpha: 0.5),
-        ),
+    final identity = <_SummaryRow>[
+      _SummaryRow(label: l10n.uhidLabel, value: summary.uhid, isHighlight: true),
+      _SummaryRow(label: l10n.fullNameLabel, value: summary.fullName),
+      _SummaryRow(label: l10n.phoneNumberLabel, value: summary.phone),
+      _SummaryRow(label: l10n.emailLabel, value: recorded(summary.email)),
+      _SummaryRow(
+        label: l10n.dateOfBirthLabel,
+        value: DateFormat('yyyy-MM-dd').format(summary.dateOfBirth),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            _SummaryRow(
-              label: l10n.uhidLabel,
-              value: summary.uhid,
-              isHighlight: true,
-            ),
-            const Divider(height: 16),
-            _SummaryRow(
-              label: l10n.fullNameLabel,
-              value: summary.fullName,
-            ),
-            const Divider(height: 16),
-            _SummaryRow(
-              label: l10n.phoneNumberLabel,
-              value: summary.phone,
-            ),
-            const Divider(height: 16),
-            _SummaryRow(
-              label: l10n.emailLabel,
-              value: summary.email?.isNotEmpty == true ? summary.email! : l10n.notRecorded,
-            ),
-            const Divider(height: 16),
-            _SummaryRow(
-              label: l10n.dateOfBirthLabel,
-              value: DateFormat('yyyy-MM-dd').format(summary.dateOfBirth),
-            ),
-            const Divider(height: 16),
-            _SummaryRow(
-              label: l10n.genderLabel,
-              value: summary.gender,
-            ),
-            const Divider(height: 16),
-            _SummaryRow(
-              label: l10n.prakritiLabel,
-              value: summary.prakriti.isNotEmpty ? summary.prakriti : l10n.notRecorded,
-            ),
-            const Divider(height: 16),
-            _SummaryRow(
-              label: l10n.vikritiLabel,
-              value: summary.vikriti.isNotEmpty ? summary.vikriti : l10n.notRecorded,
-            ),
-            const Divider(height: 16),
-            _SummaryRow(
-              label: l10n.allergiesLabel,
-              value: summary.allergies?.isNotEmpty == true ? summary.allergies! : l10n.notRecorded,
-            ),
-            const Divider(height: 16),
-            _SummaryRow(
-              label: l10n.bloodGroupLabel,
-              value: summary.bloodGroup?.isNotEmpty == true ? summary.bloodGroup! : l10n.notRecorded,
-            ),
+      _SummaryRow(label: l10n.genderLabel, value: summary.gender),
+    ];
+    final constitution = <_SummaryRow>[
+      _SummaryRow(label: l10n.prakritiLabel, value: recorded(summary.prakriti)),
+      _SummaryRow(label: l10n.vikritiLabel, value: recorded(summary.vikriti)),
+      _SummaryRow(label: l10n.allergiesLabel, value: recorded(summary.allergies)),
+      _SummaryRow(label: l10n.bloodGroupLabel, value: recorded(summary.bloodGroup)),
+    ];
+
+    return ResponsiveColumns(
+      children: [
+        _SummaryCard(rows: identity),
+        _SummaryCard(rows: constitution),
+      ],
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.rows});
+
+  final List<_SummaryRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClinicCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        children: [
+          for (var index = 0; index < rows.length; index++) ...[
+            if (index > 0) const Divider(height: 16),
+            rows[index],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -351,13 +312,10 @@ class _SummaryRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 120,
-          child: Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
+          width: 128,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(label.toUpperCase(), style: AyurvedaType.eyebrow(context)),
           ),
         ),
         const SizedBox(width: 8),
@@ -365,11 +323,7 @@ class _SummaryRow extends StatelessWidget {
           child: isHighlight
               ? Text(
                   value,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AyurvedaColors.forest,
-                    letterSpacing: 0.5,
-                  ),
+                  style: AyurvedaType.price(context).copyWith(fontSize: 16),
                 )
               : Text(
                   value,

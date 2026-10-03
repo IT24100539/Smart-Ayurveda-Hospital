@@ -70,7 +70,13 @@ enum NotificationKind {
   reply('FeedbackReply'),
   statusChange('ComplaintUpdate'),
   escalation('ComplaintEscalated'),
-  general('General');
+  general('General'),
+  appointmentApproved('AppointmentApproved'),
+  appointmentRejected('AppointmentRejected'),
+  appointmentRescheduled('AppointmentRescheduled'),
+  appointmentCancelled('AppointmentCancelled'),
+  prescriptionIssued('PrescriptionIssued'),
+  invoiceIssued('InvoiceIssued');
 
   const NotificationKind(this.wireName);
   final String wireName;
@@ -81,6 +87,13 @@ enum NotificationKind {
         1 => NotificationKind.reply,
         2 => NotificationKind.statusChange,
         3 => NotificationKind.escalation,
+        4 => NotificationKind.general,
+        6 => NotificationKind.appointmentApproved,
+        7 => NotificationKind.appointmentRejected,
+        8 => NotificationKind.appointmentRescheduled,
+        9 => NotificationKind.appointmentCancelled,
+        10 => NotificationKind.prescriptionIssued,
+        11 => NotificationKind.invoiceIssued,
         _ => NotificationKind.general,
       };
     }

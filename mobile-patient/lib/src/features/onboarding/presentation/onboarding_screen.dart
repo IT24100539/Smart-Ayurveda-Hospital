@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../l10n/feature_localizations.dart';
 import '../../../l10n/language_switcher.dart';
 import '../../../router/app_routes.dart';
+import '../../../shared/widgets/clinic_widgets.dart';
+import '../../../shared/widgets/page_layout.dart';
 import '../../../theme/app_theme.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/onboarding_controller.dart';
@@ -64,16 +66,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final slides = [
       _OnboardingSlideData(
         title: copy.text(
-          'Authentic Ayurvedic Care',
-          'ප්‍රමිතිගත ආයුර්වේද සත්කාර',
+          'Ayurvedic Care',
+          'ආයුර්වේද සත්කාර',
         ),
         subtitle: copy.text(
-          'Experience time-tested holistic healing with personalized Panchakarma and natural herbal therapies guided by experienced practitioners.',
-          'පළපුරුදු වෛද්‍යවරුන්ගේ මගපෙන්වීම යටතේ ඔබේ ප්‍රකෘතියට ගැළපෙන පංචකර්ම සහ ස්වාභාවික ඔසු සත්කාර ලබාගන්න.',
+          'Browse panchakarma and herbal therapies in the hospital catalogue. Staff review each appointment request before it is confirmed.',
+          'රෝහල් ලැයිස්තුවෙන් පංචකර්ම සහ ඔසු ප්‍රතිකාර බලන්න. හමුවීම් ඉල්ලීම් කාර්ය මණ්ඩලය අනුමත කරන තුරු තහවුරු නොවේ.',
         ),
         icon: Icons.spa_rounded,
         imageAsset: 'assets/images/hero-ayurveda-wellness.png',
-        badge: copy.text('Holistic Health', 'පූර්ණ සුවතාව'),
+        badge: copy.text('Therapies', 'ප්‍රතිකාර'),
       ),
       _OnboardingSlideData(
         title: copy.text(
@@ -81,7 +83,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           'වෛද්‍ය හමුවීම් සහ සෞඛ්‍ය කේන්ද්‍රය',
         ),
         subtitle: copy.text(
-          'Book therapy sessions with real-time slot selection, easily reschedule or cancel appointments, and monitor your personal treatment history.',
+          'Book therapy sessions, choose an available slot, reschedule or cancel, and review your visit history.',
           'වේලාවන් තෝරාගෙන හමුවීම් වෙන්කරවා ගන්න, පහසුවෙන් වෙනස් කරන්න, සහ ඔබගේ ප්‍රතිකාර ඉතිහාසය පරීක්ෂා කරන්න.',
         ),
         icon: Icons.calendar_month_rounded,
@@ -94,14 +96,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           'චරක රෝහල් සහායක',
         ),
         subtitle: copy.text(
-          'Get verified answers about hospital therapies, session fees, clinic schedules, and your patient identification summary anytime.',
-          'රෝහල් ප්‍රතිකාර, සැසි ගාස්තු, සායන කාලසටහන් සහ ඔබගේ රෝගී වාර්තා සාරාංශය පිළිබඳ තොරතුරු ක්ෂණිකව ලබාගන්න.',
+          'Ask about hospital therapies, session fees, clinic schedules, and your patient identification summary.',
+          'රෝහල් ප්‍රතිකාර, සැසි ගාස්තු, සායන කාලසටහන් සහ ඔබගේ රෝගී වාර්තා සාරාංශය පිළිබඳ තොරතුරු අසන්න.',
         ),
         icon: Icons.support_agent_rounded,
         imageAsset: 'assets/images/herbal-garden.png',
-        badge: copy.text('Instant Guidance', 'ක්ෂණික මගපෙන්වීම'),
+        badge: copy.text('Hospital assistant', 'රෝහල් සහායක'),
       ),
     ];
+
+    final brand = AyurvedaThemeExtension.of(context);
+    final lastPage = slides.length - 1;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -115,7 +120,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const LanguageSwitcher(),
-                  if (_currentPage < 2)
+                  if (_currentPage < lastPage)
                     TextButton(
                       key: OnboardingKeys.skipButton,
                       onPressed: _finishOnboarding,
@@ -140,193 +145,83 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 controller: _pageController,
                 onPageChanged: (index) => setState(() => _currentPage = index),
                 itemCount: slides.length,
-                itemBuilder: (context, index) {
-                  final slide = slides[index];
-                  return Padding(
-                    key: OnboardingKeys.page(index),
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Image or Graphic Container
-                        Container(
-                          height: 240,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(24),
-                            color: AyurvedaColors.sageMuted,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AyurvedaColors.forest.withValues(alpha: 0.08),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Stack(
-                            children: [
-                              Positioned.fill(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        AyurvedaColors.sageMuted,
-                                        AyurvedaColors.forest.withValues(alpha: 0.15),
-                                      ],
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      slide.icon,
-                                      size: 72,
-                                      color: AyurvedaColors.forest,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                top: 14,
-                                left: 14,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.92),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        slide.icon,
-                                        size: 16,
-                                        color: AyurvedaColors.forest,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        slide.badge,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: AyurvedaColors.forest,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Title
-                        Text(
-                          slide.title,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AyurvedaColors.forest,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Subtitle
-                        Text(
-                          slide.subtitle,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                itemBuilder: (context, index) => _OnboardingSlide(
+                  key: OnboardingKeys.page(index),
+                  slide: slides[index],
+                ),
               ),
             ),
 
             // Bottom controls: Indicators and Action Button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Indicators
-                  Row(
-                    children: List.generate(
-                      slides.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        margin: const EdgeInsets.only(right: 6),
-                        height: 8,
-                        width: _currentPage == index ? 24 : 8,
-                        decoration: BoxDecoration(
-                          color: _currentPage == index
-                              ? AyurvedaColors.forest
-                              : AyurvedaColors.sageMuted,
-                          borderRadius: BorderRadius.circular(4),
+            CenteredContent(
+              maxWidth: 720,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Indicators
+                    Row(
+                      children: List.generate(
+                        slides.length,
+                        (index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          margin: const EdgeInsets.only(right: 6),
+                          height: 8,
+                          width: _currentPage == index ? 24 : 8,
+                          decoration: BoxDecoration(
+                            color: _currentPage == index
+                                ? brand.teal
+                                : theme.colorScheme.outlineVariant,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // Action Button
-                  if (_currentPage < 2)
-                    FilledButton(
-                      key: OnboardingKeys.nextButton,
-                      onPressed: _nextPage,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AyurvedaColors.forest,
-                        minimumSize: const Size(120, 48),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 14,
+                    // Action Button
+                    if (_currentPage < lastPage)
+                      FilledButton(
+                        key: OnboardingKeys.nextButton,
+                        onPressed: _nextPage,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(120, 48),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(copy.text('Next', 'මීළඟ')),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward_rounded, size: 18),
+                          ],
+                        ),
+                      )
+                    else
+                      FilledButton(
+                        key: OnboardingKeys.getStartedButton,
+                        onPressed: _finishOnboarding,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(140, 48),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 28,
+                            vertical: 14,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(copy.text('Get Started', 'ආරම්භ කරන්න')),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.check_circle_outline, size: 18),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(copy.text('Next', 'මීළඟ')),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_rounded, size: 18),
-                        ],
-                      ),
-                    )
-                  else
-                    FilledButton(
-                      key: OnboardingKeys.getStartedButton,
-                      onPressed: _finishOnboarding,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AyurvedaColors.forest,
-                        minimumSize: const Size(140, 48),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 28,
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(copy.text('Get Started', 'ආරම්භ කරන්න')),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.check_circle_outline, size: 18),
-                        ],
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -336,6 +231,109 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 }
 
+/// One slide. Phones stack photo over text. Tablets, web and landscape put them side by side.
+/// The content scrolls, so short screens and large text sizes do not overflow.
+class _OnboardingSlide extends StatelessWidget {
+  const _OnboardingSlide({required this.slide, super.key});
+
+  final _OnboardingSlideData slide;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final brand = AyurvedaThemeExtension.of(context);
+
+    final photo = Container(
+      height: 240,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(brand.headerRadius),
+        color: theme.colorScheme.primaryContainer,
+        border: Border.all(color: brand.cardBorderColor),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              slide.imageAsset,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Center(
+                child: Icon(slide.icon, size: 72, color: brand.teal),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 14,
+            left: 14,
+            child: PillChip(
+              icon: slide.icon,
+              label: slide.badge,
+              background: theme.colorScheme.surface,
+              foreground: brand.teal,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Widget text(TextAlign align) => Column(
+      crossAxisAlignment: align == TextAlign.center
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          slide.title,
+          textAlign: align,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          slide.subtitle,
+          textAlign: align,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sideBySide = constraints.maxWidth >= 720;
+        return Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: sideBySide ? 960 : 560),
+              child: sideBySide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: photo),
+                        const SizedBox(width: 40),
+                        Expanded(child: text(TextAlign.start)),
+                      ],
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        photo,
+                        const SizedBox(height: 32),
+                        text(TextAlign.center),
+                      ],
+                    ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 class _OnboardingSlideData {
   const _OnboardingSlideData({
     required this.title,

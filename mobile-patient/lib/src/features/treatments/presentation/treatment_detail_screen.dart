@@ -112,7 +112,7 @@ class _TreatmentDetailView extends ConsumerWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.45),
+                            AyurvedaColors.scrim.withValues(alpha: 0.45),
                           ],
                         ),
                       ),
@@ -233,7 +233,7 @@ class _TreatmentDetailView extends ConsumerWidget {
                                   Expanded(
                                     child: Text(
                                       availability.message ??
-                                          'Available for booking!',
+                                          'Slots are available on this date.',
                                       style: const TextStyle(
                                         color: AyurvedaColors.forest,
                                         fontWeight: FontWeight.bold,

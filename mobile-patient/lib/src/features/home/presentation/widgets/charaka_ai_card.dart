@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../l10n/feature_localizations.dart';
+import '../../../../shared/widgets/clinic_widgets.dart';
 import '../../../../theme/app_theme.dart';
 
 class CharakaAiCard extends StatelessWidget {
@@ -12,18 +13,13 @@ class CharakaAiCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final copy = FeatureLocalizations.of(context);
     final theme = Theme.of(context);
+    final brand = AyurvedaThemeExtension.of(context);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(
-          color: AyurvedaColors.forest.withValues(alpha: 0.25),
-        ),
-      ),
+    return ClinicCard(
+      padding: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(brand.cardRadius),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -31,14 +27,14 @@ class CharakaAiCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AyurvedaColors.forest, AyurvedaColors.forestLight],
+                  gradient: LinearGradient(
+                    colors: [brand.headerGradientStart, brand.headerGradientEnd],
                   ),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.psychology_outlined,
-                  color: Colors.white,
+                  color: brand.onHeader,
                   size: 26,
                 ),
               ),
@@ -47,7 +43,11 @@ class CharakaAiCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    // Wraps when the card is half width and the title is long.
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           copy.charakaChatTitle,
@@ -55,25 +55,7 @@ class CharakaAiCard extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AyurvedaColors.gold.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'AI',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AyurvedaColors.forestDark,
-                            ),
-                          ),
-                        ),
+                        const PillChip(label: 'AI'),
                       ],
                     ),
                     const SizedBox(height: 3),
@@ -95,26 +77,22 @@ class CharakaAiCard extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: AyurvedaColors.forest.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       copy.text('Chat', 'අසන්න'),
-                      style: const TextStyle(
-                        color: AyurvedaColors.forest,
+                      style: TextStyle(
+                        color: brand.teal,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(
-                      Icons.arrow_forward,
-                      size: 14,
-                      color: AyurvedaColors.forest,
-                    ),
+                    Icon(Icons.arrow_forward, size: 14, color: brand.teal),
                   ],
                 ),
               ),

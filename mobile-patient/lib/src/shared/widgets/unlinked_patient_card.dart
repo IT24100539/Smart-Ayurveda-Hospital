@@ -5,11 +5,13 @@ import '../../l10n/app_localizations.dart';
 class UnlinkedPatientCard extends StatelessWidget {
   const UnlinkedPatientCard({
     this.onRetry,
+    this.onHelp,
     this.customMessage,
     super.key,
   });
 
   final VoidCallback? onRetry;
+  final VoidCallback? onHelp;
   final String? customMessage;
 
   @override
@@ -77,20 +79,39 @@ class UnlinkedPatientCard extends StatelessWidget {
                   height: 1.4,
                 ),
               ),
-              if (onRetry != null) ...[
+              if (onRetry != null || onHelp != null) ...[
                 const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: OutlinedButton.icon(
-                    onPressed: onRetry,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: textColor,
-                      side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.5)),
-                      minimumSize: const Size(48, 48),
-                    ),
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: Text(l10n.unlinkedRecordRetry),
-                  ),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (onHelp != null)
+                      TextButton.icon(
+                        onPressed: onHelp,
+                        style: TextButton.styleFrom(
+                          foregroundColor: textColor,
+                          minimumSize: const Size(48, 48),
+                        ),
+                        icon: const Icon(Icons.support_agent_rounded, size: 18),
+                        label: Text(l10n.unlinkedRecordHelpAction),
+                      ),
+                    if (onRetry != null)
+                      OutlinedButton.icon(
+                        onPressed: onRetry,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: textColor,
+                          side: BorderSide(
+                            color: theme.colorScheme.error.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                          minimumSize: const Size(48, 48),
+                        ),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: Text(l10n.unlinkedRecordRetry),
+                      ),
+                  ],
                 ),
               ],
             ],

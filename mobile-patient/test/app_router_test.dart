@@ -6,6 +6,9 @@ import 'package:patient_app/src/core/storage/token_storage.dart';
 import 'package:patient_app/src/features/auth/application/auth_controller.dart';
 import 'package:patient_app/src/features/auth/presentation/login_screen.dart';
 import 'package:patient_app/src/features/onboarding/data/onboarding_storage.dart';
+import 'package:patient_app/src/features/profile/presentation/profile_screen.dart';
+import 'package:patient_app/src/features/feedback/application/communication_providers.dart';
+import 'package:patient_app/src/features/feedback/domain/communication_models.dart';
 import 'package:patient_app/src/features/treatments/application/treatments_provider.dart';
 import 'package:patient_app/src/l10n/app_localizations.dart';
 
@@ -39,6 +42,9 @@ Future<void> _pumpApp(
           InMemoryOnboardingStorage(seen: seenOnboarding),
         ),
         treatmentsProvider.overrideWith((ref) async => const []),
+        notificationsProvider.overrideWith(
+          (ref) async => const <PatientNotification>[],
+        ),
         ...extraOverrides,
       ],
       child: const PatientApp(),
@@ -52,9 +58,7 @@ void main() {
   ) async {
     await _pumpApp(
       tester,
-      extraOverrides: [
-        authControllerProvider.overrideWith(_LoadingAuth.new),
-      ],
+      extraOverrides: [authControllerProvider.overrideWith(_LoadingAuth.new)],
     );
     await tester.pump();
 
@@ -89,23 +93,33 @@ void main() {
     expect(find.byKey(LoginScreenKeys.submit), findsOneWidget);
   });
 
-  testWidgets('with a stored token, restore lands on Home in the five-tab shell', (
-    tester,
-  ) async {
-    await _pumpApp(tester, storedToken: 'stored.jwt.value');
-    await tester.pumpAndSettle();
+  testWidgets(
+    'with a stored token, restore lands on Home in the five-tab shell',
+    (tester) async {
+      await _pumpApp(tester, storedToken: 'stored.jwt.value');
+      await tester.pumpAndSettle();
 
-    final si = await _si();
-    final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(navBar.destinations, hasLength(5));
-    expect(find.text(si.homeGreetingGeneric), findsOneWidget);
-    expect(find.text(si.homeHospitalAddress), findsOneWidget);
-    expect(find.text(si.navFeedback), findsWidgets);
+      final si = await _si();
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.destinations, hasLength(5));
+      expect(find.text(si.homeGreetingGeneric), findsOneWidget);
+      expect(find.text(si.homeHospitalAddress), findsOneWidget);
+      expect(find.text(si.navFeedback), findsWidgets);
 
-    await tester.tap(find.text(si.navProfile));
-    await tester.pumpAndSettle();
-    expect(find.text(si.signOut), findsOneWidget);
-  });
+      await tester.tap(find.text(si.navProfile));
+      await tester.pumpAndSettle();
+      final profileScroll = find.descendant(
+        of: find.byType(ProfileScreen),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text(si.signOut),
+        400,
+        scrollable: profileScroll,
+      );
+      expect(find.text(si.signOut), findsOneWidget);
+    },
+  );
 
   testWidgets('signing out routes back to the login screen', (tester) async {
     await _pumpApp(tester, storedToken: 'stored.jwt.value');
@@ -114,6 +128,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(si.navProfile));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text(si.signOut),
+      400,
+      scrollable: find.descendant(
+        of: find.byType(ProfileScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
 
     await tester.tap(find.text(si.signOut));
     await tester.pumpAndSettle();
@@ -127,9 +149,7 @@ void main() {
   ) async {
     await _pumpApp(
       tester,
-      extraOverrides: [
-        authControllerProvider.overrideWith(_LoadingAuth.new),
-      ],
+      extraOverrides: [authControllerProvider.overrideWith(_LoadingAuth.new)],
     );
     await tester.pump();
     final si = await _si();

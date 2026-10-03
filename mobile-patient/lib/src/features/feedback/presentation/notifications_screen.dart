@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/clinic_widgets.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_layout.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../theme/app_theme.dart';
 import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
 import '../domain/communication_models.dart';
 import 'feedback_keys.dart';
 import 'feedback_messages.dart';
+import 'notification_destination.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({this.embedded = false, super.key});
@@ -44,10 +49,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
   }
 
-  Future<void> _markRead(PatientNotification item) async {
-    if (item.isRead) return;
+  Future<bool> _markRead(PatientNotification item) async {
+    if (item.isRead) return true;
     final current = _items ?? ref.read(notificationsProvider).valueOrNull;
-    if (current == null) return;
+    if (current == null) return false;
 
     setState(() {
       _items = [
@@ -61,14 +66,23 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           .read(communicationRepositoryProvider)
           .markNotificationRead(item.id);
       ref.invalidate(notificationsProvider);
+      return true;
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() => _items = current);
       final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(feedbackErrorText(error, l10n))));
+      return false;
     }
+  }
+
+  Future<void> _open(PatientNotification item) async {
+    final marked = await _markRead(item);
+    if (!marked || !mounted) return;
+    final destination = notificationDestination(item.kind);
+    if (destination != null) context.go(destination);
   }
 
   @override
@@ -96,19 +110,30 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       body: cached != null
           ? _NotificationList(
               items: cached,
-              onTap: _markRead,
+              onTap: (item) {
+                _open(item);
+              },
               onMarkAll: hasUnread ? _markAllRead : null,
             )
           : notices.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const SkeletonList(
+                withBanner: false,
+                itemCount: 5,
+                lines: 1,
+                leading: true,
+                listKey: FeedbackKeys.notificationsSkeleton,
+              ),
               error: (error, _) => ErrorState(
                 message: feedbackErrorText(error, l10n),
                 actionLabel: l10n.retry,
+                actionKey: FeedbackKeys.notificationsRetry,
                 onAction: () => ref.invalidate(notificationsProvider),
               ),
               data: (loaded) => _NotificationList(
                 items: loaded,
-                onTap: _markRead,
+                onTap: (item) {
+                  _open(item);
+                },
                 onMarkAll: loaded.any((item) => !item.isRead)
                     ? _markAllRead
                     : null,
@@ -139,10 +164,9 @@ class _NotificationList extends StatelessWidget {
       );
     }
     final unread = items.where((item) => !item.isRead).length;
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+    return PageListView.builder(
       itemCount: items.length + 1,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      spacing: 10,
       itemBuilder: (context, index) {
         if (index == 0) {
           return Row(
@@ -151,6 +175,7 @@ class _NotificationList extends StatelessWidget {
               const Spacer(),
               if (onMarkAll != null)
                 TextButton(
+                  key: FeedbackKeys.markAllRead,
                   onPressed: onMarkAll,
                   child: Text(l10n.markAllRead),
                 ),
@@ -201,15 +226,35 @@ class _NotificationTile extends StatelessWidget {
       NotificationKind.statusChange => Icons.update,
       NotificationKind.escalation => Icons.priority_high,
       NotificationKind.general => Icons.notifications_none_outlined,
+      NotificationKind.appointmentApproved ||
+      NotificationKind.appointmentRejected ||
+      NotificationKind.appointmentRescheduled ||
+      NotificationKind.appointmentCancelled => Icons.event_available_outlined,
+      NotificationKind.prescriptionIssued => Icons.spa_outlined,
+      NotificationKind.invoiceIssued => Icons.receipt_long_outlined,
     };
-    final iconColor = item.kind == NotificationKind.escalation
-        ? AyurvedaColors.danger
-        : theme.colorScheme.primary;
+    final brand = AyurvedaThemeExtension.of(context);
+    final escalation = item.kind == NotificationKind.escalation;
+    final iconColor = escalation ? theme.colorScheme.error : brand.teal;
+    final iconBackground = escalation
+        ? theme.colorScheme.errorContainer
+        : theme.colorScheme.primaryContainer;
 
-    return Card(
+    return ClinicCard(
+      padding: EdgeInsets.zero,
       child: ListTile(
+        key: FeedbackKeys.notificationTile(item.id),
         onTap: onTap,
-        leading: Icon(icon, color: iconColor),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: iconBackground,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
         title: Text(
           item.title,
           style: TextStyle(
@@ -222,7 +267,7 @@ class _NotificationTile extends StatelessWidget {
         isThreeLine: true,
         trailing: item.isRead
             ? null
-            : const Icon(Icons.circle, size: 10, color: AyurvedaColors.gold),
+            : Icon(Icons.circle, size: 10, color: brand.goldAccent),
       ),
     );
   }

@@ -2,6 +2,14 @@ import '../../../core/network/api_exception.dart';
 import '../../../l10n/app_localizations.dart';
 import '../domain/communication_models.dart';
 
+bool isUnlinkedPatientError(Object error) {
+  const marker = 'No patient record is linked';
+  if (error is ApiException) {
+    return error.message?.contains(marker) ?? false;
+  }
+  return error.toString().contains(marker);
+}
+
 String feedbackErrorText(Object error, AppLocalizations l10n) {
   if (error is ApiException) {
     if (error.isNetworkError) return l10n.networkErrorMessage;
@@ -35,6 +43,13 @@ String notificationKindLabel(AppLocalizations l10n, NotificationKind kind) {
     NotificationKind.statusChange => l10n.notificationStatus,
     NotificationKind.escalation => l10n.notificationEscalated,
     NotificationKind.general => l10n.notificationGeneral,
+    NotificationKind.appointmentApproved => l10n.notificationAppointmentApproved,
+    NotificationKind.appointmentRejected => l10n.notificationAppointmentRejected,
+    NotificationKind.appointmentRescheduled =>
+      l10n.notificationAppointmentRescheduled,
+    NotificationKind.appointmentCancelled => l10n.notificationAppointmentCancelled,
+    NotificationKind.prescriptionIssued => l10n.notificationPrescriptionIssued,
+    NotificationKind.invoiceIssued => l10n.notificationInvoiceIssued,
   };
 }
 

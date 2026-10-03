@@ -9,6 +9,7 @@ import {
   type ComplaintSummary,
   type StaffAssignee
 } from "../../api/feedback";
+import { Badge, type BadgeTone } from "../../components/ui";
 import {
   COMPLAINT_STATUSES,
   complaintStatusLabel,
@@ -18,21 +19,19 @@ import {
 } from "./labels";
 
 const fieldClass =
-  "mt-1 w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm outline-none ring-primary focus:ring-2";
+  "field mt-1";
 const secondaryButton =
-  "rounded-lg border border-surface-border bg-white px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary-muted disabled:opacity-60";
+  "rounded-lg border border-surface-border bg-surface-raised px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary-muted disabled:opacity-60";
 
-function statusTone(status: ComplaintStatus): string {
-  if (status === "Resolved") {
-    return "bg-primary-muted text-primary-dark";
-  }
-  if (status === "Escalated") {
-    return "bg-red-100 text-danger";
-  }
-  if (status === "InProgress") {
-    return "bg-amber-100 text-amber-950";
-  }
-  return "bg-surface text-ink";
+function statusTone(status: ComplaintStatus): BadgeTone {
+  if (status === "Resolved") return "approved";
+  if (status === "Escalated") return "error";
+  if (status === "InProgress") return "pending";
+  return "neutral";
+}
+
+function priorityTone(priority: ComplaintPriority): BadgeTone {
+  return priority === "High" ? "error" : "neutral";
 }
 
 type QueueChip = "all" | ComplaintStatus | "overdue";
@@ -143,7 +142,7 @@ export function ComplaintQueuePage() {
     <section aria-labelledby="complaint-queue-heading">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 id="complaint-queue-heading" className="font-serif text-lg font-semibold text-primary-dark">
+          <h2 id="complaint-queue-heading" className="font-serif text-lg font-semibold text-heading">
             Complaint queue
           </h2>
           <p className="mt-1 text-sm text-muted">
@@ -175,8 +174,8 @@ export function ComplaintQueuePage() {
             aria-pressed={chip === item.id}
             className={
               chip === item.id
-                ? "rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-white"
-                : "rounded-full border border-surface-border bg-white px-3 py-1.5 text-sm font-medium text-ink hover:bg-primary-muted"
+                ? "rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-on"
+                : "rounded-full border border-surface-border bg-surface-raised px-3 py-1.5 text-sm font-medium text-ink hover:bg-primary-muted"
             }
             onClick={() => setChip(item.id)}
           >
@@ -192,7 +191,7 @@ export function ComplaintQueuePage() {
       ) : null}
 
       {phase === "error" && loadError ? (
-        <div className="mt-6 rounded-xl border border-danger/30 bg-white p-4" role="alert">
+        <div className="mt-6 rounded-xl border border-danger/30 bg-surface-raised p-4" role="alert">
           <p className="text-sm text-danger">{loadError}</p>
           <button type="button" className={`${secondaryButton} mt-3`} onClick={() => setReloadKey((key) => key + 1)}>
             Try again
@@ -213,95 +212,93 @@ export function ComplaintQueuePage() {
       ) : null}
 
       {phase === "ready" && visible.length > 0 ? (
-        <ul className="mt-4 space-y-3" aria-label="Complaints">
-          {visible.map((complaint) => (
-            <li
-              key={complaint.id}
-              className={
-                complaint.isOverdue
-                  ? "rounded-xl border border-amber-300 bg-amber-50 p-4"
-                  : "rounded-xl border border-surface-border bg-surface-raised p-4"
-              }
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-ink">{complaint.subject}</h3>
-                  <p className="mt-1 text-sm text-muted">
-                    {complaint.patientName} · {formatWhen(complaint.createdAt)}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      complaint.priority === "High" ? "bg-red-100 text-danger" : "bg-surface text-ink"
-                    }`}
-                  >
-                    {priorityLabel(complaint.priority)}
-                  </span>
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusTone(complaint.status)}`}
-                  >
-                    {complaintStatusLabel(complaint.status)}
-                  </span>
-                  {complaint.isOverdue ? (
-                    <span className="inline-flex rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-950">
-                      Overdue
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <p className="mt-3 whitespace-pre-wrap text-sm text-ink">{complaint.description}</p>
-              <label className="mt-3 block max-w-xs text-sm font-semibold" htmlFor={`complaint-assignee-${complaint.id}`}>
-                Assigned to
-                <select
-                  id={`complaint-assignee-${complaint.id}`}
-                  className={fieldClass}
-                  value={complaint.assignedTo ?? ""}
-                  disabled={savingId === complaint.id}
-                  onChange={(event) => {
-                    const assigneeId = event.target.value;
-                    if (!assigneeId || assigneeId === complaint.assignedTo) {
-                      return;
-                    }
-                    setSavingId(complaint.id);
-                    setActionError(null);
-                    updateComplaintStatus(complaint.id, complaint.status, assigneeId)
-                      .then((updated) => {
-                        setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-                      })
-                      .catch((err: unknown) => {
-                        setActionError(errorMessage(err, "Unable to assign the complaint."));
-                      })
-                      .finally(() => setSavingId((current) => (current === complaint.id ? null : current)));
-                  }}
-                >
-                  <option value="">Unassigned</option>
-                  {assignees.map((assignee) => (
-                    <option key={assignee.id} value={assignee.id}>
-                      {assignee.fullName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="mt-3 block max-w-xs text-sm font-semibold" htmlFor={`complaint-status-${complaint.id}`}>
-                Status
-                <select
-                  id={`complaint-status-${complaint.id}`}
-                  className={fieldClass}
-                  value={complaint.status}
-                  disabled={savingId === complaint.id}
-                  onChange={(event) => void changeStatus(complaint, event.target.value as ComplaintStatus)}
-                >
-                  {COMPLAINT_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {complaintStatusLabel(status)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </li>
-          ))}
-        </ul>
+        <div className="table-scroll mt-4 rounded-2xl border border-surface-border bg-surface-raised shadow-card" aria-label="Complaints">
+          <table className="data-table min-w-[56rem]">
+            <thead>
+              <tr>
+                <th>Complaint</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Assigned to</th>
+                <th>Update status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((complaint) => (
+                <tr key={complaint.id} className={complaint.isOverdue ? "bg-status-pending-bg/60" : undefined}>
+                  <td className="px-4 py-4 align-top">
+                    <h3 className="font-semibold text-ink">{complaint.subject}</h3>
+                    <p className="mt-1 text-sm text-muted">
+                      {complaint.patientName} · {formatWhen(complaint.createdAt)}
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{complaint.description}</p>
+                  </td>
+                  <td className="px-4 py-4 align-top">
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge tone={priorityTone(complaint.priority)}>{priorityLabel(complaint.priority)}</Badge>
+                      {complaint.isOverdue ? <Badge tone="pending">Overdue</Badge> : null}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 align-top">
+                    <Badge tone={statusTone(complaint.status)}>{complaintStatusLabel(complaint.status)}</Badge>
+                  </td>
+                  <td className="px-4 py-4 align-top">
+                    <label className="block max-w-xs text-sm font-semibold" htmlFor={`complaint-assignee-${complaint.id}`}>
+                      Assigned to
+                      <select
+                        id={`complaint-assignee-${complaint.id}`}
+                        className={fieldClass}
+                        value={complaint.assignedTo ?? ""}
+                        disabled={savingId === complaint.id}
+                        onChange={(event) => {
+                          const assigneeId = event.target.value;
+                          if (!assigneeId || assigneeId === complaint.assignedTo) {
+                            return;
+                          }
+                          setSavingId(complaint.id);
+                          setActionError(null);
+                          updateComplaintStatus(complaint.id, complaint.status, assigneeId)
+                            .then((updated) => {
+                              setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+                            })
+                            .catch((err: unknown) => {
+                              setActionError(errorMessage(err, "Unable to assign the complaint."));
+                            })
+                            .finally(() => setSavingId((current) => (current === complaint.id ? null : current)));
+                        }}
+                      >
+                        <option value="">Unassigned</option>
+                        {assignees.map((assignee) => (
+                          <option key={assignee.id} value={assignee.id}>
+                            {assignee.fullName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </td>
+                  <td className="px-4 py-4 align-top">
+                    <label className="block max-w-xs text-sm font-semibold" htmlFor={`complaint-status-${complaint.id}`}>
+                      Status
+                      <select
+                        id={`complaint-status-${complaint.id}`}
+                        className={fieldClass}
+                        value={complaint.status}
+                        disabled={savingId === complaint.id}
+                        onChange={(event) => void changeStatus(complaint, event.target.value as ComplaintStatus)}
+                      >
+                        {COMPLAINT_STATUSES.map((status) => (
+                          <option key={status} value={status}>
+                            {complaintStatusLabel(status)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

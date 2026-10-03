@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../shared/widgets/clinic_widgets.dart';
+import '../../../../theme/app_theme.dart';
+
 class QuickActionTile extends StatelessWidget {
   const QuickActionTile({
     super.key,
@@ -13,34 +16,29 @@ class QuickActionTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+
+  /// Accent for the icon. Pass a brand role (teal, goldAccent) so it adapts to dark mode.
   final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(
-          color: theme.colorScheme.outline.withValues(alpha: 0.4),
-        ),
-      ),
+    final brand = AyurvedaThemeExtension.of(context);
+    return ClinicCard(
+      padding: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(brand.cardRadius / 2),
                 ),
                 child: Icon(icon, color: color, size: 22),
               ),
@@ -49,16 +47,14 @@ class QuickActionTile extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: theme.textTheme.titleSmall,
               ),
+              const SizedBox(height: 2),
               Text(
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 10,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),

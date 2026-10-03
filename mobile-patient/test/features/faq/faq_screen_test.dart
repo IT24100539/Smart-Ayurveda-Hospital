@@ -45,7 +45,9 @@ void main() {
     await tester.pumpWidget(_buildHarness());
     await tester.pumpAndSettle();
 
-    // Tap on Charaka AI limitations
+    // Tap on Charaka AI limitations. The tile can sit below the fold on a short screen.
+    await tester.ensureVisible(find.byKey(FaqKeys.charakaLimitationsTile));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(FaqKeys.charakaLimitationsTile));
     await tester.pumpAndSettle();
 

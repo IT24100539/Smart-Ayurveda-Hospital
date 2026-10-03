@@ -113,8 +113,16 @@ class AppLocalizationsSi extends AppLocalizations {
   String get invalidCredentialsMessage => 'විද්‍යුත් තැපෑල හෝ රහස් පදය වැරදිය.';
 
   @override
-  String get emailAlreadyRegisteredMessage =>
-      'මෙම විද්‍යුත් තැපෑල සඳහා ගිණුමක් දැනටමත් තිබේ.';
+  String get registrationUnavailableMessage =>
+      'ලබා දුන් විස්තරවලින් ගිණුමක් සෑදිය නොහැක.';
+
+  @override
+  String get accountTemporarilyLocked =>
+      'මෙම ගිණුම තාවකාලිකව අගුළු දමා ඇත. කරුණාකර පසුව නැවත උත්සාහ කරන්න.';
+
+  @override
+  String get tooManyAttempts =>
+      'උත්සාහයන් වැඩියි. කරුණාකර පසුව නැවත උත්සාහ කරන්න.';
 
   @override
   String get genericErrorMessage => 'දෝෂයක් සිදු විය. නැවත උත්සාහ කරන්න.';
@@ -152,7 +160,7 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get homeSubtitle =>
-      'උපදේශන වෙන් කරවා ගන්න, ඔබේ පංචකර්ම සැලසුම අනුගමනය කරන්න, සහ ඔබේ ඔසු පිළිබඳ තොරතුරු බලන්න.';
+      'උපදේශන වෙන් කරවා ගන්න, ඔබේ ප්‍රතිකාර කාලසටහන බලන්න, සහ ලියාපදිංචි සාරාංශය පරීක්ෂා කරන්න.';
 
   @override
   String get homeHospitalName => 'ස්මාර්ට් ආයුර්වේද රෝහල';
@@ -385,6 +393,24 @@ class AppLocalizationsSi extends AppLocalizations {
   String get notificationGeneral => 'දැනුම්දීම';
 
   @override
+  String get notificationAppointmentApproved => 'වෙන්කිරීම අනුමතයි';
+
+  @override
+  String get notificationAppointmentRejected => 'වෙන්කිරීම අනුමත නොවීය';
+
+  @override
+  String get notificationAppointmentRescheduled => 'වෙන්කිරීම නැවත සකසන ලදි';
+
+  @override
+  String get notificationAppointmentCancelled => 'වෙන්කිරීම අවලංගුයි';
+
+  @override
+  String get notificationPrescriptionIssued => 'බෙහෙත් වට්ටෝරුව නිකුත් කළා';
+
+  @override
+  String get notificationInvoiceIssued => 'බිල්පත නිකුත් කළා';
+
+  @override
   String get retry => 'නැවත උත්සාහ කරන්න';
 
   @override
@@ -445,7 +471,7 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get myHealthHubSubtitle =>
-      'ඔබගේ ප්‍රතිකාර සැසි සහ ලියාපදිංචි සාරාංශය.';
+      'ඔබගේ ප්‍රතිකාර සැසි, බෙහෙත් වට්ටෝරු, බිල්පත් සහ ලේඛන.';
 
   @override
   String get myTherapySessionsTitle => 'මගේ ප්‍රතිකාර සැසි';
@@ -501,4 +527,396 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get unlinkedRecordRetry => 'නැවත පරීක්ෂා කරන්න';
+
+  @override
+  String get unlinkedRecordHelpAction => 'පිළිගැනීමේ කවුන්ටරය අමතන්න';
+
+  @override
+  String get forgotPasswordLink => 'රහස් පදය අමතකද?';
+
+  @override
+  String get forgotPasswordTitle => 'රහස් පදය යළි සකසන්න';
+
+  @override
+  String get forgotPasswordHeading => 'ඔබේ රහස් පදය අමතක වුණාද?';
+
+  @override
+  String get forgotPasswordBody =>
+      'ඔබේ විද්‍යුත් තැපැල් ලිපිනය ඇතුළත් කරන්න. එය ලියාපදිංචි වී ඇත්නම්, යළි සැකසුම් සබැඳියක් යවනු ලැබේ.';
+
+  @override
+  String get forgotPasswordSubmit => 'යළි සැකසුම් සබැඳිය යවන්න';
+
+  @override
+  String get forgotPasswordBackToSignIn => 'පිවිසීමට ආපසු';
+
+  @override
+  String get forgotPasswordSuccess =>
+      'එම විද්‍යුත් තැපෑලට ගිණුමක් තිබේ නම්, රහස් පදය යළි සැකසීමේ සබැඳියක් යවා ඇත.';
+
+  @override
+  String get forgotPasswordError =>
+      'යළි සැකසුම් ඉල්ලීම යැවිය නොහැකි විය. ඔබේ සම්බන්ධතාවය පරීක්ෂා කරන්න.';
+
+  @override
+  String get resetPasswordTitle => 'නව රහස් පදය';
+
+  @override
+  String get resetPasswordHeading => 'නව රහස් පදයක් සාදන්න';
+
+  @override
+  String get resetPasswordBody =>
+      'ඔබේ විද්‍යුත් තැපෑලෙන් ලැබුණු යළි සැකසුම් ටෝකනය සහ නව රහස් පදය ඇතුළත් කරන්න.';
+
+  @override
+  String get resetTokenLabel => 'යළි සැකසුම් ටෝකනය';
+
+  @override
+  String get resetTokenRequired =>
+      'ඔබේ විද්‍යුත් තැපෑලෙන් ලැබුණු යළි සැකසුම් ටෝකනය ඇතුළත් කරන්න';
+
+  @override
+  String get newPasswordLabel => 'නව රහස් පදය';
+
+  @override
+  String get confirmPasswordLabel => 'රහස් පදය තහවුරු කරන්න';
+
+  @override
+  String get confirmPasswordRequired => 'ඔබේ රහස් පදය තහවුරු කරන්න';
+
+  @override
+  String get passwordsDoNotMatch => 'රහස් පද නොගැලපේ';
+
+  @override
+  String get resetPasswordSubmit => 'රහස් පදය යළි සකසන්න';
+
+  @override
+  String get resetPasswordSuccess =>
+      'ඔබේ රහස් පදය යළි සකසා ඇත. දැන් නව රහස් පදයෙන් පිවිසිය හැක.';
+
+  @override
+  String get resetPasswordError =>
+      'රහස් පදය යළි සකසිය නොහැකි විය. ටෝකනය වලංගු නොවිය හැක හෝ කල් ඉකුත් වී ඇත.';
+
+  @override
+  String get resetPasswordSignInNow => 'දැන් පිවිසෙන්න';
+
+  @override
+  String get passwordNeedsUppercase =>
+      'රහස් පදයේ අවම වශයෙන් එක් ලොකු අකුරක් තිබිය යුතුය';
+
+  @override
+  String get passwordNeedsLowercase =>
+      'රහස් පදයේ අවම වශයෙන් එක් කුඩා අකුරක් තිබිය යුතුය';
+
+  @override
+  String get passwordNeedsDigit =>
+      'රහස් පදයේ අවම වශයෙන් එක් ඉලක්කමක් තිබිය යුතුය';
+
+  @override
+  String get passwordNeedsSpecial =>
+      'රහස් පදයේ අවම වශයෙන් එක් විශේෂ අක්ෂරයක් තිබිය යුතුය';
+
+  @override
+  String get showPassword => 'රහස් පදය පෙන්වන්න';
+
+  @override
+  String get hidePassword => 'රහස් පදය සඟවන්න';
+
+  @override
+  String get doctorsTitle => 'වෛද්‍යවරු';
+
+  @override
+  String get doctorsSubtitle => 'රෝහලේ උපදේශන ලබා දෙන වෛද්‍යවරු.';
+
+  @override
+  String get doctorsNavSubtitle => 'වෛද්‍ය කණ්ඩායම හමුවන්න';
+
+  @override
+  String get doctorsSearchHint => 'නම හෝ විශේෂඥතාව අනුව සොයන්න';
+
+  @override
+  String get doctorsEmpty => 'තවම වෛද්‍යවරු ලැයිස්තුගත කර නැත.';
+
+  @override
+  String get doctorsSearchEmpty => 'ඔබේ සෙවුමට ගැලපෙන වෛද්‍යවරු නැත.';
+
+  @override
+  String get doctorsLoadError => 'වෛද්‍යවරු පූරණය කළ නොහැක.';
+
+  @override
+  String get doctorProfileLoadError => 'මෙම වෛද්‍යවරයා පූරණය කළ නොහැක.';
+
+  @override
+  String get doctorQualificationsLabel => 'සුදුසුකම්';
+
+  @override
+  String get doctorAboutLabel => 'පිළිබඳව';
+
+  @override
+  String get healthHubUpcomingTab => 'ඉදිරි';
+
+  @override
+  String get healthHubTherapyTab => 'ප්‍රතිකාර';
+
+  @override
+  String get healthHubRegistrationTab => 'ලියාපදිංචිය';
+
+  @override
+  String get healthHubUpcomingEmpty => 'ඉදිරි හමුවීම් නොමැත.';
+
+  @override
+  String get healthHubPrescriptionsTab => 'බෙහෙත්';
+
+  @override
+  String get healthHubInvoicesTab => 'බිල්පත්';
+
+  @override
+  String get healthHubDocumentsTab => 'ලේඛන';
+
+  @override
+  String get myPrescriptionsTitle => 'මගේ බෙහෙත් වට්ටෝරු';
+
+  @override
+  String get prescriptionsEmpty => 'තවම බෙහෙත් වට්ටෝරු නිකුත් කර නැත.';
+
+  @override
+  String get prescriptionsLoadError => 'බෙහෙත් වට්ටෝරු පූරණය කළ නොහැක.';
+
+  @override
+  String prescriptionIssuedOn(String date) {
+    return 'නිකුත් කළේ $date';
+  }
+
+  @override
+  String prescriptionRevision(int number) {
+    return 'සංශෝධනය $number';
+  }
+
+  @override
+  String get prescriptionStatusIssued => 'නිකුත් කළ';
+
+  @override
+  String get prescriptionStatusSuperseded => 'ආදේශ කළ';
+
+  @override
+  String get prescriptionStatusCancelled => 'අවලංගු කළ';
+
+  @override
+  String get prescriptionStatusDraft => 'කෙටුම්පත';
+
+  @override
+  String get myInvoicesTitle => 'මගේ බිල්පත්';
+
+  @override
+  String get invoicesEmpty => 'තවම බිල්පත් නිකුත් කර නැත.';
+
+  @override
+  String get invoicesLoadError => 'බිල්පත් පූරණය කළ නොහැක.';
+
+  @override
+  String get paymentHistoryTitle => 'ගෙවීම් ඉතිහාසය';
+
+  @override
+  String get paymentsEmpty => 'ගෙවීම් වාර්තා වී නැත.';
+
+  @override
+  String get invoiceTotalLabel => 'එකතුව';
+
+  @override
+  String get amountPaidLabel => 'ගෙවූ මුදල';
+
+  @override
+  String get balanceLabel => 'ශේෂය';
+
+  @override
+  String get invoiceStatusIssued => 'නිකුත් කළ';
+
+  @override
+  String get invoiceStatusPaid => 'ගෙවූ';
+
+  @override
+  String get invoiceStatusCancelled => 'අවලංගු';
+
+  @override
+  String get invoiceStatusDraft => 'කෙටුම්පත';
+
+  @override
+  String get paymentMethodCash => 'මුදල්';
+
+  @override
+  String get paymentMethodCard => 'කාඩ්පත';
+
+  @override
+  String get paymentMethodBankTransfer => 'බැංකු මාරුව';
+
+  @override
+  String get myDocumentsTitle => 'මගේ ලේඛන';
+
+  @override
+  String get documentsEmpty => 'තවම ලේඛන උඩුගත කර නැත.';
+
+  @override
+  String get documentsLoadError => 'ලේඛන පූරණය කළ නොහැක.';
+
+  @override
+  String get documentView => 'බලන්න';
+
+  @override
+  String get documentDownload => 'බාගත කරන්න';
+
+  @override
+  String documentSaved(String fileName) {
+    return '$fileName සුරකින ලදි';
+  }
+
+  @override
+  String get documentDownloadError => 'මෙම ලේඛනය බාගත කළ නොහැක.';
+
+  @override
+  String get documentOpenError => 'මෙම ලේඛනය විවෘත කළ නොහැක.';
+
+  @override
+  String get documentPdfNotice => 'මෙම PDF ගොනුව බාගත කළ හැක.';
+
+  @override
+  String get documentFileNotice => 'මෙම ගොනුව බාගත කළ හැක.';
+
+  @override
+  String get documentCategoryLabReport => 'පරීක්ෂණ වාර්තාව';
+
+  @override
+  String get documentCategoryPrescriptionScan => 'බෙහෙත් වට්ටෝරුව';
+
+  @override
+  String get documentCategoryDiagnosticScan => 'පරීක්ෂණ ස්කෑනය';
+
+  @override
+  String get documentCategoryDischargeSummary => 'නිදහස් කිරීමේ සාරාංශය';
+
+  @override
+  String get documentCategoryTreatmentPlan => 'ප්‍රතිකාර සැලැස්ම';
+
+  @override
+  String get documentCategoryGeneral => 'සාමාන්‍ය';
+
+  @override
+  String doctorRatingSummary(String rating, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'සමාලෝචන $count',
+      one: 'සමාලෝචන 1',
+    );
+    return '$rating · $_temp0';
+  }
+
+  @override
+  String get appearanceSectionTitle => 'පෙනුම';
+
+  @override
+  String get themeSystem => 'පද්ධතිය';
+
+  @override
+  String get themeLight => 'එළිය';
+
+  @override
+  String get themeDark => 'අඳුර';
+
+  @override
+  String get privacySectionTitle => 'රහස්‍යතාව';
+
+  @override
+  String get privacyPolicyTitle => 'රහස්‍යතා ප්‍රතිපත්තිය';
+
+  @override
+  String get privacyPolicySubtitle =>
+      'මෙම යෙදුම ඔබේ ප්‍රතිකාර වාර්තාව හසුරුවන ආකාරය.';
+
+  @override
+  String get termsOfUseTitle => 'භාවිත නියම';
+
+  @override
+  String get termsOfUseSubtitle => 'රෝගී යෙදුම භාවිතා කිරීමේ නීති.';
+
+  @override
+  String get legalPlaceholderBanner =>
+      'ASK ME for the real text. සැබෑ පෙළ සඳහා මගෙන් අසන්න.';
+
+  @override
+  String get legalPlaceholderHint =>
+      'තාවකාලිකයි. මෙම තිරය රෝහල අනුමත කළ පෙළෙන් ප්‍රතිස්ථාපනය කරන්න.';
+
+  @override
+  String get privacyPolicyBody =>
+      'මෙය තාවකාලික පෙළකි. මෙය රෝහලේ රහස්‍යතා ප්‍රතිපත්තිය නොවේ.\n\nමෙම යෙදුම තුළ ඔබේ ප්‍රකෘති විස්තර, හමුවීම්, බෙහෙත් වට්ටෝරු, බිල්පත් සහ වෛද්‍ය ලේඛන භාවිතා වන ආකාරය මෙහි විස්තර කෙරේ.';
+
+  @override
+  String get termsOfUseBody =>
+      'මෙය තාවකාලික පෙළකි. මෙය රෝහලේ භාවිත නියම නොවේ.\n\nහමුවීම් ඉල්ලීම්, චරක පිළිතුරු සහ රෝගී යෙදුම භාවිතා කිරීමේදී ඔබේ වගකීම් මෙහි ඇතුළත් වේ.';
+
+  @override
+  String get retentionTitle => 'දත්ත සහ කතාබස් තබා ගැනීම';
+
+  @override
+  String get retentionNote =>
+      'ප්‍රතිකාර වාර්තා සහ චරක කතාබස් පණිවිඩ තබා ගනු ලබන්නේ රෝහලේ තබා ගැනීමේ ප්‍රතිපත්තියෙන් නියම කරන කාලයට පමණි. එම කාලය තවම ලියා නැත.';
+
+  @override
+  String get devGalleryTitle => 'සංරචක ගැලරිය';
+
+  @override
+  String get devGalleryHint =>
+      'නිදොස් කිරීම සඳහා පමණි. මේවා රෝහල් වාර්තා නොවේ.';
+
+  @override
+  String get devGallerySampleName => 'ආදර්ශය';
+
+  @override
+  String get devGallerySampleUhid => 'UHID';
+
+  @override
+  String get devGallerySection => 'පොදු සංරචක';
+
+  @override
+  String get devGalleryOpen => 'විවෘත කරන්න';
+
+  @override
+  String get devGalleryKicker => 'ප්‍රතිකාර සැසිය';
+
+  @override
+  String get devGalleryFact => 'දිනය';
+
+  @override
+  String get devGalleryFactValue => 'හමුවීමෙන්';
+
+  @override
+  String get devGalleryPrice => 'ලැයිස්තුවෙන්';
+
+  @override
+  String get devGalleryDuration => 'ලැයිස්තුවෙන්';
+
+  @override
+  String get devGalleryCategory => 'ප්‍රතිකාරය';
+
+  @override
+  String get devGalleryKpi => 'පූරණය වූ ගණන';
+
+  @override
+  String get devGalleryEmpty => 'මෙහි කිසිවක් නැත';
+
+  @override
+  String get devGalleryError => 'මෙම ආදර්ශය පූරණය කළ නොහැක.';
+
+  @override
+  String get devGalleryStepTherapy => 'ප්‍රතිකාරය';
+
+  @override
+  String get devGalleryStepDate => 'දිනය';
+
+  @override
+  String get devGalleryStepTime => 'වේලාව';
+
+  @override
+  String get devGalleryStepConfirm => 'තහවුරු කරන්න';
 }

@@ -120,6 +120,21 @@ class CommunicationRepository {
     return _send(() => _dio.patch<dynamic>('/notifications/read-all'));
   }
 
+  /// Stores this device's push token for the signed-in patient.
+  ///
+  /// [token] is a credential and is not written to logs.
+  Future<void> registerDeviceToken({
+    required String token,
+    required String platform,
+  }) {
+    return _send(
+      () => _dio.post<dynamic>(
+        '/notifications/device-tokens',
+        data: {'token': token, 'platform': platform},
+      ),
+    );
+  }
+
   Future<List<T>> _getList<T>(
     String path,
     T Function(Map<String, dynamic>) parse, {

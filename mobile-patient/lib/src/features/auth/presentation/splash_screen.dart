@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/language_switcher.dart';
-import '../../../theme/app_theme.dart';
 import '../../onboarding/application/onboarding_controller.dart';
 import '../application/auth_controller.dart';
 
@@ -30,14 +29,21 @@ class SplashScreen extends ConsumerWidget {
               Center(
                 child: Container(
                   padding: const EdgeInsets.all(22),
-                  decoration: const BoxDecoration(
-                    color: AyurvedaColors.sageMuted,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.spa,
-                    size: 44,
-                    color: AyurvedaColors.forest,
+                  child: Image.asset(
+                    theme.brightness == Brightness.dark
+                        ? 'assets/brand/leaf-mark-dark.png'
+                        : 'assets/brand/leaf-mark.png',
+                    width: 56,
+                    height: 56,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      Icons.spa,
+                      size: 44,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
                 ),
               ),
@@ -47,7 +53,7 @@ class SplashScreen extends ConsumerWidget {
                 textAlign: TextAlign.center,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: AyurvedaColors.forest,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 10),

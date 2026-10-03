@@ -81,7 +81,7 @@ describe("StaffManagementPage", () => {
     const mockAudit = [
       {
         id: "audit-1",
-        timestamp: "2026-10-01T10:00:00Z",
+        createdAt: "2026-10-01T10:00:00Z",
         actorUserId: "admin-1",
         actorEmail: "admin@hospital.local",
         action: "StaffRoleUpdated",
@@ -117,5 +117,7 @@ describe("StaffManagementPage", () => {
     expect(await screen.findByText("Staff Management Audit Trail")).toBeInTheDocument();
     expect(await screen.findByText("StaffRoleUpdated")).toBeInTheDocument();
     expect(await screen.findByText("Role changed from FrontDeskStaff to Doctor")).toBeInTheDocument();
+    expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+    expect(screen.getByText(/2026/)).toBeInTheDocument();
   });
 });

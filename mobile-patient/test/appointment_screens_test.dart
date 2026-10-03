@@ -8,6 +8,7 @@ import 'package:patient_app/src/features/appointments/presentation/appointments_
 import 'package:patient_app/src/features/appointments/presentation/book_appointment_flow.dart';
 import 'package:patient_app/src/features/auth/application/auth_controller.dart';
 import 'package:patient_app/src/features/auth/domain/auth_models.dart';
+import 'package:patient_app/src/shared/widgets/clinic_widgets.dart';
 import 'package:patient_app/src/theme/app_theme.dart';
 import 'package:patient_app/src/l10n/app_localizations.dart';
 import 'package:patient_app/src/l10n/locale_controller.dart';
@@ -19,6 +20,7 @@ class _FakeAppointmentRepository implements AppointmentRepository {
     this.createError,
     this.cancelError,
     this.rescheduleError,
+    this.mineError,
   });
 
   final Map<DateTime, TreatmentAvailability> availabilityByDate;
@@ -26,6 +28,7 @@ class _FakeAppointmentRepository implements AppointmentRepository {
   final Object? createError;
   final Object? cancelError;
   final Object? rescheduleError;
+  final Object? mineError;
   final List<String> cancelledIds = [];
   final List<Map<String, dynamic>> rescheduleCalls = [];
 
@@ -63,7 +66,11 @@ class _FakeAppointmentRepository implements AppointmentRepository {
   }
 
   @override
-  Future<List<Appointment>> mine() async => appointments;
+  Future<List<Appointment>> mine() async {
+    final error = mineError;
+    if (error != null) throw error;
+    return appointments;
+  }
 
   @override
   Future<Appointment> reschedule({
@@ -280,12 +287,17 @@ void main() {
     for (final status in statuses) {
       final chipFinder = find.byKey(ValueKey('status-chip-${status.name}'));
       await tester.scrollUntilVisible(chipFinder, 200);
-      final chip = tester.widget<Chip>(chipFinder);
-      expect(
-        chip.backgroundColor,
-        AppointmentStatusColors.background(status),
-        reason: '${status.name} should use its semantic status color',
-      );
+      final chip = tester.widget<PillChip>(chipFinder);
+      final brand = AyurvedaThemeExtension.of(tester.element(chipFinder));
+      final scheme = Theme.of(tester.element(chipFinder)).colorScheme;
+      final expected = switch (status) {
+        AppointmentStatus.pending => brand.pendingBackground,
+        AppointmentStatus.approved => brand.approvedBackground,
+        AppointmentStatus.rejected => scheme.errorContainer,
+        AppointmentStatus.completed => brand.completedBackground,
+        AppointmentStatus.cancelled => brand.neutralBackground,
+      };
+      expect(chip.background, expected, reason: '${status.name} should use its semantic status color');
     }
   });
 
@@ -550,5 +562,38 @@ void main() {
       }
     },
   );
+
+  testWidgets('unlinked login shows the clinical-record card, not a raw exception', (
+    tester,
+  ) async {
+    final repository = _FakeAppointmentRepository(
+      mineError: const ApiException(
+        statusCode: 400,
+        detail:
+            'No patient record is linked to this login. The clinical record must use the same email address.',
+      ),
+    );
+
+    await _pump(tester, const MyAppointmentsScreen(), repository);
+
+    expect(find.text('No patient record is linked to this login.'), findsOneWidget);
+    expect(find.text('Check again'), findsOneWidget);
+    expect(find.textContaining('ApiException'), findsNothing);
+  });
+
+  testWidgets('load error hides the exception type name', (tester) async {
+    final repository = _FakeAppointmentRepository(
+      mineError: const ApiException(
+        statusCode: 503,
+        detail: 'The hospital is temporarily unavailable.',
+      ),
+    );
+
+    await _pump(tester, const MyAppointmentsScreen(), repository);
+
+    expect(find.textContaining('Could not load appointments.'), findsOneWidget);
+    expect(find.textContaining('The hospital is temporarily unavailable.'), findsOneWidget);
+    expect(find.textContaining('ApiException'), findsNothing);
+  });
 }
 

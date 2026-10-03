@@ -22,10 +22,13 @@ export type StaffListResponse = {
 
 export type AuditLogEntry = {
   id: string;
-  timestamp: string;
+  createdAt: string;
   actorUserId: string | null;
   actorEmail: string;
+  actorRole?: string | null;
   action: string;
+  entityName?: string;
+  entityId?: string;
   targetUserId: string;
   targetEmail: string;
   details: string;

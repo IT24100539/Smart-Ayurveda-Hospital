@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, api } from "../api/client";
-import { PageHeader } from "../components/ui";
+import { Badge, PageHeader, type BadgeTone } from "../components/ui";
 import {
   decideWorkflow,
   getWorkflow,
@@ -32,9 +32,9 @@ const STATUSES: { value: ApprovalStatus | ""; label: string }[] = [
 const APPROVABLE_TYPES = new Set(["AdmissionRequest", "Feedback", "FeedbackReply"]);
 
 const fieldClass =
-  "rounded-lg border border-surface-border bg-white px-3 py-2 text-sm outline-none ring-primary focus:ring-2";
+  "field w-auto";
 const secondaryButton =
-  "rounded-lg border border-surface-border bg-white px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary-muted disabled:opacity-60";
+  "rounded-lg border border-surface-border bg-surface-raised px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary-muted disabled:opacity-60";
 
 function errorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : "Something went wrong. Please try again.";
@@ -46,6 +46,13 @@ function agentLabel(name: string): string {
 
 function statusLabel(status: ApprovalStatus): string {
   return STATUSES.find((item) => item.value === status)?.label ?? status;
+}
+
+function approvalTone(status: ApprovalStatus): BadgeTone {
+  if (status === "Approved") return "approved";
+  if (status === "Rejected") return "rejected";
+  if (status === "NotRequired") return "neutral";
+  return "pending";
 }
 
 function calledAt(result: ToolResult): string {
@@ -220,7 +227,7 @@ export function AiApprovalsPage() {
         action={
           <button
             type="button"
-            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-primary-muted"
+            className="rounded-lg bg-hero-button px-3 py-2 text-sm font-semibold text-hero-deep hover:bg-hero-button-hover"
             onClick={() => setRefreshKey((value) => value + 1)}
           >
             Refresh
@@ -278,47 +285,62 @@ export function AiApprovalsPage() {
       ) : null}
       {outcome ? (
         <p
-          className="rounded-lg border border-primary bg-primary-muted px-3 py-2 text-sm font-medium text-primary-dark"
+          className="rounded-lg border border-primary bg-primary-muted px-3 py-2 text-sm font-medium text-heading"
           role="status"
         >
           {outcome}
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1.1fr)]">
-        <aside className="rounded-xl border border-surface-border bg-surface-raised p-3" aria-label="Workflows">
-          {loading ? <p className="text-sm text-muted">Loading workflows…</p> : null}
+      <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)_minmax(0,1.1fr)]">
+        <aside className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised" aria-label="Workflows">
+          {loading ? <p className="p-3 text-sm text-muted">Loading workflows…</p> : null}
           {!loading && items.length === 0 ? (
-            <p className="text-sm text-muted">
+            <p className="p-3 text-sm text-muted">
               {filters.approvalStatus === "Pending"
                 ? "No pending plans. Ask for an AI reply draft or start a bed admission, then refresh."
                 : "No workflows match these filters."}
             </p>
           ) : null}
-          <ul className="space-y-2">
-            {items.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm ${
-                    item.id === selectedId ? "bg-primary-muted text-primary-dark" : "hover:bg-surface"
-                  }`}
-                  onClick={() => {
-                    setOutcome(null);
-                    setSelectedId(item.id);
-                  }}
-                >
-                  <span className="block font-medium">{agentLabel(item.agentName)}</span>
-                  <span className="mt-1 block truncate text-muted">{item.objectiveText}</span>
-                  <span className="mt-1 block text-xs">{statusLabel(item.approvalStatus)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          {items.length > 0 ? (
+            <div className="table-scroll">
+              <table className="data-table">
+                <caption className="sr-only">Agent workflows</caption>
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.id} className={item.id === selectedId ? "bg-primary-muted/60" : undefined}>
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          className="w-full text-left text-sm"
+                          onClick={() => {
+                            setOutcome(null);
+                            setSelectedId(item.id);
+                          }}
+                        >
+                          <span className="block font-medium text-ink">{agentLabel(item.agentName)}</span>
+                          <span className="mt-1 block truncate text-muted">{item.objectiveText}</span>
+                        </button>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge tone={approvalTone(item.approvalStatus)}>{statusLabel(item.approvalStatus)}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </aside>
 
         <section className="rounded-xl border border-surface-border bg-surface-raised p-4" aria-label="Plan">
-          <h2 className="font-serif text-lg font-semibold text-primary-dark">Plan</h2>
+          <h2 className="font-serif text-lg font-semibold text-heading">Plan</h2>
           {detailLoading ? <p className="mt-3 text-sm text-muted">Loading plan…</p> : null}
           {selected && !detailLoading ? (
             <>
@@ -336,7 +358,7 @@ export function AiApprovalsPage() {
               ) : (
                 <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm">
                   {plan.map((step, index) => (
-                    <li key={`${index}-${step}`} className={completed.has(step) ? "text-primary-dark" : "text-ink"}>
+                    <li key={`${index}-${step}`} className={completed.has(step) ? "text-heading" : "text-ink"}>
                       <span>{step}</span>
                       {completed.has(step) ? <span className="ml-2 text-xs text-primary">Done</span> : null}
                     </li>
@@ -349,12 +371,8 @@ export function AiApprovalsPage() {
 
         <section className="rounded-xl border border-surface-border bg-surface-raised p-4" aria-label="Execution">
           <div className="flex items-start justify-between gap-3">
-            <h2 className="font-serif text-lg font-semibold text-primary-dark">Execution</h2>
-            {selected ? (
-              <p className="rounded-full bg-primary-muted px-3 py-1 text-sm font-semibold text-primary-dark">
-                {statusLabel(selected.approvalStatus)}
-              </p>
-            ) : null}
+            <h2 className="font-serif text-lg font-semibold text-heading">Execution</h2>
+            {selected ? <Badge tone={approvalTone(selected.approvalStatus)}>{statusLabel(selected.approvalStatus)}</Badge> : null}
           </div>
           {selected ? (
             <>
@@ -378,7 +396,7 @@ export function AiApprovalsPage() {
                   <li
                     key={`${result.check ?? "check"}-${index}`}
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      result.passed ? "bg-primary-muted text-primary-dark" : "bg-danger/10 text-danger"
+                      result.passed ? "bg-primary-muted text-heading" : "bg-danger/10 text-danger"
                     }`}
                   >
                     {result.passed ? "Pass" : "Fail"}
@@ -411,7 +429,7 @@ export function AiApprovalsPage() {
               <div className="mt-5 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+                  className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-on disabled:opacity-60"
                   disabled={!approveEnabled || busy}
                   onClick={() => decide("Approve")}
                 >
@@ -419,7 +437,7 @@ export function AiApprovalsPage() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg bg-danger px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+                  className="rounded-lg bg-danger px-3 py-1.5 text-sm font-semibold text-danger-on disabled:opacity-60"
                   disabled={!approveEnabled || busy}
                   onClick={() => decide("Reject")}
                 >

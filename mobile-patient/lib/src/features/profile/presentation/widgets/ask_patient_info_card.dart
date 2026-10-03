@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../l10n/feature_localizations.dart';
+import '../../../../shared/widgets/clinic_widgets.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../auth/application/auth_controller.dart';
 import '../../data/patient_info_repository.dart';
@@ -130,12 +131,12 @@ class _AskPatientInfoCardState extends ConsumerState<AskPatientInfoCard> {
               child: FilledButton.icon(
                 key: const Key('ask-patient-info-submit'),
                 icon: _busy
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: AyurvedaThemeExtension.of(context).onTeal,
                         ),
                       )
                     : const Icon(Icons.send, size: 16),
@@ -145,25 +146,14 @@ class _AskPatientInfoCardState extends ConsumerState<AskPatientInfoCard> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AyurvedaColors.danger,
-                ),
-              ),
+              ErrorLine(message: _error!),
             ],
             if (_result != null) ...[
               const SizedBox(height: 12),
               if (_result!.refused)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    copy.medicalAdviceRefused,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: AyurvedaColors.danger,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: ErrorLine(message: copy.medicalAdviceRefused),
                 ),
               DecoratedBox(
                 decoration: BoxDecoration(
