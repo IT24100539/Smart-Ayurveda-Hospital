@@ -1,4 +1,5 @@
 using Hospital.Application.Abstractions;
+using Hospital.Application.Audit;
 using Hospital.Application.Common;
 using Hospital.Domain.Entities;
 using Hospital.Infrastructure.Persistence;
@@ -10,12 +11,50 @@ namespace Hospital.Infrastructure.Services;
 public sealed class AuditLogService : IAuditLogService
 {
     private readonly HospitalDbContext _db;
+    private readonly ICurrentUser _currentUser;
+    private readonly IClientAddress _clientAddress;
     private readonly ILogger<AuditLogService> _logger;
 
-    public AuditLogService(HospitalDbContext db, ILogger<AuditLogService> logger)
+    public AuditLogService(
+        HospitalDbContext db,
+        ICurrentUser currentUser,
+        IClientAddress clientAddress,
+        ILogger<AuditLogService> logger)
     {
         _db = db;
+        _currentUser = currentUser;
+        _clientAddress = clientAddress;
         _logger = logger;
+    }
+
+    public async Task RecordAsync(string action, string entityName, string entityId, CancellationToken cancellationToken = default)
+    {
+        if (!_currentUser.IsAuthenticated)
+        {
+            return;
+        }
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            ActorUserId = _currentUser.UserId,
+            ActorEmail = _currentUser.Email,
+            ActorRole = _currentUser.Role.ToString(),
+            Action = action,
+            EntityName = entityName,
+            EntityId = entityId,
+            TargetEmail = string.Empty,
+            Details = string.Empty,
+            IpAddress = _clientAddress.IpAddress
+        });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "[AUDIT] {Action} on {EntityName}:{EntityId} by {ActorRole} {ActorUserId}",
+            action,
+            entityName,
+            entityId,
+            _currentUser.Role,
+            _currentUser.UserId);
     }
 
     public async Task LogAsync(
@@ -30,9 +69,6 @@ public sealed class AuditLogService : IAuditLogService
         string? targetEmail = null,
         CancellationToken cancellationToken = default)
     {
-        // Enforce privacy rule: Never log passwords, tokens, or full chat text.
-        var sanitizedDetails = SanitizeDetails(details);
-
         var log = new AuditLog
         {
             ActorUserId = actorUserId,
@@ -43,7 +79,8 @@ public sealed class AuditLogService : IAuditLogService
             EntityId = entityId ?? string.Empty,
             TargetUserId = targetUserId ?? Guid.Empty,
             TargetEmail = targetEmail ?? string.Empty,
-            Details = sanitizedDetails
+            Details = AuditDetailsSanitizer.Sanitize(details),
+            IpAddress = _clientAddress.IpAddress
         };
 
         _db.AuditLogs.Add(log);
@@ -58,12 +95,15 @@ public sealed class AuditLogService : IAuditLogService
         string? query,
         string? action,
         string? entityName,
+        string? entityId,
         DateTimeOffset? fromDate,
         DateTimeOffset? toDate,
         int page = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
         var q = _db.AuditLogs.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query))
@@ -83,6 +123,12 @@ public sealed class AuditLogService : IAuditLogService
         if (!string.IsNullOrWhiteSpace(entityName))
         {
             q = q.Where(x => x.EntityName == entityName.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(entityId))
+        {
+            var id = entityId.Trim();
+            q = q.Where(x => x.EntityId == id);
         }
 
         if (fromDate.HasValue)
@@ -111,7 +157,8 @@ public sealed class AuditLogService : IAuditLogService
                 x.TargetUserId,
                 x.TargetEmail,
                 x.Details,
-                x.CreatedAt))
+                x.CreatedAt,
+                x.IpAddress))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<AuditLogDto>
@@ -123,15 +170,4 @@ public sealed class AuditLogService : IAuditLogService
         };
     }
 
-    private static string SanitizeDetails(string raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
-        var s = raw;
-        // Strip out passwords, bearer tokens, or full message bodies if present
-        if (s.Contains("Password", StringComparison.OrdinalIgnoreCase))
-            s = System.Text.RegularExpressions.Regex.Replace(s, @"(?i)password[""\s:=]+[^;,\s\}]+", "password: [REDACTED]");
-        if (s.Contains("Token", StringComparison.OrdinalIgnoreCase))
-            s = System.Text.RegularExpressions.Regex.Replace(s, @"(?i)bearer\s+[a-zA-Z0-9\-\._~\+\/]+=*", "Bearer [REDACTED]");
-        return s.Length > 500 ? s[..500] + "..." : s;
-    }
 }

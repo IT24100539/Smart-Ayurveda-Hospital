@@ -690,15 +690,9 @@ public sealed class HealthAndAuthTests
             ward.TryGetProperty("uhid", out _).Should().BeFalse();
             ward.TryGetProperty("diagnosis", out _).Should().BeFalse();
 
-            if (ward.TryGetProperty("beds", out var beds) && beds.ValueKind == System.Text.Json.JsonValueKind.Array)
-            {
-                foreach (var bed in beds.EnumerateArray())
-                {
-                    bed.TryGetProperty("patientId", out _).Should().BeFalse();
-                    bed.TryGetProperty("patientName", out _).Should().BeFalse();
-                    bed.TryGetProperty("patient", out _).Should().BeFalse();
-                }
-            }
+            ward.TryGetProperty("beds", out var beds).Should().BeTrue();
+            beds.ValueKind.Should().Be(System.Text.Json.JsonValueKind.Array);
+            beds.GetArrayLength().Should().Be(0, "bed labels are staff-only; patients receive occupancy counts");
         }
     }
 
@@ -849,15 +843,76 @@ public sealed class HealthAndAuthTests
     }
 
     [Fact]
-    public async Task UnlinkedUser_AccessingPatientEndpoint_ReturnsClearError()
+    public async Task Register_WithMixedCaseEmail_StoresATrimmedLowercaseChart()
+    {
+        var client = _factory.CreateClient();
+        var id = Guid.NewGuid().ToString("N")[..8];
+        var email = $"Mixed.Case.{id}@Example.LOCAL";
+        var regRes = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            fullName = "Kumari Sangakkara",
+            email,
+            phoneNumber = $"071{Random.Shared.Next(1000000, 9999999)}",
+            password = "ChangeMe!Patient1",
+            dateOfBirth = new DateOnly(1988, 4, 2),
+            gender = Gender.Female
+        });
+        regRes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = await regRes.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", auth!.Token);
+
+        var summaryRes = await client.GetAsync("/api/patients/me/registration-summary");
+        summaryRes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var summaryBody = await summaryRes.Content.ReadAsStringAsync();
+        summaryBody.Should().Contain($"mixed.case.{id}@example.local");
+    }
+
+    [Fact]
+    public async Task UnlinkedUser_AccessingPatientEndpoint_OpensAChartAndListsAppointments()
     {
         var unlinkedClient = _factory.CreateAuthenticatedClient(Guid.NewGuid(), UserRole.Patient);
 
-        var res = await unlinkedClient.GetAsync("/api/patients/me/registration-summary");
-        res.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var summary = await unlinkedClient.GetAsync("/api/patients/me/registration-summary");
+        summary.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var body = await res.Content.ReadAsStringAsync();
-        body.Should().Contain("No patient record is linked to this login. The clinical record must use the same email address.");
+        var appointments = await unlinkedClient.GetAsync("/api/appointments/me");
+        appointments.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await appointments.Content.ReadAsStringAsync();
+        body.Should().Contain("items");
+    }
+
+    [Theory]
+    [InlineData("http://localhost:5173")]
+    [InlineData("http://127.0.0.1:3000")]
+    [InlineData("http://10.0.2.2:8080")]
+    [InlineData("http://192.168.1.100:5173")]
+    public async Task Cors_Development_AllowsLocalhostAndLanOrigins(string origin)
+    {
+        var client = _factory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Options, "/api/treatments");
+        request.Headers.Add("Origin", origin);
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+
+        var response = await client.SendAsync(request);
+        response.Headers.Contains("Access-Control-Allow-Origin").Should().BeTrue();
+        response.Headers.GetValues("Access-Control-Allow-Origin").Should().Contain(origin);
+    }
+
+    [Theory]
+    [InlineData("https://evil.example")]
+    public async Task Cors_Development_RejectsPublicOrigins(string origin)
+    {
+        var client = _factory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Options, "/api/treatments");
+        request.Headers.Add("Origin", origin);
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+
+        var response = await client.SendAsync(request);
+        if (response.Headers.Contains("Access-Control-Allow-Origin"))
+        {
+            response.Headers.GetValues("Access-Control-Allow-Origin").Should().NotContain(origin);
+        }
     }
 
     private sealed record LoginPayload(string Token);

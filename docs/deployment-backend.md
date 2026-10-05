@@ -17,11 +17,12 @@ Set these on the Render service. Do not commit real values.
 | Variable | Purpose |
 | --- | --- |
 | `ConnectionStrings__DefaultConnection` | Neon connection string. See below. |
-| `Jwt__Secret` | HMAC signing key, at least 32 characters. Overrides the dev key baked into `appsettings.json`. |
+| `Jwt__Secret` | HMAC signing key, at least 32 characters. `appsettings.json` does not contain a key. |
 | `Jwt__Issuer` | `smart-ayurveda-hospital` |
 | `Jwt__Audience` | `smart-ayurveda-staff` |
 | `INTERNAL_SERVICE_KEY` | Shared secret for `X-Internal-Service-Key`. The agent process reads the same variable. |
-| `AllowedOrigins` | Comma-separated browser origins. Include the deployed staff portal, for example `https://smart-ayurveda-staff.vercel.app`. No trailing slash. |
+| `AgentService__SharedSecret` | Same value as the agent's `AGENT_SHARED_SECRET`. |
+| `AllowedOrigins` | Comma-separated `https` origins for the staff web app and the Flutter web app. No localhost and no trailing slash. |
 
 `ASPNETCORE_ENVIRONMENT` is `Production` in `render.yaml`.
 
@@ -62,4 +63,4 @@ A CI step uses the same command with that variable stored as a secret. The API a
 
 - Health: `https://<render-host>/api/health`
 - Swagger: `https://<render-host>/swagger`
-- Set `AllowedOrigins` to the Vercel origin, then redeploy the API so CORS picks it up.
+- Set `AllowedOrigins` to the staff web origin and the Flutter web origin, then redeploy the API so CORS picks them up. Render sets `PORT`, so TLS stays at the proxy and a Kestrel certificate is not required. A host that terminates TLS itself must set `Kestrel__Certificates__Default__Path` and `Kestrel__Certificates__Default__Password`.

@@ -9,6 +9,10 @@ using Hospital.Application.Treatments;
 using Hospital.Application.Wards;
 using Hospital.Application.Workflows;
 using Hospital.Application.Agents;
+using Hospital.Application.Doctors;
+using Hospital.Application.Billing;
+using Hospital.Application.Prescriptions;
+using Hospital.Application.Documents;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Hospital.Application;
@@ -34,9 +38,15 @@ services.AddScoped<IReactionService, ReactionService>();
 services.AddScoped<IReplyService, ReplyService>();
 services.AddScoped<IComplaintService, ComplaintService>();
 services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IPatientEventNotifier, PatientEventNotifier>();
+        services.AddScoped<IDeviceTokenService, DeviceTokenService>();
         services.AddScoped<IWorkflowExecutionService, WorkflowExecutionService>();
         services.AddScoped<IAgentWorkflowService, AgentWorkflowService>();
         services.AddScoped<Hospital.Application.StaffManagement.IStaffManagementService, Hospital.Application.StaffManagement.StaffManagementService>();
+        services.AddScoped<IDoctorService, DoctorService>();
+        services.AddScoped<IPrescriptionService, PrescriptionService>();
+        services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IMedicalDocumentService, MedicalDocumentService>();
         return services;
     }
 }

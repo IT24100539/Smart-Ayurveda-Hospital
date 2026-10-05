@@ -17,31 +17,25 @@ public sealed class DevEmailSender : IEmailSender
 
     public Task SendPasswordResetEmailAsync(string toEmail, string resetToken, string resetUrl, CancellationToken cancellationToken = default)
     {
-        if (_env.IsDevelopment())
+        if (!_env.IsDevelopment())
         {
-            _logger.LogInformation(
-                "[DEV EMAIL SENDER] Password reset link for {Email}: {ResetUrl}?token={Token}&email={EmailUrlEncoded}",
-                toEmail, resetUrl, resetToken, Uri.EscapeDataString(toEmail));
-        }
-        else
-        {
-            _logger.LogInformation("[PROD EMAIL SENDER] Password reset requested for {Email}", toEmail);
+            return Task.CompletedTask;
         }
 
+        _logger.LogInformation(
+            "[DEV EMAIL SENDER] Password reset link for {Email}: {ResetUrl}?token={Token}&email={EmailUrlEncoded}",
+            toEmail, resetUrl, resetToken, Uri.EscapeDataString(toEmail));
         return Task.CompletedTask;
     }
 
     public Task SendEmailAsync(string toEmail, string subject, string body, CancellationToken cancellationToken = default)
     {
-        if (_env.IsDevelopment())
+        if (!_env.IsDevelopment())
         {
-            _logger.LogInformation("[DEV EMAIL SENDER] To: {Email} | Subject: {Subject} | Body: {Body}", toEmail, subject, body);
-        }
-        else
-        {
-            _logger.LogInformation("[PROD EMAIL SENDER] Email sent to {Email} | Subject: {Subject}", toEmail, subject);
+            return Task.CompletedTask;
         }
 
+        _logger.LogInformation("[DEV EMAIL SENDER] To: {Email} | Subject: {Subject} | Body: {Body}", toEmail, subject, body);
         return Task.CompletedTask;
     }
 }

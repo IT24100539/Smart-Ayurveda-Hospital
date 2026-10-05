@@ -149,3 +149,11 @@ def test_internal_service_key_uses_the_shared_variable_name(monkeypatch):
     assert Settings.model_fields["port"].default == 8001
     assert Settings.model_fields["hospital_api_base_url"].default == "http://127.0.0.1:5080"
     assert Settings.model_fields["backend_base_url"].default == "http://127.0.0.1:5080"
+
+
+def test_development_refuses_empty_shared_secret(monkeypatch):
+    monkeypatch.delenv("AGENT_SHARED_SECRET", raising=False)
+    monkeypatch.setenv("AGENT_ENVIRONMENT", "development")
+    loaded = Settings(_env_file=None)
+    with pytest.raises(RuntimeError, match="AGENT_SHARED_SECRET"):
+        loaded.ensure_secrets()

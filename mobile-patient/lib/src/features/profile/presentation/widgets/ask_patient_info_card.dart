@@ -88,9 +88,9 @@ class _AskPatientInfoCardState extends ConsumerState<AskPatientInfoCard> {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.psychology_alt_outlined,
-                  color: AyurvedaColors.forest,
+                  color: theme.colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -107,7 +107,7 @@ class _AskPatientInfoCardState extends ConsumerState<AskPatientInfoCard> {
             Text(
               hint,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AyurvedaColors.inkMuted,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 12),
@@ -156,18 +156,21 @@ class _AskPatientInfoCardState extends ConsumerState<AskPatientInfoCard> {
                   child: ErrorLine(message: copy.medicalAdviceRefused),
                 ),
               DecoratedBox(
+                key: const Key('ask-patient-info-reply'),
                 decoration: BoxDecoration(
                   color: _result!.refused
-                      ? AyurvedaColors.goldMuted
-                      : AyurvedaColors.sageMuted,
+                      ? theme.colorScheme.secondaryContainer
+                      : theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AyurvedaColors.border),
+                  border: Border.all(color: theme.colorScheme.outline),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
                     _result!.answer,
-                    style: theme.textTheme.bodyMedium,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ),

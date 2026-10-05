@@ -54,6 +54,24 @@ public sealed class WardServiceTests
         Assert.Equal(1, dto.OccupiedBeds);
     }
 
+    [Fact]
+    public async Task WardList_HidesBedsUnlessTheCallerIsStaff()
+    {
+        var ward = new Ward { Id = Guid.NewGuid(), Name = "Female Kayachikitsa", TotalCapacity = 2 };
+        ward.Beds.Add(new Bed { Id = Guid.NewGuid(), BedLabel = "A-01", IsOccupied = true });
+        ward.Beds.Add(new Bed { Id = Guid.NewGuid(), BedLabel = "A-02", IsOccupied = false });
+        var sut = new WardService(new FakeWardRepository(ward, null), new FakePatients(new Patient { Id = Guid.NewGuid() }), new FakeUnitOfWork());
+
+        var patientView = Assert.Single(await sut.GetAllOccupancyAsync(includeBeds: false, CancellationToken.None));
+        Assert.Empty(patientView.Beds);
+        Assert.Equal(1, patientView.OccupiedBeds);
+        Assert.Equal(2, patientView.TotalCapacity);
+
+        var staffView = Assert.Single(await sut.GetAllOccupancyAsync(includeBeds: true, CancellationToken.None));
+        Assert.Equal(2, staffView.Beds.Count());
+        Assert.Contains(staffView.Beds, bed => bed.BedLabel == "A-01" && bed.IsOccupied);
+    }
+
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken) => Task.FromResult(1);

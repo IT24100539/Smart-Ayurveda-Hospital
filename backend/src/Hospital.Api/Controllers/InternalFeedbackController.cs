@@ -1,3 +1,4 @@
+using FluentValidation;
 using Hospital.Application.Communication;
 using Hospital.Application.Communication.Dtos;
 using Hospital.Api.Security;
@@ -35,7 +36,7 @@ public sealed class InternalFeedbackController : ControllerBase
     {
         if (!Enum.IsDefined(category) || excludePatientId == Guid.Empty)
         {
-            return BadRequest(new { detail = "category and excludePatientId are required." });
+            throw new ValidationException("category and excludePatientId are required.");
         }
 
         var count = await _feedback.CountSimilarAsync(category, excludePatientId, cancellationToken);

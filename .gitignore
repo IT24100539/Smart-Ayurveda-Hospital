@@ -41,9 +41,19 @@ Desktop.ini
 **/appsettings.Development.json
 appsettings.*.local.json
 
+# Firebase / FCM credentials — never commit
+**/*firebase-adminsdk*.json
+**/firebase-credentials.json
+**/google-services.json
+**/GoogleService-Info.plist
+
 # Coverage
 coverage/
 lcov.info
 
 # Local Flutter tool/cache data
 mobile-patient/.tool-data/
+
+# Physician portraits and clinical files live outside the API web root
+data/doctor-photos/
+data/medical-documents/

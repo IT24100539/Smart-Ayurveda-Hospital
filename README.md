@@ -116,20 +116,34 @@ That stops only the processes listening on 7443, 5080, 8100, 5173, and 5174, inc
 
 Prerequisites: .NET 8 SDK, Python 3.12, Node 22, Flutter 3.41+, Docker (Postgres 16 and Ollama).
 
-Copy `.env.example` to `.env`. Local placeholders:
+`appsettings.json` has no passwords or signing keys. Copy `.env.example` to `.env` for Docker and the agent. Put the API secrets in user-secrets (Development) or environment variables (any host). Do not commit the values.
+
+```powershell
+cd backend
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=ayurveda_hospital;Username=postgres;Password=<your-db-password>" --project src/Hospital.Api
+dotnet user-secrets set "Jwt:SigningKey" "<at-least-32-random-characters>" --project src/Hospital.Api
+dotnet user-secrets set "AgentService:SharedSecret" "<same-value-as-AGENT_SHARED_SECRET>" --project src/Hospital.Api
+dotnet user-secrets set "INTERNAL_SERVICE_KEY" "<same-value-as-the-agent>" --project src/Hospital.Api
+```
+
+The same keys work as environment variables: `ConnectionStrings__DefaultConnection`, `Jwt__SigningKey` (or `Jwt__Secret`), `AgentService__SharedSecret` (or `AGENT_SHARED_SECRET`), and `INTERNAL_SERVICE_KEY`.
 
 | Variable | Used by |
 | --- | --- |
 | `POSTGRES_PASSWORD` | `docker compose` |
-| `ConnectionStrings__DefaultConnection` | API and `dotnet ef` (Host, Port, Database, Username, Password) |
-| `Jwt__Secret` or `Jwt__SigningKey` | API signing key, at least 32 characters |
+| `ConnectionStrings__DefaultConnection` | API and `dotnet ef` |
+| `Jwt__SigningKey` or `Jwt__Secret` | API signing key, at least 32 characters |
 | `Jwt__Issuer`, `Jwt__Audience` | API token validation |
 | `INTERNAL_SERVICE_KEY` | API and agent, header `X-Internal-Service-Key` |
 | `AGENT_HOSPITAL_API_BASE_URL`, `AGENT_BACKEND_BASE_URL` | Agent → API origin, default `http://127.0.0.1:5080`, no `/api` suffix |
 | `AGENT_PORT` | Agent listen port, default `8001` |
 | `AGENT_SHARED_SECRET` | Same value as `AgentService:SharedSecret` (`X-Internal-Secret`, API → agent) |
 | `AGENT_OLLAMA_BASE_URL` | Default `http://127.0.0.1:11434` |
+| `AllowedOrigins` | Production CORS: staff web origin, then Flutter web origin. `https` only |
+| `Kestrel__Certificates__Default__Path` and `Kestrel__Certificates__Default__Password` | Production certificate when this process terminates TLS. Omit both when `PORT` is set (Render terminates TLS) |
 | `VITE_API_BASE_URL` | Staff portal, default `http://localhost:5080/api` |
+
+Development serves HTTPS on `https://localhost:7443` with the ASP.NET development certificate (`dotnet dev-certs https --trust`). Production redirects to HTTPS and sends HSTS unless `PORT` is set, in which case the host terminates TLS. Production CORS allows only `AllowedOrigins`, or `Cors:StaffOrigins` plus `Cors:FlutterWebOrigins`. Startup fails if a secret is missing or still a development placeholder.
 
 ### 1. PostgreSQL and Ollama
 

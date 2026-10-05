@@ -1,4 +1,6 @@
 using FluentValidation;
+using Hospital.Application.Abstractions;
+using Hospital.Application.Audit;
 using Hospital.Application.Common;
 using Hospital.Application.Patients;
 using Hospital.Application.Patients.Dtos;
@@ -13,15 +15,18 @@ namespace Hospital.Api.Controllers;
 public sealed class PatientsController : ControllerBase
 {
     private readonly IPatientService _patients;
+    private readonly IAuditLogService _audit;
     private readonly IValidator<CreatePatientRequest> _createValidator;
     private readonly IValidator<UpdatePatientRequest> _updateValidator;
 
     public PatientsController(
         IPatientService patients,
+        IAuditLogService audit,
         IValidator<CreatePatientRequest> createValidator,
         IValidator<UpdatePatientRequest> updateValidator)
     {
         _patients = patients;
+        _audit = audit;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
     }
@@ -32,13 +37,21 @@ public sealed class PatientsController : ControllerBase
         [FromQuery] string? q,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        CancellationToken cancellationToken = default) =>
-        Ok(await _patients.SearchAsync(q, page, pageSize, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        QueryLimits.EnsurePage(page, pageSize);
+        QueryLimits.EnsureLength("q", q);
+        return Ok(await _patients.SearchAsync(q, page, pageSize, cancellationToken));
+    }
 
     [HttpGet("{id:guid}")]
     [Authorize(Roles = "Admin,Doctor,FrontDeskStaff")]
-    public async Task<ActionResult<PatientDto>> Get(Guid id, CancellationToken cancellationToken) =>
-        Ok(await _patients.GetByIdAsync(id, cancellationToken));
+    public async Task<ActionResult<PatientDto>> Get(Guid id, CancellationToken cancellationToken)
+    {
+        var patient = await _patients.GetByIdAsync(id, cancellationToken);
+        await _audit.RecordAsync(AuditActions.View, AuditEntities.Patient, id.ToString(), cancellationToken);
+        return Ok(patient);
+    }
 
     [HttpPost]
     [Authorize(Roles = "Admin,Doctor,FrontDeskStaff")]

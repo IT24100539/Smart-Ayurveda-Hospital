@@ -19,6 +19,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.IsActive).IsRequired();
         builder.Property(x => x.TokenVersion).IsRequired().HasDefaultValue(1);
         builder.Property(x => x.MustChangePassword).IsRequired().HasDefaultValue(false);
+        builder.Property(x => x.PasswordResetTokenHash).HasMaxLength(128);
+        builder.Property(x => x.PasswordResetTokenExpiresAt);
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.UpdatedAt).IsRequired();
     }
@@ -77,6 +79,11 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.HasOne(x => x.Treatment).WithMany(x => x.Appointments).HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Schedule).WithMany(x => x.Appointments).HasForeignKey(x => x.ScheduleId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne(x => x.DecidedByUser).WithMany().HasForeignKey(x => x.DecidedById).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Doctor)
+            .WithMany(x => x.Appointments)
+            .HasForeignKey(x => x.DoctorId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => x.DoctorId);
     }
 }
 
@@ -294,11 +301,204 @@ public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.ToTable("audit_logs");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.ActorEmail).HasMaxLength(256);
+        builder.Property(x => x.ActorRole).HasMaxLength(32);
         builder.Property(x => x.Action).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.EntityName).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.EntityId).HasMaxLength(64).IsRequired();
         builder.Property(x => x.TargetEmail).HasMaxLength(256).IsRequired();
         builder.Property(x => x.Details).HasMaxLength(2000);
+        builder.Property(x => x.IpAddress).HasMaxLength(64);
         builder.HasIndex(x => x.ActorUserId);
         builder.HasIndex(x => x.TargetUserId);
         builder.HasIndex(x => x.CreatedAt);
+        builder.HasIndex(x => new { x.EntityName, x.CreatedAt });
+    }
+}
+
+public sealed class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
+{
+    public void Configure(EntityTypeBuilder<Doctor> builder)
+    {
+        builder.ToTable("doctors");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Name).HasMaxLength(Doctor.NameMaxLength).IsRequired();
+        builder.Property(x => x.Specialty).HasMaxLength(Doctor.SpecialtyMaxLength).IsRequired();
+        builder.Property(x => x.Qualifications).HasMaxLength(Doctor.QualificationsMaxLength).IsRequired();
+        builder.Property(x => x.Bio).HasMaxLength(Doctor.BioMaxLength);
+        builder.Property(x => x.IsActive).IsRequired();
+        builder.Property(x => x.IsSample).IsRequired().HasDefaultValue(false);
+        builder.Property(x => x.PhotoStorageKey).HasMaxLength(64);
+        builder.Property(x => x.PhotoContentType).HasMaxLength(32);
+        builder.HasIndex(x => x.IsActive);
+        builder.HasIndex(x => x.Name);
+    }
+}
+
+public sealed class PrescriptionConfiguration : IEntityTypeConfiguration<Prescription>
+{
+    public void Configure(EntityTypeBuilder<Prescription> builder)
+    {
+        builder.ToTable("prescriptions");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.DoctorName).HasMaxLength(Prescription.DoctorNameMaxLength).IsRequired();
+        builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.RevisionNumber).IsRequired();
+        builder.Property(x => x.RootPrescriptionId).IsRequired();
+        builder.HasIndex(x => x.PatientId).HasDatabaseName("ix_prescriptions_patient_id");
+        builder.HasIndex(x => x.RootPrescriptionId).HasDatabaseName("ix_prescriptions_root");
+        builder.HasIndex(x => x.Status).HasDatabaseName("ix_prescriptions_status");
+        builder.HasIndex(x => x.AppointmentId)
+            .IsUnique()
+            .HasFilter("\"Status\" IN ('Draft', 'Issued')")
+            .HasDatabaseName("ux_prescriptions_appointment_open");
+        builder.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Appointment).WithMany().HasForeignKey(x => x.AppointmentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(x => x.DoctorUserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Revises)
+            .WithMany()
+            .HasForeignKey(x => x.RevisesPrescriptionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.SupersededBy)
+            .WithMany()
+            .HasForeignKey(x => x.SupersededByPrescriptionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(x => x.Items)
+            .WithOne(x => x.Prescription)
+            .HasForeignKey(x => x.PrescriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PrescriptionItemConfiguration : IEntityTypeConfiguration<PrescriptionItem>
+{
+    public void Configure(EntityTypeBuilder<PrescriptionItem> builder)
+    {
+        builder.ToTable("prescription_items");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Name).HasMaxLength(PrescriptionItem.NameMaxLength).IsRequired();
+        builder.Property(x => x.Dosage).HasMaxLength(PrescriptionItem.DosageMaxLength).IsRequired();
+        builder.Property(x => x.Frequency).HasMaxLength(PrescriptionItem.FrequencyMaxLength).IsRequired();
+        builder.Property(x => x.Duration).HasMaxLength(PrescriptionItem.DurationMaxLength).IsRequired();
+        builder.Property(x => x.Instructions).HasMaxLength(PrescriptionItem.InstructionsMaxLength).IsRequired();
+        builder.Property(x => x.SortOrder).IsRequired();
+        builder.HasIndex(x => new { x.PrescriptionId, x.SortOrder }).HasDatabaseName("ix_prescription_items_order");
+    }
+}
+
+public sealed class PrescriptionRevisionConfiguration : IEntityTypeConfiguration<PrescriptionRevision>
+{
+    public void Configure(EntityTypeBuilder<PrescriptionRevision> builder)
+    {
+        builder.ToTable("prescription_revisions");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Reason).HasMaxLength(PrescriptionRevision.ReasonMaxLength).IsRequired();
+        builder.Property(x => x.RevisionNumber).IsRequired();
+        builder.Property(x => x.RevisedAt).IsRequired();
+        builder.HasIndex(x => x.PreviousPrescriptionId).HasDatabaseName("ix_prescription_revisions_previous");
+        builder.HasIndex(x => x.RevisedPrescriptionId)
+            .IsUnique()
+            .HasDatabaseName("ux_prescription_revisions_revised");
+        builder.HasOne(x => x.PreviousPrescription)
+            .WithMany()
+            .HasForeignKey(x => x.PreviousPrescriptionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.RevisedPrescription)
+            .WithMany()
+            .HasForeignKey(x => x.RevisedPrescriptionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(x => x.RevisedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
+{
+    public void Configure(EntityTypeBuilder<Invoice> builder)
+    {
+        builder.ToTable("invoices");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.InvoiceNumber).HasMaxLength(Invoice.NumberMaxLength).IsRequired();
+        builder.Property(x => x.Currency).HasMaxLength(Invoice.CurrencyLength).IsRequired().HasDefaultValue(Invoice.DefaultCurrency);
+        builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.Total).HasPrecision(14, 2);
+        builder.Property(x => x.AmountPaid).HasPrecision(14, 2);
+        builder.Property(x => x.Notes).HasMaxLength(Invoice.NotesMaxLength);
+        builder.HasIndex(x => x.InvoiceNumber).IsUnique().HasDatabaseName("ux_invoices_number");
+        builder.HasIndex(x => x.PatientId).HasDatabaseName("ix_invoices_patient_id");
+        builder.HasIndex(x => x.Status).HasDatabaseName("ix_invoices_status");
+        builder.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(x => x.Lines).WithOne(x => x.Invoice).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(x => x.Payments).WithOne(x => x.Invoice).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+        builder.Ignore(x => x.Balance);
+    }
+}
+
+public sealed class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
+{
+    public void Configure(EntityTypeBuilder<InvoiceLine> builder)
+    {
+        builder.ToTable("invoice_lines", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_invoice_lines_one_source",
+                "(\"AppointmentId\" IS NOT NULL AND \"AdmissionRequestId\" IS NULL) OR (\"AppointmentId\" IS NULL AND \"AdmissionRequestId\" IS NOT NULL)");
+            table.HasCheckConstraint("ck_invoice_lines_quantity", "\"Quantity\" >= 1");
+            table.HasCheckConstraint("ck_invoice_lines_unit_price", "\"UnitPrice\" > 0");
+        });
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Source).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.Description).HasMaxLength(InvoiceLine.DescriptionMaxLength).IsRequired();
+        builder.Property(x => x.Quantity).IsRequired();
+        builder.Property(x => x.UnitPrice).HasPrecision(14, 2);
+        builder.Property(x => x.LineTotal).HasPrecision(14, 2);
+        builder.Property(x => x.OpenSourceKey).HasMaxLength(InvoiceLine.OpenSourceKeyMaxLength);
+        builder.HasIndex(x => new { x.InvoiceId, x.SortOrder }).HasDatabaseName("ix_invoice_lines_order");
+        builder.HasIndex(x => x.OpenSourceKey)
+            .IsUnique()
+            .HasFilter("\"OpenSourceKey\" IS NOT NULL")
+            .HasDatabaseName("ux_invoice_lines_open_source");
+        builder.HasOne(x => x.Treatment).WithMany().HasForeignKey(x => x.TreatmentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Appointment).WithMany().HasForeignKey(x => x.AppointmentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.AdmissionRequest).WithMany().HasForeignKey(x => x.AdmissionRequestId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class InvoicePaymentConfiguration : IEntityTypeConfiguration<InvoicePayment>
+{
+    public void Configure(EntityTypeBuilder<InvoicePayment> builder)
+    {
+        builder.ToTable("invoice_payments", table =>
+        {
+            table.HasCheckConstraint("ck_invoice_payments_amount", "\"Amount\" > 0");
+        });
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Amount).HasPrecision(14, 2);
+        builder.Property(x => x.Method).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.PaidOn).IsRequired();
+        builder.Property(x => x.Reference).HasMaxLength(InvoicePayment.ReferenceMaxLength);
+        builder.HasIndex(x => x.InvoiceId).HasDatabaseName("ix_invoice_payments_invoice_id");
+        builder.HasOne<User>().WithMany().HasForeignKey(x => x.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class PatientDeviceTokenConfiguration : IEntityTypeConfiguration<PatientDeviceToken>
+{
+    public void Configure(EntityTypeBuilder<PatientDeviceToken> builder)
+    {
+        builder.ToTable("patient_device_tokens", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_patient_device_tokens_platform",
+                "\"Platform\" IN ('android', 'ios', 'web')");
+        });
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Token).HasMaxLength(PatientDeviceToken.TokenMaxLength).IsRequired();
+        builder.Property(x => x.Platform).HasMaxLength(PatientDeviceToken.PlatformMaxLength).IsRequired();
+        builder.HasIndex(x => x.Token).IsUnique().HasDatabaseName("ux_patient_device_tokens_token");
+        builder.HasIndex(x => x.PatientId).HasDatabaseName("ix_patient_device_tokens_patient_id");
+        builder.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Cascade);
     }
 }

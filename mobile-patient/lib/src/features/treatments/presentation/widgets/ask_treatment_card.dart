@@ -6,7 +6,6 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../l10n/feature_localizations.dart';
 import '../../../../router/app_routes.dart';
 import '../../../../shared/widgets/clinic_widgets.dart';
-import '../../../../theme/app_theme.dart';
 import '../../../auth/application/auth_controller.dart';
 import '../../data/treatments_repository.dart';
 import '../../domain/treatment_models.dart';
@@ -88,7 +87,7 @@ class _AskTreatmentCardState extends ConsumerState<AskTreatmentCard> {
             Text(
               copy.askAboutTreatmentsHint,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AyurvedaColors.inkMuted,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 12),
@@ -141,18 +140,21 @@ class _AskTreatmentCardState extends ConsumerState<AskTreatmentCard> {
                   child: ErrorLine(message: copy.medicalAdviceRefused),
                 ),
               DecoratedBox(
+                key: const Key('ask-treatment-reply'),
                 decoration: BoxDecoration(
                   color: _result!.refused
-                      ? AyurvedaColors.goldMuted
-                      : AyurvedaColors.sageMuted,
+                      ? theme.colorScheme.secondaryContainer
+                      : theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AyurvedaColors.border),
+                  border: Border.all(color: theme.colorScheme.outline),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
                     _result!.answer,
-                    style: theme.textTheme.bodyMedium,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ),

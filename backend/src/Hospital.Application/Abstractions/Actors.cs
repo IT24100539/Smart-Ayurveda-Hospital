@@ -36,3 +36,11 @@ public interface IActorContext
 
     Task<StaffUser> RequireStaffAsync(CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// Client address for the current request, when the host has one.
+/// </summary>
+public interface IClientAddress
+{
+    string? IpAddress { get; }
+}

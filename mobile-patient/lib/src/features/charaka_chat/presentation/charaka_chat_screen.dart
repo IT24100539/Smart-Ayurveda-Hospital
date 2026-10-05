@@ -313,7 +313,7 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
                           copy.charakaDisclaimer,
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontSize: 11,
-                            color: theme.colorScheme.onSurfaceVariant,
+                            color: brand.pillForeground,
                           ),
                         ),
                       ),

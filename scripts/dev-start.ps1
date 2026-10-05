@@ -150,6 +150,45 @@ function Set-EnvAssignment {
     [System.IO.File]::WriteAllLines($Path, $written.ToArray(), $utf8)
 }
 
+function New-RandomSecret {
+    $bytes = New-Object byte[] 32
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $rng.GetBytes($bytes)
+    } finally {
+        $rng.Dispose()
+    }
+    return [Convert]::ToBase64String($bytes)
+}
+
+function Test-RejectedSecret {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $true }
+    $lower = $Value.Trim().ToLowerInvariant()
+    if ($lower -eq 'postgres' -or $lower -eq 'change_me') { return $true }
+    foreach ($marker in @('change-me', 'dev-only', 'dev-internal', 'replace-me', 'replace-with-a-random', 'your_')) {
+        if ($lower.Contains($marker)) { return $true }
+    }
+    return $false
+}
+
+function Get-NamedAssignment {
+    param(
+        [string]$Text,
+        [string[]]$Names
+    )
+    foreach ($line in ($Text -split "`r?`n")) {
+        $eq = $line.IndexOf('=')
+        if ($eq -lt 1) { continue }
+        $name = $line.Substring(0, $eq).Trim()
+        $value = $line.Substring($eq + 1).Trim()
+        if (($Names -contains $name) -and -not [string]::IsNullOrWhiteSpace($value)) {
+            return $value
+        }
+    }
+    return $null
+}
+
 function Sync-InternalServiceKey {
     $project = Join-Path $Root 'backend\src\Hospital.Api'
     $list = & dotnet user-secrets list --project $project 2>&1 | Out-String
@@ -170,14 +209,7 @@ function Sync-InternalServiceKey {
 
     $created = $false
     if ([string]::IsNullOrWhiteSpace($key)) {
-        $bytes = New-Object byte[] 32
-        $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-        try {
-            $rng.GetBytes($bytes)
-        } finally {
-            $rng.Dispose()
-        }
-        $key = [Convert]::ToBase64String($bytes)
+        $key = New-RandomSecret
         & dotnet user-secrets set 'InternalServiceKey' $key --project $project *> $null
         if ($LASTEXITCODE -ne 0) {
             Exit-Failed "Could not save InternalServiceKey with dotnet user-secrets."
@@ -230,6 +262,55 @@ function Sync-InternalServiceKey {
     }
 }
 
+function Sync-AgentSharedSecret {
+    $project = Join-Path $Root 'backend\src\Hospital.Api'
+    $list = & dotnet user-secrets list --project $project 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        Exit-Failed "Could not read dotnet user-secrets for backend\src\Hospital.Api. Run 'dotnet user-secrets list --project backend\src\Hospital.Api' and fix the reported error."
+    }
+
+    $rootEnv = Join-Path $Root '.env'
+    $agentEnv = Join-Path $Root 'agent-service\.env'
+    $secret = Get-NamedAssignment -Text $list -Names @('AgentService:SharedSecret', 'AGENT_SHARED_SECRET')
+    if (Test-RejectedSecret $secret) {
+        $secret = $null
+    }
+    if ([string]::IsNullOrWhiteSpace($secret) -and (Test-Path -LiteralPath $agentEnv)) {
+        $fromAgent = Get-NamedAssignment -Text ((Get-Content -LiteralPath $agentEnv) -join "`n") -Names @('AGENT_SHARED_SECRET')
+        if (-not (Test-RejectedSecret $fromAgent)) { $secret = $fromAgent }
+    }
+    if ([string]::IsNullOrWhiteSpace($secret) -and (Test-Path -LiteralPath $rootEnv)) {
+        $fromRoot = Get-NamedAssignment -Text ((Get-Content -LiteralPath $rootEnv) -join "`n") -Names @('AGENT_SHARED_SECRET')
+        if (-not (Test-RejectedSecret $fromRoot)) { $secret = $fromRoot }
+    }
+
+    $created = $false
+    if ([string]::IsNullOrWhiteSpace($secret)) {
+        $secret = New-RandomSecret
+        $created = $true
+    }
+
+    & dotnet user-secrets set 'AgentService:SharedSecret' $secret --project $project *> $null
+    if ($LASTEXITCODE -ne 0) {
+        Exit-Failed "Could not save AgentService:SharedSecret with dotnet user-secrets."
+    }
+
+    if (Test-Path -LiteralPath $rootEnv) {
+        Set-EnvAssignment -Path $rootEnv -Name 'AGENT_SHARED_SECRET' -Value $secret
+    }
+    $agentDir = Split-Path -Parent $agentEnv
+    if (-not (Test-Path -LiteralPath $agentDir)) {
+        Exit-Failed "agent-service directory is missing at $agentDir"
+    }
+    Set-EnvAssignment -Path $agentEnv -Name 'AGENT_SHARED_SECRET' -Value $secret
+
+    if ($created) {
+        Write-Host 'agent-secret: created'
+    } else {
+        Write-Host 'agent-secret: synced'
+    }
+}
+
 if (-not $SkipStop) {
     $stopScript = Join-Path $PSScriptRoot 'dev-stop.ps1'
     & (Get-ShellExecutable) -NoProfile -ExecutionPolicy Bypass -File $stopScript
@@ -278,6 +359,7 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
 }
 
 Sync-InternalServiceKey
+Sync-AgentSharedSecret
 
 if ((Test-Selected 'agent') -and -not (Test-Path -LiteralPath (Join-Path $Root 'agent-service\.venv\Scripts\python.exe'))) {
     Exit-Failed 'The agent virtualenv is missing. From agent-service run: python -m venv .venv; .\.venv\Scripts\Activate.ps1; pip install -r requirements.txt'

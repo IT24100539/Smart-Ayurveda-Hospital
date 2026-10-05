@@ -129,6 +129,20 @@ void main() {
     );
   });
 
+  testWidgets('disclaimer text stays dark on the cream banner in dark mode', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(_FakeChat(), theme: AppTheme.dark));
+    await tester.pumpAndSettle();
+
+    final brand = AyurvedaThemeExtension.dark;
+    final text = tester.widget<Text>(
+      find.textContaining('Charaka provides general information'),
+    );
+    expect(text.style?.color, brand.pillForeground);
+    expect(text.style?.color, isNot(AppTheme.dark.colorScheme.onSurfaceVariant));
+  });
+
   testWidgets('assistant bubble shows an avatar and a timestamp', (tester) async {
     await tester.pumpWidget(_app(_FakeChat()));
     await tester.pumpAndSettle();

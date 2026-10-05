@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +59,23 @@ class _FakeTreatmentsRepository implements TreatmentsRepository {
   }
 }
 
+double _contrastRatio(Color foreground, Color background) {
+  double luminance(Color color) {
+    final argb = color.toARGB32();
+    double channel(int shift) {
+      final value = ((argb >> shift) & 0xFF) / 255;
+      if (value <= 0.04045) return value / 12.92;
+      return math.pow((value + 0.055) / 1.055, 2.4).toDouble();
+    }
+
+    return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0);
+  }
+
+  final lighter = math.max(luminance(foreground), luminance(background));
+  final darker = math.min(luminance(foreground), luminance(background));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 const _mockTreatments = [
   Treatment(
     id: '1',
@@ -76,9 +95,9 @@ const _mockTreatments = [
   ),
 ];
 
-Widget _app(Widget home) {
+Widget _app(Widget home, {ThemeData? theme}) {
   return MaterialApp(
-    theme: AppTheme.light,
+    theme: theme ?? AppTheme.light,
     localizationsDelegates: const [
       AppLocalizations.delegate,
       GlobalMaterialLocalizations.delegate,
@@ -163,6 +182,50 @@ void main() {
     expect(
       find.text('Abhyanga is listed on Monday and Wednesday.'),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('agent reply stays readable in dark mode', (tester) async {
+    final repository = _FakeTreatmentsRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_SignedInAuth.new),
+          treatmentsRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: _app(
+          const Scaffold(
+            body: SingleChildScrollView(child: AskTreatmentCard()),
+          ),
+          theme: AppTheme.dark,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('ask-treatment-question')),
+      'When is Abhyanga available?',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('ask-treatment-submit')));
+    await tester.pumpAndSettle();
+
+    final scheme = AppTheme.dark.colorScheme;
+    final reply = tester.widget<DecoratedBox>(
+      find.byKey(const Key('ask-treatment-reply')),
+    );
+    final decoration = reply.decoration as BoxDecoration;
+    expect(decoration.color, scheme.primaryContainer);
+    expect(decoration.color, isNot(AyurvedaColors.sageMuted));
+
+    final answer = tester.widget<Text>(
+      find.text('Abhyanga is listed on Monday and Wednesday.'),
+    );
+    expect(answer.style?.color, scheme.onSurface);
+    expect(
+      _contrastRatio(scheme.onSurface, scheme.primaryContainer),
+      greaterThanOrEqualTo(4.5),
     );
   });
 }

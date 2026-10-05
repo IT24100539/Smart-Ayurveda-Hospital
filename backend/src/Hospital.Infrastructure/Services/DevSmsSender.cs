@@ -17,15 +17,12 @@ public sealed class DevSmsSender : ISmsSender
 
     public Task SendSmsAsync(string toPhoneNumber, string message, CancellationToken cancellationToken = default)
     {
-        if (_env.IsDevelopment())
+        if (!_env.IsDevelopment())
         {
-            _logger.LogInformation("[DEV SMS SENDER] To: {Phone} | Message: {Message}", toPhoneNumber, message);
-        }
-        else
-        {
-            _logger.LogInformation("[PROD SMS SENDER] SMS dispatched to {Phone}", toPhoneNumber);
+            return Task.CompletedTask;
         }
 
+        _logger.LogInformation("[DEV SMS SENDER] To: {Phone} | Message: {Message}", toPhoneNumber, message);
         return Task.CompletedTask;
     }
 }

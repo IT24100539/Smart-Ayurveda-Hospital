@@ -14,7 +14,13 @@ public sealed class AuthService : IAuthService
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwt;
     private readonly IEmailSender? _emailSender;
+    private readonly ISmsSender? _smsSender;
+    private readonly IClock? _clock;
     private readonly IUnitOfWork? _unitOfWork;
+    private readonly AccountLockoutOptions _lockout;
+    private readonly PasswordPolicyOptions _passwordPolicy;
+
+    private const int ResetTokenLifetimeMinutes = 30;
 
     public AuthService(
         IUserRepository users,
@@ -23,7 +29,11 @@ public sealed class AuthService : IAuthService
         IPasswordHasher passwordHasher,
         IJwtTokenService jwt,
         IUnitOfWork? unitOfWork = null,
-        IEmailSender? emailSender = null)
+        IEmailSender? emailSender = null,
+        ISmsSender? smsSender = null,
+        IClock? clock = null,
+        AccountLockoutOptions? lockout = null,
+        PasswordPolicyOptions? passwordPolicy = null)
     {
         _users = users;
         _patients = patients;
@@ -31,8 +41,14 @@ public sealed class AuthService : IAuthService
         _passwordHasher = passwordHasher;
         _jwt = jwt;
         _emailSender = emailSender;
+        _smsSender = smsSender;
+        _clock = clock;
         _unitOfWork = unitOfWork;
+        _lockout = (lockout ?? new AccountLockoutOptions()).Normalized();
+        _passwordPolicy = (passwordPolicy ?? new PasswordPolicyOptions()).Normalized();
     }
+
+    private DateTimeOffset UtcNow => _clock?.UtcNow ?? DateTimeOffset.UtcNow;
 
     public async Task<AuthResponse> RegisterAsync(
         RegisterRequest request,
@@ -43,7 +59,7 @@ public sealed class AuthService : IAuthService
         var existing = await _users.GetByEmailAsync(email, cancellationToken);
         if (existing is not null)
         {
-            throw new ConflictException($"An account with email '{email}' already exists.");
+            throw new ConflictException(AuthMessages.RegistrationUnavailable);
         }
 
         var role = UserRole.Patient;
@@ -63,13 +79,21 @@ public sealed class AuthService : IAuthService
             IsActive = true
         };
 
-        if (role == UserRole.Patient)
+        if (_unitOfWork is null)
         {
-            await OpenPatientRecordAsync(user, request, cancellationToken);
+            throw new DomainException("Registration could not be saved. No patient record was opened.");
         }
 
-        await _users.AddAsync(user, cancellationToken);
-        if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            if (role == UserRole.Patient)
+            {
+                await OpenPatientRecordAsync(user, request, ct);
+            }
+
+            await _users.AddAsync(user, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+        }, cancellationToken);
 
         return CreateResponse(user);
     }
@@ -88,25 +112,21 @@ public sealed class AuthService : IAuthService
         var existingByEmail = await _patients.GetByEmailAsync(user.Email, cancellationToken);
         if (existingByEmail is not null)
         {
+            StampEmail(existingByEmail, user.Email);
             return;
         }
 
         var existingByPhone = await _patients.GetByPhoneAsync(user.PhoneNumber, cancellationToken);
         if (existingByPhone is not null)
         {
-            if (string.IsNullOrWhiteSpace(existingByPhone.Email))
+            if (string.IsNullOrWhiteSpace(existingByPhone.Email)
+                || string.Equals(existingByPhone.Email.Trim(), user.Email, StringComparison.OrdinalIgnoreCase))
             {
-                existingByPhone.Email = user.Email;
+                StampEmail(existingByPhone, user.Email);
                 return;
             }
 
-            if (string.Equals(existingByPhone.Email, user.Email, StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            throw new ConflictException(
-                $"A patient record already uses phone '{user.PhoneNumber}' ({existingByPhone.Uhid}).");
+            throw new ConflictException(AuthMessages.RegistrationUnavailable);
         }
 
         var (firstName, lastName) = SplitName(user.FullName);
@@ -154,23 +174,30 @@ public sealed class AuthService : IAuthService
         var user = await _users.GetByEmailAsync(email, cancellationToken);
         if (user is null || !user.IsActive)
         {
-            throw new UnauthorizedException("Invalid email or password.");
+            throw new UnauthorizedException(AuthMessages.InvalidCredentials);
         }
 
-        if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
+        if (user.LockoutEnd is { } lockedUntil && lockedUntil > UtcNow)
         {
-            throw new UnauthorizedException("Account is temporarily locked due to repeated failed login attempts. Please try again later.");
+            throw new UnauthorizedException(AuthMessages.AccountLocked);
+        }
+
+        if (user.LockoutEnd is not null)
+        {
+            user.FailedLoginCount = 0;
+            user.LockoutEnd = null;
         }
 
         if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
             user.FailedLoginCount++;
-            if (user.FailedLoginCount >= 5)
+            if (user.FailedLoginCount >= _lockout.MaxFailedAttempts)
             {
-                user.LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(15);
+                user.LockoutEnd = UtcNow.AddMinutes(_lockout.LockoutMinutes);
             }
+
             if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
-            throw new UnauthorizedException("Invalid email or password.");
+            throw new UnauthorizedException(AuthMessages.InvalidCredentials);
         }
 
         user.FailedLoginCount = 0;
@@ -189,7 +216,18 @@ public sealed class AuthService : IAuthService
         return CreateResponse(user);
     }
 
-    public async Task<ForgotPasswordResponse> ForgotPasswordAsync(
+    public Task<ForgotPasswordResponse> ForgotPasswordAsync(
+        ForgotPasswordRequest request,
+        string resetBaseUrl,
+        CancellationToken cancellationToken) =>
+        RequestResetAsync(request, resetBaseUrl, cancellationToken);
+
+    public Task<ResetPasswordResponse> ResetPasswordAsync(
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken) =>
+        CompleteResetAsync(request, cancellationToken);
+
+    public async Task<ForgotPasswordResponse> RequestResetAsync(
         ForgotPasswordRequest request,
         string resetBaseUrl,
         CancellationToken cancellationToken)
@@ -204,7 +242,7 @@ public sealed class AuthService : IAuthService
 
         var rawToken = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         user.PasswordResetTokenHash = HashToken(rawToken);
-        user.PasswordResetTokenExpiresAt = DateTimeOffset.UtcNow.AddMinutes(30);
+        user.PasswordResetTokenExpiresAt = UtcNow.AddMinutes(ResetTokenLifetimeMinutes);
 
         if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -213,10 +251,19 @@ public sealed class AuthService : IAuthService
             await _emailSender.SendPasswordResetEmailAsync(user.Email, rawToken, resetBaseUrl, cancellationToken);
         }
 
+        if (_smsSender != null && !string.IsNullOrWhiteSpace(user.PhoneNumber))
+        {
+            var link = $"{resetBaseUrl}?token={rawToken}&email={Uri.EscapeDataString(user.Email)}";
+            await _smsSender.SendSmsAsync(
+                user.PhoneNumber,
+                $"Smart Ayurveda password reset: {link}",
+                cancellationToken);
+        }
+
         return new ForgotPasswordResponse(genericMessage);
     }
 
-    public async Task<ResetPasswordResponse> ResetPasswordAsync(
+    public async Task<ResetPasswordResponse> CompleteResetAsync(
         ResetPasswordRequest request,
         CancellationToken cancellationToken)
     {
@@ -227,8 +274,10 @@ public sealed class AuthService : IAuthService
             throw new BadRequestException("Invalid or expired password reset token.");
         }
 
-        if (!user.PasswordResetTokenExpiresAt.HasValue || user.PasswordResetTokenExpiresAt.Value < DateTimeOffset.UtcNow)
+        if (!user.PasswordResetTokenExpiresAt.HasValue || user.PasswordResetTokenExpiresAt.Value < UtcNow)
         {
+            RevokeResetToken(user);
+            if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
             throw new BadRequestException("Invalid or expired password reset token.");
         }
 
@@ -238,9 +287,9 @@ public sealed class AuthService : IAuthService
             throw new BadRequestException("Invalid or expired password reset token.");
         }
 
+        EnsurePasswordMeetsPolicy(request.NewPassword);
         user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
-        user.PasswordResetTokenHash = null;
-        user.PasswordResetTokenExpiresAt = null;
+        RevokeResetToken(user);
         user.MustChangePassword = false;
         user.FailedLoginCount = 0;
         user.LockoutEnd = null;
@@ -249,6 +298,12 @@ public sealed class AuthService : IAuthService
         if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new ResetPasswordResponse("Password has been reset successfully. You can now log in with your new password.");
+    }
+
+    private static void RevokeResetToken(User user)
+    {
+        user.PasswordResetTokenHash = null;
+        user.PasswordResetTokenExpiresAt = null;
     }
 
     private static string HashToken(string token)
@@ -276,10 +331,7 @@ public sealed class AuthService : IAuthService
             throw new BadRequestException("Current password is incorrect.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
-        {
-            throw new BadRequestException("New password must be at least 8 characters long.");
-        }
+        EnsurePasswordMeetsPolicy(request.NewPassword);
 
         if (request.NewPassword != request.ConfirmPassword)
         {
@@ -311,16 +363,35 @@ public sealed class AuthService : IAuthService
         var byEmail = await _patients.GetByEmailAsync(user.Email, cancellationToken);
         if (byEmail is not null)
         {
+            if (StampEmail(byEmail, user.Email) && _unitOfWork != null)
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+
             return;
         }
 
         // Look for a staff-created record matched by phone.
         var byPhone = await _patients.GetByPhoneAsync(user.PhoneNumber, cancellationToken);
-        if (byPhone is not null && string.IsNullOrWhiteSpace(byPhone.Email))
+        if (byPhone is not null
+            && (string.IsNullOrWhiteSpace(byPhone.Email)
+                || string.Equals(byPhone.Email.Trim(), user.Email, StringComparison.OrdinalIgnoreCase))
+            && StampEmail(byPhone, user.Email)
+            && _unitOfWork != null)
         {
-            byPhone.Email = user.Email;
-            if (_unitOfWork != null) await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    private static bool StampEmail(Patient patient, string email)
+    {
+        if (string.Equals(patient.Email, email, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        patient.Email = email;
+        return true;
     }
 
     private AuthResponse CreateResponse(User user)
@@ -330,6 +401,15 @@ public sealed class AuthService : IAuthService
             token,
             expiresAt,
             new UserSummary(user.Id, user.FullName, user.Email, user.PhoneNumber, user.Role, user.MustChangePassword));
+    }
+
+    private void EnsurePasswordMeetsPolicy(string password)
+    {
+        var errors = PasswordRules.Evaluate(password, _passwordPolicy);
+        if (errors.Count > 0)
+        {
+            throw new BadRequestException(string.Join(" ", errors));
+        }
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();

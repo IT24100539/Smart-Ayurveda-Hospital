@@ -1,5 +1,7 @@
 # Image & Visual Asset Credits (Flutter Mobile Patient App)
 
+See the repo-root `CREDITS.md` for the leaf mark and the recompression note.
+
 All visual assets and illustrations in `mobile-patient/assets/images/` are customized, original vector artwork, generated UI illustrations, and royalty-free medical/wellness imagery released under the MIT / Creative Commons Zero (CC0) license.
 
 ### Asset Registry & Sources

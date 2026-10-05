@@ -262,7 +262,8 @@ public sealed class StaffManagementService : IStaffManagementService
             x.TargetUserId,
             x.TargetEmail,
             x.Details,
-            x.CreatedAt)).ToList();
+            x.CreatedAt,
+            x.IpAddress)).ToList();
 
         return (dtos, total);
     }

@@ -1,19 +1,20 @@
 using FluentValidation;
+using Hospital.Application.Auth;
 
 namespace Hospital.Application.Auth.Validators;
 
 public static class PasswordPolicy
 {
-    public static IRuleBuilderOptions<T, string> ApplyPasswordPolicy<T>(this IRuleBuilder<T, string> ruleBuilder)
+    public static IRuleBuilderOptionsConditions<T, string> ApplyPasswordPolicy<T>(
+        this IRuleBuilder<T, string> ruleBuilder,
+        PasswordPolicyOptions policy)
     {
-        return ruleBuilder
-            .NotEmpty().WithMessage("Password is required.")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters long.")
-            .MaximumLength(128).WithMessage("Password cannot exceed 128 characters.")
-            .Matches(@"[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
-            .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter.")
-            .Matches(@"[0-9]").WithMessage("Password must contain at least one digit.")
-            .Matches(@"[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]")
-            .WithMessage("Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?).");
+        return ruleBuilder.Custom((password, context) =>
+        {
+            foreach (var error in PasswordRules.Evaluate(password, policy))
+            {
+                context.AddFailure(error);
+            }
+        });
     }
 }

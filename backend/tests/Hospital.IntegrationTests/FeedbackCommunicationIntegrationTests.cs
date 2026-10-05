@@ -67,7 +67,7 @@ public sealed class FeedbackCommunicationIntegrationTests
         // Submit analyses the comment, then staff asks for a fresh draft. Neither call publishes it.
         _factory.Agent.Calls.Should().Be(agentCallsBefore + 2);
         _factory.Agent.LastPath.Should().Be("/internal/agents/feedback-support");
-        _factory.Agent.LastSecret.Should().Be("dev-internal-agent-secret");
+        _factory.Agent.LastSecret.Should().Be("integration-test-agent-secret");
 
         var notificationsBeforeApproval = await GetAsync<List<NotificationPayload>>(patient, "/api/notifications/me");
         notificationsBeforeApproval.Should().NotContain(x => x.Message == _factory.Agent.Reply);

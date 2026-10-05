@@ -15,6 +15,7 @@ public sealed class AppointmentService : IAppointmentService
     private readonly IBookingValidator _bookingValidator;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly IPatientEventNotifier _events;
 
     public AppointmentService(
         IAppointmentRepository appointments,
@@ -22,7 +23,8 @@ public sealed class AppointmentService : IAppointmentService
         ITreatmentRepository treatments,
         IBookingValidator bookingValidator,
         IUnitOfWork unitOfWork,
-        IClock clock)
+        IClock clock,
+        IPatientEventNotifier events)
     {
         _appointments = appointments;
         _patients = patients;
@@ -30,6 +32,7 @@ public sealed class AppointmentService : IAppointmentService
         _bookingValidator = bookingValidator;
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _events = events;
     }
 
     public async Task<AppointmentDto> CreateAsync(CreateAppointmentRequest request, CancellationToken cancellationToken)
@@ -150,6 +153,7 @@ public sealed class AppointmentService : IAppointmentService
             throw new ConflictException("Selected time slot is full.");
         }
 
+        await _events.PublishAsync(RescheduledNotice(appointment), cancellationToken);
         return Map(appointment);
     }
 
@@ -178,9 +182,14 @@ public sealed class AppointmentService : IAppointmentService
             throw new ForbiddenException("Only the owning patient can cancel their appointment.");
         }
 
+        if (appointment.Status == AppointmentStatus.Cancelled)
+        {
+            return;
+        }
+
         appointment.Status = AppointmentStatus.Cancelled;
         appointment.UpdatedAt = _clock.UtcNow;
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _events.PublishAsync(CancelledNotice(appointment), cancellationToken);
     }
 
     public async Task<AppointmentDto> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -215,6 +224,7 @@ public sealed class AppointmentService : IAppointmentService
         var appointment = await _appointments.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException(nameof(Appointment), id);
 
+        var previous = appointment.Status;
         appointment.Status = request.Status;
         if (request.Status is AppointmentStatus.Approved or AppointmentStatus.Rejected)
         {
@@ -223,8 +233,62 @@ public sealed class AppointmentService : IAppointmentService
         }
 
         appointment.UpdatedAt = _clock.UtcNow;
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        var notice = previous == appointment.Status ? null : NoticeForStatus(appointment);
+        if (notice is null)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        else
+        {
+            await _events.PublishAsync(notice, cancellationToken);
+        }
+
         return Map(appointment);
+    }
+
+    private static PatientNotice? NoticeForStatus(Appointment appointment) => appointment.Status switch
+    {
+        AppointmentStatus.Approved => ApprovedNotice(appointment),
+        AppointmentStatus.Rejected => RejectedNotice(appointment),
+        AppointmentStatus.Cancelled => CancelledNotice(appointment),
+        _ => null
+    };
+
+    private static PatientNotice ApprovedNotice(Appointment appointment) => new(
+        appointment.PatientId,
+        NotificationType.AppointmentApproved,
+        "Appointment approved",
+        $"Your {VisitLabel(appointment)} is approved.");
+
+    private static PatientNotice RejectedNotice(Appointment appointment) => new(
+        appointment.PatientId,
+        NotificationType.AppointmentRejected,
+        "Appointment not approved",
+        $"Your {VisitLabel(appointment)} was not approved.");
+
+    private static PatientNotice CancelledNotice(Appointment appointment) => new(
+        appointment.PatientId,
+        NotificationType.AppointmentCancelled,
+        "Appointment cancelled",
+        $"Your {VisitLabel(appointment)} was cancelled.");
+
+    private static PatientNotice RescheduledNotice(Appointment appointment)
+    {
+        var treatment = TreatmentName(appointment);
+        return new PatientNotice(
+            appointment.PatientId,
+            NotificationType.AppointmentRescheduled,
+            "Appointment rescheduled",
+            $"Your {treatment} visit is now on {appointment.RequestedDate:yyyy-MM-dd} at {appointment.RequestedTimeSlot}.");
+    }
+
+    private static string VisitLabel(Appointment appointment) =>
+        $"{TreatmentName(appointment)} visit on {appointment.RequestedDate:yyyy-MM-dd} at {appointment.RequestedTimeSlot}";
+
+    private static string TreatmentName(Appointment appointment)
+    {
+        var name = appointment.Treatment?.Name?.Trim();
+        return string.IsNullOrWhiteSpace(name) ? "treatment" : name;
     }
 
     private static AppointmentDto Map(Appointment a) => new(

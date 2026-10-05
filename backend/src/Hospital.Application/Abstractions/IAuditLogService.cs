@@ -1,5 +1,4 @@
 using Hospital.Application.Common;
-using Hospital.Domain.Entities;
 
 namespace Hospital.Application.Abstractions;
 
@@ -14,10 +13,16 @@ public sealed record AuditLogDto(
     Guid TargetUserId,
     string TargetEmail,
     string Details,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? IpAddress);
 
 public interface IAuditLogService
 {
+    /// <summary>
+    /// Writes one access row for a single record. Details are left empty.
+    /// </summary>
+    Task RecordAsync(string action, string entityName, string entityId, CancellationToken cancellationToken = default);
+
     Task LogAsync(
         Guid? actorUserId,
         string actorEmail,
@@ -34,6 +39,7 @@ public interface IAuditLogService
         string? query,
         string? action,
         string? entityName,
+        string? entityId,
         DateTimeOffset? fromDate,
         DateTimeOffset? toDate,
         int page = 1,

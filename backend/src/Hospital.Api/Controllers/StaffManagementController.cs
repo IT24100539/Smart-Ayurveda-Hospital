@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using FluentValidation;
 using Hospital.Application.Abstractions;
+using Hospital.Application.Common;
 using Hospital.Application.StaffManagement;
 using Hospital.Application.StaffManagement.Dtos;
 using Hospital.Domain.Enums;
@@ -14,10 +16,23 @@ namespace Hospital.Api.Controllers;
 public sealed class StaffManagementController : ControllerBase
 {
     private readonly IStaffManagementService _staffService;
+    private readonly IValidator<CreateStaffUserRequest> _createValidator;
+    private readonly IValidator<UpdateStaffRoleRequest> _roleValidator;
+    private readonly IValidator<UpdateStaffStatusRequest> _statusValidator;
+    private readonly IValidator<ForcePasswordResetRequest> _resetValidator;
 
-    public StaffManagementController(IStaffManagementService staffService)
+    public StaffManagementController(
+        IStaffManagementService staffService,
+        IValidator<CreateStaffUserRequest> createValidator,
+        IValidator<UpdateStaffRoleRequest> roleValidator,
+        IValidator<UpdateStaffStatusRequest> statusValidator,
+        IValidator<ForcePasswordResetRequest> resetValidator)
     {
         _staffService = staffService;
+        _createValidator = createValidator;
+        _roleValidator = roleValidator;
+        _statusValidator = statusValidator;
+        _resetValidator = resetValidator;
     }
 
     [HttpGet]
@@ -32,6 +47,8 @@ public sealed class StaffManagementController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
+        QueryLimits.EnsurePage(page, pageSize);
+        QueryLimits.EnsureLength("query", query);
         var (items, total) = await _staffService.ListStaffAsync(query, role, isActive, page, pageSize, cancellationToken);
         return Ok(new StaffListResponse(items, total, page, pageSize));
     }
@@ -46,6 +63,7 @@ public sealed class StaffManagementController : ControllerBase
         [FromBody] CreateStaffUserRequest request,
         CancellationToken cancellationToken = default)
     {
+        await _createValidator.ValidateAndThrowAsync(request, cancellationToken);
         var actorUserId = GetActorUserId();
         var actorEmail = GetActorEmail();
 
@@ -64,6 +82,7 @@ public sealed class StaffManagementController : ControllerBase
         [FromBody] UpdateStaffRoleRequest request,
         CancellationToken cancellationToken = default)
     {
+        await _roleValidator.ValidateAndThrowAsync(request, cancellationToken);
         var actorUserId = GetActorUserId();
         var actorEmail = GetActorEmail();
 
@@ -82,6 +101,7 @@ public sealed class StaffManagementController : ControllerBase
         [FromBody] UpdateStaffStatusRequest request,
         CancellationToken cancellationToken = default)
     {
+        await _statusValidator.ValidateAndThrowAsync(request, cancellationToken);
         var actorUserId = GetActorUserId();
         var actorEmail = GetActorEmail();
 
@@ -100,6 +120,7 @@ public sealed class StaffManagementController : ControllerBase
         [FromBody] ForcePasswordResetRequest request,
         CancellationToken cancellationToken = default)
     {
+        await _resetValidator.ValidateAndThrowAsync(request, cancellationToken);
         var actorUserId = GetActorUserId();
         var actorEmail = GetActorEmail();
 
@@ -116,6 +137,7 @@ public sealed class StaffManagementController : ControllerBase
         [FromQuery] int pageSize = 50,
         CancellationToken cancellationToken = default)
     {
+        QueryLimits.EnsurePage(page, pageSize);
         var (items, total) = await _staffService.ListAuditLogsAsync(page, pageSize, cancellationToken);
         return Ok(new AuditLogListResponse(items, total, page, pageSize));
     }

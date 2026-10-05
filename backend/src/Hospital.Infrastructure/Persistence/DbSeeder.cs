@@ -103,6 +103,8 @@ public static class DbSeeder
                         Phone = "0000000001"
                     });
             }
+
+            await SeedSampleDoctorsAsync(db, cancellationToken);
         }
         else
         {
@@ -157,6 +159,39 @@ public static class DbSeeder
         await SeedFeedbackAndCommunicationAsync(db, cancellationToken);
         await EnsureCompletedVisitPerPatientAsync(db, cancellationToken);
         logger.LogInformation("Database schema ready and seed data applied.");
+    }
+
+    /// <summary>
+    /// Development-only physician directory rows. Names and <see cref="Doctor.IsSample"/> mark them as sample data.
+    /// Production never calls this method.
+    /// </summary>
+    private static async Task SeedSampleDoctorsAsync(HospitalDbContext db, CancellationToken cancellationToken)
+    {
+        if (await db.Doctors.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        const string sampleBio = "Sample development profile. Not a practising physician at this hospital.";
+        db.Doctors.AddRange(
+            new Doctor
+            {
+                Name = Doctor.SampleNamePrefix + "Vd. Ananya Sharma",
+                Specialty = "Kayachikitsa",
+                Qualifications = "BAMS, MD (Kayachikitsa)",
+                Bio = sampleBio,
+                IsActive = true,
+                IsSample = true
+            },
+            new Doctor
+            {
+                Name = Doctor.SampleNamePrefix + "Vd. Rohan Dissanayake",
+                Specialty = "Panchakarma",
+                Qualifications = "BAMS, Diploma in Panchakarma",
+                Bio = sampleBio,
+                IsActive = true,
+                IsSample = true
+            });
     }
 
     private static async Task SeedTreatmentsInformationAsync(HospitalDbContext db, CancellationToken cancellationToken)

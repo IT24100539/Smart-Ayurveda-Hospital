@@ -14,6 +14,9 @@ public enum DocumentCategory
 
 public sealed class MedicalDocument : BaseEntity
 {
+    public const int TitleMaxLength = 160;
+    public const int SummaryMaxLength = 2000;
+
     public Guid PatientId { get; set; }
     public string Title { get; set; } = string.Empty;
     public DocumentCategory Category { get; set; } = DocumentCategory.General;

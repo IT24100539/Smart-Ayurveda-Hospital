@@ -2,6 +2,7 @@ using FluentValidation;
 using Hospital.Application.Abstractions;
 using Hospital.Application.Appointments;
 using Hospital.Application.Appointments.Dtos;
+using Hospital.Application.Audit;
 using Hospital.Application.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,6 +16,7 @@ public sealed class AppointmentsController : ControllerBase
 {
     private readonly IAppointmentService _appointments;
     private readonly IActorContext _actors;
+    private readonly IAuditLogService _audit;
     private readonly IValidator<CreateAppointmentRequest> _createValidator;
     private readonly IValidator<UpdateAppointmentStatusRequest> _statusValidator;
     private readonly IValidator<RescheduleAppointmentRequest> _rescheduleValidator;
@@ -22,12 +24,14 @@ public sealed class AppointmentsController : ControllerBase
     public AppointmentsController(
         IAppointmentService appointments,
         IActorContext actors,
+        IAuditLogService audit,
         IValidator<CreateAppointmentRequest> createValidator,
         IValidator<UpdateAppointmentStatusRequest> statusValidator,
         IValidator<RescheduleAppointmentRequest> rescheduleValidator)
     {
         _appointments = appointments;
         _actors = actors;
+        _audit = audit;
         _createValidator = createValidator;
         _statusValidator = statusValidator;
         _rescheduleValidator = rescheduleValidator;
@@ -49,8 +53,11 @@ public sealed class AppointmentsController : ControllerBase
         [FromQuery] Guid? treatmentId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        CancellationToken cancellationToken = default) =>
-        Ok(await _appointments.ListAsync(date, patientId, treatmentId, page, pageSize, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        QueryLimits.EnsurePage(page, pageSize);
+        return Ok(await _appointments.ListAsync(date, patientId, treatmentId, page, pageSize, cancellationToken));
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AppointmentDto>> Get(Guid id, CancellationToken cancellationToken)
@@ -69,6 +76,7 @@ public sealed class AppointmentsController : ControllerBase
             return Forbid();
         }
 
+        await _audit.RecordAsync(AuditActions.View, AuditEntities.Appointment, id.ToString(), cancellationToken);
         return Ok(appt);
     }
 

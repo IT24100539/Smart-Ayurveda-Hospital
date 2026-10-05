@@ -25,8 +25,9 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<HospitalDbContext>>();
-            services.AddDbContext<HospitalDbContext>(options =>
-                options.UseNpgsql(_connectionString));
+            services.AddDbContext<HospitalDbContext>((sp, options) =>
+                options.UseNpgsql(_connectionString)
+                    .AddInterceptors(sp.GetRequiredService<ClinicalAuditInterceptor>()));
         });
     }
 
@@ -121,7 +122,7 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
                 Id = userId,
                 FullName = $"Integration {role}",
                 Email = $"{role.ToString().ToLowerInvariant()}-{userId:N}@integration.test",
-                PhoneNumber = "0000000000",
+                PhoneNumber = UniquePhone(userId),
                 Role = role,
                 IsActive = true,
                 TokenVersion = 1,
@@ -138,5 +139,17 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         return client;
+    }
+
+    private static string UniquePhone(Guid userId)
+    {
+        var hex = userId.ToString("N");
+        var digits = new char[10];
+        for (var i = 0; i < digits.Length; i++)
+        {
+            digits[i] = (char)('0' + (hex[i] % 10));
+        }
+
+        return new string(digits);
     }
 }

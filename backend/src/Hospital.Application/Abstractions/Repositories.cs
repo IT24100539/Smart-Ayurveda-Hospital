@@ -95,4 +95,11 @@ public interface IAppointmentRepository
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Runs <paramref name="action"/> in one database transaction when the store supports it.
+    /// A failure rolls the user and the patient chart back together.
+    /// </summary>
+    Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken)
+        => action(cancellationToken);
 }

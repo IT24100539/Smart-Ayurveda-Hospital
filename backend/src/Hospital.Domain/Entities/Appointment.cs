@@ -22,5 +22,9 @@ public class Appointment : BaseEntity
     public User? DecidedByUser { get; set; }
     public DateTimeOffset? DecidedAt { get; set; }
 
+    /// <summary>Physician who saw the patient. Ratings use feedback on completed visits with this set.</summary>
+    public Guid? DoctorId { get; set; }
+    public Doctor? Doctor { get; set; }
+
     public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }

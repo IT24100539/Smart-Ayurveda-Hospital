@@ -133,10 +133,15 @@ public sealed class AgentWorkflowService : IAgentWorkflowService
                 var draft = await _replyRecords.FindLatestAiDraftAsync(replyId, cancellationToken);
                 if (draft is null)
                 {
-                    execution.ApprovalStatus = WorkflowApprovalStatus.NotRequired;
-                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    if (!request.Approve)
+                    {
+                        execution.ApprovalStatus = WorkflowApprovalStatus.Rejected;
+                        await _unitOfWork.SaveChangesAsync(cancellationToken);
+                        return WorkflowExecutionService.ToDto(execution);
+                    }
+
                     throw new DomainException(
-                        "No AI reply draft is waiting for this feedback. Request a draft from the Feedback page first.");
+                        "No AI reply draft is waiting. Open Feedback and request an AI draft before approving.");
                 }
 
                 replyId = draft.Id;

@@ -14,14 +14,17 @@ public sealed class PatientRepository : IPatientRepository
     public Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.Patients.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-    public Task<Patient?> GetByPhoneAsync(string phone, CancellationToken cancellationToken) =>
-        _db.Patients.FirstOrDefaultAsync(x => x.Phone == phone, cancellationToken);
+    public Task<Patient?> GetByPhoneAsync(string phone, CancellationToken cancellationToken)
+    {
+        var normalized = phone.Trim();
+        return _db.Patients.FirstOrDefaultAsync(x => x.Phone.Trim() == normalized, cancellationToken);
+    }
 
     public Task<Patient?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var normalized = email.Trim().ToLowerInvariant();
         return _db.Patients.FirstOrDefaultAsync(
-            x => x.Email != null && x.Email.ToLower() == normalized,
+            x => x.Email != null && x.Email.Trim().ToLower() == normalized,
             cancellationToken);
     }
 
@@ -65,8 +68,13 @@ public sealed class UserRepository : IUserRepository
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
-        _db.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        return _db.Users.FirstOrDefaultAsync(
+            x => x.Email.Trim().ToLower() == normalized,
+            cancellationToken);
+    }
 
     public Task<User?> FindActiveByRoleAsync(UserRole role, CancellationToken cancellationToken) =>
         _db.Users
@@ -182,7 +190,7 @@ public sealed class StaffUserRepository : IStaffUserRepository
     public Task<StaffUser?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var normalized = email.Trim().ToLowerInvariant();
-        return _db.StaffUsers.FirstOrDefaultAsync(x => x.Email.ToLower() == normalized, cancellationToken);
+        return _db.StaffUsers.FirstOrDefaultAsync(x => x.Email.Trim().ToLower() == normalized, cancellationToken);
     }
 
     public Task<StaffUser?> FindActiveByRoleAsync(StaffRole role, CancellationToken cancellationToken) =>
@@ -509,6 +517,19 @@ public sealed class EfUnitOfWork : IUnitOfWork
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken) =>
         _db.SaveChangesAsync(cancellationToken);
+
+    public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken)
+    {
+        if (!_db.Database.IsRelational())
+        {
+            await action(cancellationToken);
+            return;
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        await action(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
 }
 
 public sealed class WardRepository : IWardRepository

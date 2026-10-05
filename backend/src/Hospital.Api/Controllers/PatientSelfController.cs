@@ -1,5 +1,6 @@
 using Hospital.Application.Abstractions;
 using Hospital.Application.Appointments;
+using Hospital.Application.Audit;
 using Hospital.Application.Patients;
 using Hospital.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -19,17 +20,20 @@ public sealed class PatientSelfController : ControllerBase
     private readonly IActorContext _actors;
     private readonly IPatientService _patients;
     private readonly IAppointmentService _appointments;
+    private readonly IAuditLogService _audit;
     private readonly IClock _clock;
 
     public PatientSelfController(
         IActorContext actors,
         IPatientService patients,
         IAppointmentService appointments,
+        IAuditLogService audit,
         IClock clock)
     {
         _actors = actors;
         _patients = patients;
         _appointments = appointments;
+        _audit = audit;
         _clock = clock;
     }
 
@@ -71,6 +75,7 @@ public sealed class PatientSelfController : ControllerBase
             })
             .ToList();
 
+        await _audit.RecordAsync(AuditActions.View, AuditEntities.ClinicalRecord, patient.Id.ToString(), cancellationToken);
         return Ok(plans);
     }
 
@@ -83,6 +88,7 @@ public sealed class PatientSelfController : ControllerBase
     {
         var patient = await _actors.RequirePatientAsync(cancellationToken);
         var dto = await _patients.GetByIdAsync(patient.Id, cancellationToken);
+        await _audit.RecordAsync(AuditActions.View, AuditEntities.Patient, patient.Id.ToString(), cancellationToken);
 
         return Ok(new RegistrationSummaryDto(
             Uhid: dto.Uhid,

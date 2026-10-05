@@ -22,7 +22,9 @@ _AGENTS = (
 @pytest.fixture
 async def live_store():
     base = settings.hospital_api_base_url.rstrip("/")
-    key = settings.internal_service_key.get_secret_value() or "dev-internal-service-key"
+    key = settings.internal_service_key.get_secret_value()
+    if not key:
+        pytest.skip("INTERNAL_SERVICE_KEY is not set")
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
             probe = await client.get(f"{base}/health")

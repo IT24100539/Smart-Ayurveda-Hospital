@@ -25,7 +25,7 @@ public sealed class CreateTreatmentRequestValidator : AbstractValidator<CreateTr
         RuleFor(x => x.DescriptionSinhala).NotEmpty().MaximumLength(2000);
         RuleFor(x => x.Category).IsInEnum();
         RuleFor(x => x.DurationMinutes).InclusiveBetween(5, 24 * 60);
-        RuleFor(x => x.UnitPrice).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.UnitPrice).InclusiveBetween(0, 10_000_000);
         RuleForEach(x => x.Schedules).SetValidator(new CreateScheduleEntryRequestValidator())
             .When(x => x.Schedules is not null);
     }
@@ -41,7 +41,7 @@ public sealed class UpdateTreatmentRequestValidator : AbstractValidator<UpdateTr
         RuleFor(x => x.DescriptionSinhala).NotEmpty().MaximumLength(2000);
         RuleFor(x => x.Category).IsInEnum();
         RuleFor(x => x.DurationMinutes).InclusiveBetween(5, 24 * 60);
-        RuleFor(x => x.UnitPrice).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.UnitPrice).InclusiveBetween(0, 10_000_000);
     }
 }
 

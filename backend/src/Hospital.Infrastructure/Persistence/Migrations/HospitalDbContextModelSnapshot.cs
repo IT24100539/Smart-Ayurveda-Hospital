@@ -93,6 +93,9 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("DecidedById")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("DoctorId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uuid");
 
@@ -121,6 +124,8 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DecidedById");
+
+                    b.HasIndex("DoctorId");
 
                     b.HasIndex("ScheduleId");
 
@@ -152,7 +157,8 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("ActorRole")
-                        .HasColumnType("text");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uuid");
@@ -167,11 +173,17 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("EntityId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("EntityName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("TargetEmail")
                         .IsRequired()
@@ -191,6 +203,8 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("TargetUserId");
+
+                    b.HasIndex("EntityName", "CreatedAt");
 
                     b.ToTable("audit_logs", (string)null);
                 });
@@ -279,6 +293,65 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("complaints", (string)null);
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Doctor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Bio")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSample")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("PhotoContentType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<long?>("PhotoSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("PhotoStorageKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Qualifications")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<string>("Specialty")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("doctors", (string)null);
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.DoctorRoster", b =>
@@ -479,24 +552,37 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("AppointmentId")
-                        .HasColumnType("uuid");
+                    b.Property<decimal>("AmountPaid")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("numeric");
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("LKR");
 
                     b.Property<string>("InvoiceNumber")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
-                    b.Property<DateTimeOffset>("IssuedAt")
+                    b.Property<DateTimeOffset?>("IssuedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<decimal>("PaidAmount")
-                        .HasColumnType("numeric");
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTimeOffset?>("PaidAt")
                         .HasColumnType("timestamp with time zone");
@@ -504,38 +590,45 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("PatientName")
+                    b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
-                    b.Property<string>("PaymentMethod")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("SubTotal")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("TaxAmount")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("numeric");
+                    b.Property<decimal>("Total")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Invoices");
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("InvoiceNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_invoices_number");
+
+                    b.HasIndex("PatientId")
+                        .HasDatabaseName("ix_invoices_patient_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_invoices_status");
+
+                    b.ToTable("invoices", (string)null);
                 });
 
-            modelBuilder.Entity("Hospital.Domain.Entities.InvoiceItem", b =>
+            modelBuilder.Entity("Hospital.Domain.Entities.InvoiceLine", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AdmissionRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AppointmentId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -543,25 +636,112 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)");
 
                     b.Property<Guid>("InvoiceId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("OpenSourceKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
 
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid?>("TreatmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("UnitPrice")
-                        .HasColumnType("numeric");
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("InvoiceId");
+                    b.HasIndex("AdmissionRequestId");
 
-                    b.ToTable("InvoiceItems");
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("OpenSourceKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_invoice_lines_open_source")
+                        .HasFilter("\"OpenSourceKey\" IS NOT NULL");
+
+                    b.HasIndex("TreatmentId");
+
+                    b.HasIndex("InvoiceId", "SortOrder")
+                        .HasDatabaseName("ix_invoice_lines_order");
+
+                    b.ToTable("invoice_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_invoice_lines_one_source", "(\"AppointmentId\" IS NOT NULL AND \"AdmissionRequestId\" IS NULL) OR (\"AppointmentId\" IS NULL AND \"AdmissionRequestId\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_invoice_lines_quantity", "\"Quantity\" >= 1");
+
+                            t.HasCheckConstraint("ck_invoice_lines_unit_price", "\"UnitPrice\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.InvoicePayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("PaidOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId")
+                        .HasDatabaseName("ix_invoice_payments_invoice_id");
+
+                    b.HasIndex("RecordedByUserId");
+
+                    b.ToTable("invoice_payments", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_invoice_payments_amount", "\"Amount\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.MedicalDocument", b =>
@@ -735,7 +915,7 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.ToTable("patients", (string)null);
                 });
 
-            modelBuilder.Entity("Hospital.Domain.Entities.Prescription", b =>
+            modelBuilder.Entity("Hospital.Domain.Entities.PatientDeviceToken", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -744,39 +924,112 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Diagnosis")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Directives")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("DoctorName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("DoctorUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsRefillable")
-                        .HasColumnType("boolean");
-
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTimeOffset>("PrescriptionDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
-                    b.Property<int>("RemainingRefills")
-                        .HasColumnType("integer");
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Prescriptions");
+                    b.HasIndex("PatientId")
+                        .HasDatabaseName("ix_patient_device_tokens_patient_id");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ux_patient_device_tokens_token");
+
+                    b.ToTable("patient_device_tokens", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_patient_device_tokens_platform", "\"Platform\" IN ('android', 'ios', 'web')");
+                        });
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Prescription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DoctorName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<Guid>("DoctorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RevisesPrescriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RootPrescriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset?>("SupersededAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SupersededByPrescriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_prescriptions_appointment_open")
+                        .HasFilter("\"Status\" IN ('Draft', 'Issued')");
+
+                    b.HasIndex("DoctorUserId");
+
+                    b.HasIndex("PatientId")
+                        .HasDatabaseName("ix_prescriptions_patient_id");
+
+                    b.HasIndex("RevisesPrescriptionId");
+
+                    b.HasIndex("RootPrescriptionId")
+                        .HasDatabaseName("ix_prescriptions_root");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_prescriptions_status");
+
+                    b.HasIndex("SupersededByPrescriptionId");
+
+                    b.ToTable("prescriptions", (string)null);
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.PrescriptionItem", b =>
@@ -790,34 +1043,90 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Dosage")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
 
-                    b.Property<int>("DurationDays")
-                        .HasColumnType("integer");
+                    b.Property<string>("Duration")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<string>("Frequency")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
 
-                    b.Property<string>("HerbFormulationName")
+                    b.Property<string>("Instructions")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
 
                     b.Property<Guid>("PrescriptionId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("SpecialInstructions")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PrescriptionId");
+                    b.HasIndex("PrescriptionId", "SortOrder")
+                        .HasDatabaseName("ix_prescription_items_order");
 
-                    b.ToTable("PrescriptionItems");
+                    b.ToTable("prescription_items", (string)null);
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.PrescriptionRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PreviousPrescriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("RevisedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RevisedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RevisedPrescriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PreviousPrescriptionId")
+                        .HasDatabaseName("ix_prescription_revisions_previous");
+
+                    b.HasIndex("RevisedByUserId");
+
+                    b.HasIndex("RevisedPrescriptionId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_prescription_revisions_revised");
+
+                    b.ToTable("prescription_revisions", (string)null);
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.StaffUser", b =>
@@ -1053,7 +1362,8 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PasswordResetTokenHash")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
@@ -1230,6 +1540,11 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .HasForeignKey("DecidedById")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Hospital.Domain.Entities.Doctor", "Doctor")
+                        .WithMany("Appointments")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
                         .WithMany("Appointments")
                         .HasForeignKey("PatientId")
@@ -1248,6 +1563,8 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("DecidedByUser");
+
+                    b.Navigation("Doctor");
 
                     b.Navigation("Patient");
 
@@ -1361,13 +1678,70 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Hospital.Domain.Entities.InvoiceItem", b =>
+            modelBuilder.Entity("Hospital.Domain.Entities.Invoice", b =>
                 {
-                    b.HasOne("Hospital.Domain.Entities.Invoice", null)
-                        .WithMany("Items")
+                    b.HasOne("Hospital.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.InvoiceLine", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.AdmissionRequest", "AdmissionRequest")
+                        .WithMany()
+                        .HasForeignKey("AdmissionRequestId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hospital.Domain.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hospital.Domain.Entities.Invoice", "Invoice")
+                        .WithMany("Lines")
                         .HasForeignKey("InvoiceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.Treatment", "Treatment")
+                        .WithMany()
+                        .HasForeignKey("TreatmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AdmissionRequest");
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("Treatment");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.InvoicePayment", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Invoice", "Invoice")
+                        .WithMany("Payments")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecordedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Notification", b =>
@@ -1388,13 +1762,90 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Navigation("StaffRecipient");
                 });
 
+            modelBuilder.Entity("Hospital.Domain.Entities.PatientDeviceToken", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.Prescription", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("DoctorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.Prescription", "Revises")
+                        .WithMany()
+                        .HasForeignKey("RevisesPrescriptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hospital.Domain.Entities.Prescription", "SupersededBy")
+                        .WithMany()
+                        .HasForeignKey("SupersededByPrescriptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("Revises");
+
+                    b.Navigation("SupersededBy");
+                });
+
             modelBuilder.Entity("Hospital.Domain.Entities.PrescriptionItem", b =>
                 {
-                    b.HasOne("Hospital.Domain.Entities.Prescription", null)
+                    b.HasOne("Hospital.Domain.Entities.Prescription", "Prescription")
                         .WithMany("Items")
                         .HasForeignKey("PrescriptionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Prescription");
+                });
+
+            modelBuilder.Entity("Hospital.Domain.Entities.PrescriptionRevision", b =>
+                {
+                    b.HasOne("Hospital.Domain.Entities.Prescription", "PreviousPrescription")
+                        .WithMany()
+                        .HasForeignKey("PreviousPrescriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RevisedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hospital.Domain.Entities.Prescription", "RevisedPrescription")
+                        .WithMany()
+                        .HasForeignKey("RevisedPrescriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PreviousPrescription");
+
+                    b.Navigation("RevisedPrescription");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Therapist", b =>
@@ -1435,6 +1886,11 @@ namespace Hospital.Infrastructure.Persistence.Migrations
                     b.Navigation("AdmissionRequests");
                 });
 
+            modelBuilder.Entity("Hospital.Domain.Entities.Doctor", b =>
+                {
+                    b.Navigation("Appointments");
+                });
+
             modelBuilder.Entity("Hospital.Domain.Entities.Feedback", b =>
                 {
                     b.Navigation("Complaints");
@@ -1446,7 +1902,9 @@ namespace Hospital.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Hospital.Domain.Entities.Invoice", b =>
                 {
-                    b.Navigation("Items");
+                    b.Navigation("Lines");
+
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("Hospital.Domain.Entities.Patient", b =>

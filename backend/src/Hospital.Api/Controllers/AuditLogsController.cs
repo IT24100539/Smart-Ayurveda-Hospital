@@ -22,13 +22,20 @@ public sealed class AuditLogsController : ControllerBase
         [FromQuery] string? query,
         [FromQuery] string? action,
         [FromQuery] string? entityName,
+        [FromQuery] string? entityId,
         [FromQuery] DateTimeOffset? fromDate,
         [FromQuery] DateTimeOffset? toDate,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
+        QueryLimits.EnsurePage(page, pageSize);
+        QueryLimits.EnsureLength("query", query);
+        QueryLimits.EnsureLength("action", action, 64);
+        QueryLimits.EnsureLength("entityName", entityName, 64);
+        QueryLimits.EnsureLength("entityId", entityId, 64);
+        QueryLimits.EnsureDateRange(fromDate, toDate);
         return Ok(await _auditLogs.SearchAsync(
-            query, action, entityName, fromDate, toDate, page, pageSize, cancellationToken));
+            query, action, entityName, entityId, fromDate, toDate, page, pageSize, cancellationToken));
     }
 }

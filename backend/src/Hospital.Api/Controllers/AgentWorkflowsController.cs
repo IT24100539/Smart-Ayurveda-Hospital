@@ -16,17 +16,20 @@ public sealed class AgentWorkflowsController : ControllerBase
     private readonly IValidator<StartAgentWorkflowRequest> _startValidator;
     private readonly IValidator<ApproveAgentWorkflowRequest> _approveValidator;
     private readonly IValidator<AskTreatmentInfoRequest> _askValidator;
+    private readonly IValidator<AskPatientInfoRequest> _askPatientValidator;
 
     public AgentWorkflowsController(
         IAgentWorkflowService workflows,
         IValidator<StartAgentWorkflowRequest> startValidator,
         IValidator<ApproveAgentWorkflowRequest> approveValidator,
-        IValidator<AskTreatmentInfoRequest> askValidator)
+        IValidator<AskTreatmentInfoRequest> askValidator,
+        IValidator<AskPatientInfoRequest> askPatientValidator)
     {
         _workflows = workflows;
         _startValidator = startValidator;
         _approveValidator = approveValidator;
         _askValidator = askValidator;
+        _askPatientValidator = askPatientValidator;
     }
 
     [HttpPost("start")]
@@ -64,10 +67,7 @@ public sealed class AgentWorkflowsController : ControllerBase
         AskPatientInfoRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Question))
-        {
-            return BadRequest("Question is required.");
-        }
+        await _askPatientValidator.ValidateAndThrowAsync(request, cancellationToken);
         return Ok(await _workflows.AskPatientInfoAsync(request, cancellationToken));
     }
 

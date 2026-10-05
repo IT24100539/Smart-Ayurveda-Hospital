@@ -24,6 +24,7 @@ from app.agents.treatment_info_agent import (
 )
 from app.main import app
 from app.schemas import TreatmentInfoAgentRequest
+from app.settings import settings
 
 # ---------------------------------------------------------------------------
 # Fixtures: mock backend responses
@@ -235,7 +236,7 @@ async def test_days_question_and_sinhala_question_returns_grounded_answer():
 # Route-level tests (via TestClient)
 # ---------------------------------------------------------------------------
 
-INTERNAL_SECRET = "dev-internal-agent-secret"
+INTERNAL_SECRET = settings.shared_secret.get_secret_value()
 
 
 class TestTreatmentInfoRoute:

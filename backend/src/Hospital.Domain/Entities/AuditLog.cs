@@ -13,4 +13,5 @@ public class AuditLog : BaseEntity
     public Guid TargetUserId { get; set; }
     public string TargetEmail { get; set; } = string.Empty;
     public string Details { get; set; } = string.Empty;
+    public string? IpAddress { get; set; }
 }
