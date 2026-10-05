@@ -88,6 +88,7 @@ public sealed class FeedbackRepository : IFeedbackRepository
 
     public async Task<IReadOnlyList<Feedback>> ListForPatientAsync(Guid patientId, CancellationToken cancellationToken) =>
         await _db.Feedbacks.AsNoTracking()
+            .Include(x => x.Replies)
             .Where(x => x.PatientId == patientId)
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);

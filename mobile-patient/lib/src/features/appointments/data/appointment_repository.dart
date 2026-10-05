@@ -16,6 +16,12 @@ abstract interface class AppointmentRepository {
   });
   Future<List<Appointment>> mine();
   Future<void> cancel(String appointmentId);
+  Future<Appointment> reschedule({
+    required String appointmentId,
+    required DateTime date,
+    required String timeSlot,
+    String? scheduleId,
+  });
 }
 
 class ApiAppointmentRepository implements AppointmentRepository {
@@ -29,7 +35,7 @@ class ApiAppointmentRepository implements AppointmentRepository {
   ) async {
     try {
       final response = await _dio.get<dynamic>(
-        '/treatments/$treatmentId/availability',
+        '/treatments/$treatmentId/slots',
         queryParameters: {'date': DateFormat('yyyy-MM-dd').format(date)},
       );
       return TreatmentAvailability.fromJson(response.data);
@@ -84,7 +90,35 @@ class ApiAppointmentRepository implements AppointmentRepository {
   @override
   Future<void> cancel(String appointmentId) async {
     try {
-      await _dio.patch<void>('/appointments/$appointmentId/cancel');
+      await _dio.patch<void>(
+        '/appointments/$appointmentId/cancel',
+        options: Options(responseType: ResponseType.plain),
+      );
+    } on DioException catch (error) {
+      throw ApiException.fromDioException(error);
+    }
+  }
+
+  @override
+  Future<Appointment> reschedule({
+    required String appointmentId,
+    required DateTime date,
+    required String timeSlot,
+    String? scheduleId,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'requestedDate': DateFormat('yyyy-MM-dd').format(date),
+        'requestedTimeSlot': timeSlot,
+      };
+      if (scheduleId != null) {
+        payload['scheduleId'] = scheduleId;
+      }
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/appointments/$appointmentId/reschedule',
+        data: payload,
+      );
+      return Appointment.fromJson(response.data!);
     } on DioException catch (error) {
       throw ApiException.fromDioException(error);
     }

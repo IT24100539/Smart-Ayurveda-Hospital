@@ -27,7 +27,7 @@ def scenario(monkeypatch):
                      objective_text="Check treatment and ward availability and propose admission."),
         available=True, capacity=1, timeout=False, calls=[], admission_id=str(uuid4()),
     )
-    monkeypatch.setattr(settings, "shared_secret", "route-test-secret")
+    monkeypatch.setattr(settings, "shared_secret", SecretStr("route-test-secret"))
     monkeypatch.setattr(settings, "internal_service_key", SecretStr("backend-test-key"))
     monkeypatch.setattr(settings, "backend_base_url", "http://backend.test")
     monkeypatch.setattr(settings, "ollama_base_url", "http://ollama.test")

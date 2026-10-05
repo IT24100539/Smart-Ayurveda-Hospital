@@ -13,6 +13,11 @@ public sealed record UpdateAppointmentStatusRequest(
     AppointmentStatus Status,
     Guid? DecidedBy);
 
+public sealed record RescheduleAppointmentRequest(
+    DateOnly RequestedDate,
+    string RequestedTimeSlot,
+    Guid? ScheduleId = null);
+
 public sealed record AppointmentDto(
     Guid Id,
     Guid PatientId,

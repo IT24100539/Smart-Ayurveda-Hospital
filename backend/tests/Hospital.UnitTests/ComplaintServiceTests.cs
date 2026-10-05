@@ -69,6 +69,31 @@ public sealed class ComplaintServiceTests
     }
 
     [Fact]
+    public async Task Create_StoresTheChartId_AndAlertsStaff()
+    {
+        var harness = new FeedbackHarness();
+        Assert.NotEqual(harness.User.Id, harness.Patient.Id);
+
+        var created = await harness.Complaints.CreateAsync(
+            new CreateComplaintRequest("Crowded waiting area", "The abhyanga queue spilled into the corridor.", null, ComplaintPriority.Normal),
+            CancellationToken.None);
+
+        Assert.Equal(harness.Patient.Id, created.PatientId);
+        Assert.NotEqual(harness.User.Id, created.PatientId);
+        Assert.Equal(ComplaintStatus.Open, created.Status);
+
+        var patientNotice = Assert.Single(harness.NotificationStore.Items, x => x.StaffUserId == null);
+        Assert.Equal(harness.Patient.Id, patientNotice.PatientId);
+        Assert.Equal(NotificationType.ComplaintUpdate, patientNotice.Type);
+
+        var staffNotice = Assert.Single(harness.NotificationStore.Items, x => x.StaffUserId != null);
+        Assert.Equal(harness.Staff.Id, staffNotice.StaffUserId);
+        Assert.Equal(harness.Patient.Id, staffNotice.PatientId);
+        Assert.Equal(NotificationType.FeedbackAlert, staffNotice.Type);
+        Assert.Contains("Crowded waiting area", staffNotice.Message);
+    }
+
+    [Fact]
     public async Task Get_OtherPatientsComplaint_IsForbidden()
     {
         var harness = new FeedbackHarness();
@@ -136,5 +161,32 @@ public sealed class NotificationServiceTests
         Assert.Equal(1, result.Updated);
         Assert.True(harness.NotificationStore.Items[0].IsRead);
         Assert.False(harness.NotificationStore.Items[1].IsRead);
+    }
+
+    [Fact]
+    public async Task GetForPatient_UsesTheChartId_NotTheLoginId()
+    {
+        var harness = new FeedbackHarness();
+        Assert.NotEqual(harness.User.Id, harness.Patient.Id);
+        harness.NotificationStore.Items.Add(new Notification
+        {
+            PatientId = harness.Patient.Id,
+            Title = "Reply to your feedback",
+            Message = "A vaidya posted a reply.",
+            Type = NotificationType.FeedbackReply
+        });
+        harness.NotificationStore.Items.Add(new Notification
+        {
+            PatientId = harness.User.Id,
+            Title = "Stored under the login id",
+            Message = "This row must not appear.",
+            Type = NotificationType.General
+        });
+
+        var list = await harness.Notifications.GetForPatient(harness.Patient.Id, CancellationToken.None);
+
+        var item = Assert.Single(list);
+        Assert.Equal("Reply to your feedback", item.Title);
+        Assert.Equal(NotificationType.FeedbackReply, item.Type);
     }
 }

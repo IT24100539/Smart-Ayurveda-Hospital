@@ -5,6 +5,10 @@ public class DomainException : Exception
     public DomainException(string message) : base(message)
     {
     }
+
+    public DomainException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
 }
 
 public class NotFoundException : DomainException
@@ -39,6 +43,13 @@ public class WardFullException : DomainException
 public class ForbiddenException : DomainException
 {
     public ForbiddenException(string message) : base(message)
+    {
+    }
+}
+
+public class BadRequestException : DomainException
+{
+    public BadRequestException(string message) : base(message)
     {
     }
 }

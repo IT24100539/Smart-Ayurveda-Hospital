@@ -4,5 +4,6 @@ public enum FeedbackStatus
 {
     Visible = 1,
     Hidden = 2,
-    PendingModeration = 3
+    PendingModeration = 3,
+    Withdrawn = 4
 }

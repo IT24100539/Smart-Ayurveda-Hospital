@@ -1,4 +1,6 @@
+using System.ComponentModel.DataAnnotations;
 using FluentValidation;
+using Hospital.Application.Appointments;
 using Hospital.Application.Common;
 using Hospital.Application.Treatments;
 using Hospital.Application.Treatments.Dtos;
@@ -14,6 +16,7 @@ public sealed class TreatmentsController : ControllerBase
     private const string StaffRoles = "Admin,Doctor,FrontDeskStaff";
 
     private readonly ITreatmentService _treatments;
+    private readonly TreatmentAvailabilityService _availability;
     private readonly IValidator<TreatmentSearchQuery> _searchValidator;
     private readonly IValidator<CreateTreatmentRequest> _createValidator;
     private readonly IValidator<UpdateTreatmentRequest> _updateValidator;
@@ -22,6 +25,7 @@ public sealed class TreatmentsController : ControllerBase
 
     public TreatmentsController(
         ITreatmentService treatments,
+        TreatmentAvailabilityService availability,
         IValidator<TreatmentSearchQuery> searchValidator,
         IValidator<CreateTreatmentRequest> createValidator,
         IValidator<UpdateTreatmentRequest> updateValidator,
@@ -29,6 +33,7 @@ public sealed class TreatmentsController : ControllerBase
         IValidator<UpdateScheduleEntryRequest> updateScheduleValidator)
     {
         _treatments = treatments;
+        _availability = availability;
         _searchValidator = searchValidator;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
@@ -50,6 +55,18 @@ public sealed class TreatmentsController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<TreatmentDetailDto>> Get(Guid id, CancellationToken cancellationToken) =>
         Ok(await _treatments.GetByIdAsync(id, cancellationToken));
+
+    /// <summary>
+    /// Patient-facing slots for a date. Distinct from the internal-service
+    /// GET /api/treatments/{id}/availability route, which requires the machine key.
+    /// </summary>
+    [HttpGet("{id:guid}/slots")]
+    [AllowAnonymous]
+    public async Task<ActionResult<TreatmentDayAvailabilityDto>> Slots(
+        Guid id,
+        [FromQuery, Required] DateOnly? date,
+        CancellationToken cancellationToken) =>
+        Ok(await _availability.GetDayAsync(id, date!.Value, cancellationToken));
 
     [HttpPost]
     [Authorize(Roles = StaffRoles)]

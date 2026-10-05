@@ -1,3 +1,5 @@
+using FluentValidation;
+using Hospital.Application.Abstractions;
 using Hospital.Application.Wards;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,14 +11,29 @@ namespace Hospital.Api.Controllers;
 public sealed class AdmissionsController : ControllerBase
 {
     private readonly IWardService _wards;
+    private readonly IActorContext _actors;
+    private readonly IValidator<CreateAdmissionRequestRequest> _createValidator;
+    private readonly IValidator<AdmissionDecisionRequest> _decisionValidator;
 
-    public AdmissionsController(IWardService wards) => _wards = wards;
+    public AdmissionsController(
+        IWardService wards,
+        IActorContext actors,
+        IValidator<CreateAdmissionRequestRequest> createValidator,
+        IValidator<AdmissionDecisionRequest> decisionValidator)
+    {
+        _wards = wards;
+        _actors = actors;
+        _createValidator = createValidator;
+        _decisionValidator = decisionValidator;
+    }
 
     [HttpPost]
     [Authorize(Roles = "Patient")]
     public async Task<ActionResult<AdmissionRequestDto>> Create(CreateAdmissionRequestRequest request, CancellationToken cancellationToken)
     {
-        var created = await _wards.RequestAdmissionAsync(request, cancellationToken);
+        await _createValidator.ValidateAndThrowAsync(request, cancellationToken);
+        var patient = await _actors.RequirePatientAsync(cancellationToken);
+        var created = await _wards.RequestAdmissionAsync(request with { PatientId = patient.Id }, cancellationToken);
         return CreatedAtAction(null, created);
     }
 
@@ -32,8 +49,12 @@ public sealed class AdmissionsController : ControllerBase
     [Authorize(Roles = "FrontDeskStaff,Doctor,Admin")]
     public async Task<ActionResult> Decide(Guid id, AdmissionDecisionRequest request, CancellationToken cancellationToken)
     {
+        await _decisionValidator.ValidateAndThrowAsync(request, cancellationToken);
         var ok = await _wards.DecideAdmissionAsync(id, request, cancellationToken);
-        if (!ok) return BadRequest(new { message = "Unable to approve admission (no free beds or invalid request)." });
+        if (!ok)
+        {
+            throw new Hospital.Domain.Exceptions.DomainException("Unable to approve admission (no free beds or invalid request).");
+        }
         return NoContent();
     }
 }

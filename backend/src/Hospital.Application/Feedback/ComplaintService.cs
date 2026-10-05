@@ -67,6 +67,7 @@ public sealed class ComplaintService : IComplaintService
             "We have received your concern and will review it.",
             NotificationType.ComplaintUpdate,
             cancellationToken);
+        await NotifyStaffOfComplaintAsync(complaint, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Map(complaint);
     }
@@ -112,8 +113,8 @@ public sealed class ComplaintService : IComplaintService
 
     public async Task<IReadOnlyList<ComplaintSummaryDto>> ListMineAsync(CancellationToken cancellationToken)
     {
-        var patient = await _actors.RequirePatientAsync(cancellationToken);
-        var items = await _complaints.ListForPatientAsync(patient.Id, cancellationToken);
+        var chartId = await _actors.RequirePatientIdAsync(cancellationToken);
+        var items = await _complaints.ListForPatientAsync(chartId, cancellationToken);
         return items.Select(Map).ToList();
     }
 
@@ -198,6 +199,24 @@ public sealed class ComplaintService : IComplaintService
         var assignee = await _staffUsers.GetByIdAsync(assigneeId, cancellationToken)
             ?? throw new NotFoundException("Staff", assigneeId);
         complaint.AssignedToId = assignee.Id;
+    }
+
+    private async Task NotifyStaffOfComplaintAsync(Complaint complaint, CancellationToken cancellationToken)
+    {
+        var recipients = await _staffUsers.ListActiveAsync(cancellationToken);
+        var message = Truncate($"New complaint: {complaint.Subject}", 1000);
+        foreach (var recipient in recipients)
+        {
+            await _notifications.AddAsync(new Notification
+            {
+                PatientId = complaint.PatientId,
+                StaffUserId = recipient.Id,
+                Title = "New complaint",
+                Message = message,
+                Type = NotificationType.FeedbackAlert,
+                IsRead = false
+            }, cancellationToken);
+        }
     }
 
     private async Task AddNotificationAsync(

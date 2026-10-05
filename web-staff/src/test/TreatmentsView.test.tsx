@@ -3,19 +3,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TreatmentsView } from '../components/treatments/TreatmentsView';
 import * as api from '../api/treatments';
 
-// Mock the API module
-vi.mock('../api/treatments', () => ({
-  getTreatments: vi.fn(),
-  getTreatmentDetails: vi.fn(),
-  createTreatment: vi.fn(),
-  deactivateTreatment: vi.fn(),
-  createScheduleEntry: vi.fn(),
-  deleteScheduleEntry: vi.fn(),
-  TreatmentCategory: {
-    Consultation: 0,
-    Panchakarma: 1
-  }
-}));
+vi.mock('../api/treatments', async () => {
+  const actual = await vi.importActual<typeof import('../api/treatments')>('../api/treatments');
+  return {
+    ...actual,
+    getTreatments: vi.fn(),
+    getTreatmentDetails: vi.fn(),
+    createTreatment: vi.fn(),
+    deactivateTreatment: vi.fn(),
+    createScheduleEntry: vi.fn(),
+    updateScheduleEntry: vi.fn(),
+    deleteScheduleEntry: vi.fn()
+  };
+});
 
 const mockTreatments = {
   items: [
@@ -25,11 +25,11 @@ const mockTreatments = {
       nameSinhala: 'අභ්‍යංග',
       description: 'Full body massage',
       descriptionSinhala: 'සම්පූර්ණ ශරීර සම්බාහනය',
-      category: 1,
+      category: 'Panchakarma',
       durationMinutes: 60,
       unitPrice: 2000,
       isActive: true,
-      availableDays: [1, 3, 5] // Mon, Wed, Fri
+      availableDays: ['Monday', 'Wednesday', 'Friday']
     }
   ],
   totalCount: 1
@@ -38,9 +38,9 @@ const mockTreatments = {
 const mockTreatmentDetail = {
   ...mockTreatments.items[0],
   schedule: [
-    { id: 's1', treatmentId: '1', dayOfWeek: 1, startTime: '09:00:00', endTime: '12:00:00', maxSlotsPerDay: 5, isActive: true },
-    { id: 's3', treatmentId: '1', dayOfWeek: 3, startTime: '13:00:00', endTime: '16:00:00', maxSlotsPerDay: 5, isActive: true },
-    { id: 's5', treatmentId: '1', dayOfWeek: 5, startTime: '09:00:00', endTime: '12:00:00', maxSlotsPerDay: 5, isActive: true },
+    { id: 's1', treatmentId: '1', dayOfWeek: 'Monday', startTime: '09:00:00', endTime: '12:00:00', maxSlotsPerDay: 5, isActive: true },
+    { id: 's3', treatmentId: '1', dayOfWeek: 'Wednesday', startTime: '13:00:00', endTime: '16:00:00', maxSlotsPerDay: 5, isActive: true },
+    { id: 's5', treatmentId: '1', dayOfWeek: 'Friday', startTime: '09:00:00', endTime: '12:00:00', maxSlotsPerDay: 5, isActive: true },
   ]
 };
 
@@ -110,13 +110,23 @@ describe('TreatmentsView', () => {
       // It should delete the entry for Monday ('s1')
       expect(api.deleteScheduleEntry).toHaveBeenCalledWith('1', 's1');
       
-      // It should create a new entry for Sunday (dayOfWeek 0)
       expect(api.createScheduleEntry).toHaveBeenCalledWith('1', expect.objectContaining({
-        dayOfWeek: 0,
-        startTime: '09:00:00', // Default initial times we set in the component
+        dayOfWeek: 'Sunday',
+        startTime: '09:00:00',
         endTime: '17:00:00',
         maxSlotsPerDay: 10
       }));
     });
+  });
+
+  it('shows the catalogue error instead of writing it to the console', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (api.getTreatments as any).mockRejectedValue(new Error('network down'));
+
+    render(<TreatmentsView />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load treatments.');
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });

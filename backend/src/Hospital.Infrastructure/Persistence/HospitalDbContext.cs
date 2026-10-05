@@ -14,24 +14,29 @@ public sealed class HospitalDbContext : DbContext
     public DbSet<StaffUser> StaffUsers => Set<StaffUser>();
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
-    public DbSet<Consultation> Consultations => Set<Consultation>();
     public DbSet<Treatment> Treatments => Set<Treatment>();
 public DbSet<Therapist> Therapists => Set<Therapist>();
 public DbSet<TreatmentSchedule> TreatmentSchedules => Set<TreatmentSchedule>();
 public DbSet<Ward> Wards => Set<Ward>();
 public DbSet<Bed> Beds => Set<Bed>();
-public DbSet<AdmissionRequest> AdmissionRequests => Set<AdmissionRequest>();
-    public DbSet<Medicine> Medicines => Set<Medicine>();
-    public DbSet<Prescription> Prescriptions => Set<Prescription>();
-    public DbSet<PrescriptionItem> PrescriptionItems => Set<PrescriptionItem>();
-    public DbSet<Invoice> Invoices => Set<Invoice>();
-    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+    public DbSet<AdmissionRequest> AdmissionRequests => Set<AdmissionRequest>();
     public DbSet<Feedback> Feedbacks => Set<Feedback>();
     public DbSet<FeedbackReaction> FeedbackReactions => Set<FeedbackReaction>();
     public DbSet<FeedbackReply> FeedbackReplies => Set<FeedbackReply>();
     public DbSet<Complaint> Complaints => Set<Complaint>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<PatientDeviceToken> PatientDeviceTokens => Set<PatientDeviceToken>();
     public DbSet<WorkflowExecution> WorkflowExecutions => Set<WorkflowExecution>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<DoctorRoster> DoctorRosters => Set<DoctorRoster>();
+    public DbSet<Doctor> Doctors => Set<Doctor>();
+    public DbSet<Prescription> Prescriptions => Set<Prescription>();
+    public DbSet<PrescriptionItem> PrescriptionItems => Set<PrescriptionItem>();
+    public DbSet<PrescriptionRevision> PrescriptionRevisions => Set<PrescriptionRevision>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+    public DbSet<InvoicePayment> InvoicePayments => Set<InvoicePayment>();
+    public DbSet<MedicalDocument> MedicalDocuments => Set<MedicalDocument>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

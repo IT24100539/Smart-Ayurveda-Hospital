@@ -20,4 +20,5 @@ public sealed record FeedbackSupportAgentResponse(
     [property: JsonPropertyName("draft_skipped")] bool DraftSkipped,
     [property: JsonPropertyName("workflow_id")] string WorkflowId,
     [property: JsonPropertyName("status")] string? Status = null,
-    [property: JsonPropertyName("immediate_dashboard_alert")] bool ImmediateDashboardAlert = false);
+    [property: JsonPropertyName("immediate_dashboard_alert")] bool ImmediateDashboardAlert = false,
+    [property: JsonPropertyName("classified_by")] string? ClassifiedBy = null);

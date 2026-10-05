@@ -1,3 +1,4 @@
+using FluentValidation;
 using Hospital.Application.Abstractions;
 using Hospital.Application.Communication;
 using Hospital.Application.Communication.Dtos;
@@ -12,20 +13,38 @@ namespace Hospital.Api.Controllers;
 public sealed class NotificationsController : ControllerBase
 {
     private readonly INotificationService _notifications;
+    private readonly IDeviceTokenService _devices;
     private readonly IActorContext _actors;
+    private readonly IValidator<RegisterDeviceTokenRequest> _registerDeviceValidator;
 
-    public NotificationsController(INotificationService notifications, IActorContext actors)
+    public NotificationsController(
+        INotificationService notifications,
+        IDeviceTokenService devices,
+        IActorContext actors,
+        IValidator<RegisterDeviceTokenRequest> registerDeviceValidator)
     {
         _notifications = notifications;
+        _devices = devices;
         _actors = actors;
+        _registerDeviceValidator = registerDeviceValidator;
+    }
+
+    [HttpPost("device-tokens")]
+    [Authorize(Roles = "Patient")]
+    public async Task<ActionResult<DeviceTokenDto>> RegisterDevice(
+        RegisterDeviceTokenRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _registerDeviceValidator.ValidateAndThrowAsync(request, cancellationToken);
+        return Ok(await _devices.RegisterAsync(request, cancellationToken));
     }
 
     [HttpGet("me")]
     [Authorize(Roles = "Patient")]
     public async Task<ActionResult<IReadOnlyList<NotificationDto>>> Mine(CancellationToken cancellationToken)
     {
-        var patient = await _actors.RequirePatientAsync(cancellationToken);
-        return Ok(await _notifications.GetForPatient(patient.Id, cancellationToken));
+        var chartId = await _actors.RequirePatientIdAsync(cancellationToken);
+        return Ok(await _notifications.GetForPatient(chartId, cancellationToken));
     }
 
     [HttpPatch("{id:guid}/read")]

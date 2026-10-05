@@ -19,4 +19,18 @@ public interface IAgentClient
     Task<CoordinatorAgentResponse> CoordinateAsync(
         StartAgentWorkflowRequest request,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Treatment-info graph. Answers from the catalogue only, or refuses medical advice.
+    /// </summary>
+    Task<TreatmentInfoAgentResponse> AskTreatmentInfoAsync(
+        TreatmentInfoAgentRequest request,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Patient-info graph. Answers about patient administrative record only, or refuses medical advice.
+    /// </summary>
+    Task<PatientInfoAgentResponse> AskPatientInfoAsync(
+        PatientInfoAgentRequest request,
+        CancellationToken cancellationToken);
 }

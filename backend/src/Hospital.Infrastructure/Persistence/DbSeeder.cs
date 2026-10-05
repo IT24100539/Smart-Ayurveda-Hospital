@@ -7,7 +7,7 @@ namespace Hospital.Infrastructure.Persistence;
 
 public static class DbSeeder
 {
-    public static async Task SeedAsync(HospitalDbContext db, ILogger logger, CancellationToken cancellationToken = default)
+    public static async Task SeedAsync(HospitalDbContext db, ILogger logger, bool isDevelopment = true, CancellationToken cancellationToken = default)
     {
         if (db.Database.IsRelational())
         {
@@ -26,90 +26,129 @@ public static class DbSeeder
             await db.Database.EnsureCreatedAsync(cancellationToken);
         }
 
-        if (!await db.Users.AnyAsync(cancellationToken))
+        if (isDevelopment)
         {
-            db.Users.AddRange(
-                new User
-                {
-                    Email = "admin@smartayurveda.local",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Admin1"),
-                    FullName = "Hospital Administrator",
-                    PhoneNumber = "0000000000",
-                    Role = UserRole.Admin
-                },
-                new User
-                {
-                    Email = "doctor@smartayurveda.local",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Doctor1"),
-                    FullName = "Dr. Ananya Sharma",
-                    PhoneNumber = "0000000001",
-                    Role = UserRole.Doctor
-                });
-        }
-
-        if (!await db.Users.AnyAsync(u => u.Email == "therapist@smartayurveda.local", cancellationToken))
-        {
-            db.Users.Add(new User
+            if (!await db.Users.AnyAsync(cancellationToken))
             {
-                Email = "therapist@smartayurveda.local",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Therapist1"),
-                FullName = "Nimali Perera",
-                PhoneNumber = "0000000002",
-                Role = UserRole.Therapist
-            });
-        }
+                db.Users.AddRange(
+                    new User
+                    {
+                        Email = "admin@smartayurveda.local",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Admin1"),
+                        FullName = "Hospital Administrator",
+                        PhoneNumber = "0000000000",
+                        Role = UserRole.Admin,
+                        TokenVersion = 1,
+                        MustChangePassword = false
+                    },
+                    new User
+                    {
+                        Email = "doctor@smartayurveda.local",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Doctor1"),
+                        FullName = "Dr. Ananya Sharma",
+                        PhoneNumber = "0000000001",
+                        Role = UserRole.Doctor,
+                        TokenVersion = 1,
+                        MustChangePassword = false
+                    });
+            }
 
-        const string patientLoginEmail = "meera.nair@example.local";
-        if (!await db.Users.AnyAsync(x => x.Email == patientLoginEmail, cancellationToken))
-        {
-            db.Users.Add(new User
+            if (!await db.Users.AnyAsync(u => u.Email == "therapist@smartayurveda.local", cancellationToken))
             {
-                Email = patientLoginEmail,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Patient1"),
-                FullName = "Meera Nair",
-                PhoneNumber = "9876500001",
-                Role = UserRole.Patient
-            });
-        }
-
-        if (!await db.StaffUsers.AnyAsync(cancellationToken))
-        {
-            db.StaffUsers.AddRange(
-                new StaffUser
+                db.Users.Add(new User
                 {
-                    Email = "admin@smartayurveda.local",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Admin1"),
-                    FullName = "Hospital Administrator",
-                    Role = StaffRole.Admin,
-                    Phone = "0000000000"
-                },
-                new StaffUser
-                {
-                    Email = "doctor@smartayurveda.local",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Doctor1"),
-                    FullName = "Dr. Ananya Sharma",
-                    Role = StaffRole.Doctor,
-                    Specialization = "Kayachikitsa",
-                    Phone = "0000000001"
+                    Email = "therapist@smartayurveda.local",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Therapist1"),
+                    FullName = "Nimali Perera",
+                    PhoneNumber = "0000000002",
+                    Role = UserRole.Therapist,
+                    TokenVersion = 1,
+                    MustChangePassword = false
                 });
+            }
+
+            const string patientLoginEmail = "meera.nair@example.local";
+            if (!await db.Users.AnyAsync(x => x.Email == patientLoginEmail, cancellationToken))
+            {
+                db.Users.Add(new User
+                {
+                    Email = patientLoginEmail,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Patient1"),
+                    FullName = "Meera Nair",
+                    PhoneNumber = "9876500001",
+                    Role = UserRole.Patient,
+                    TokenVersion = 1,
+                    MustChangePassword = false
+                });
+            }
+
+            if (!await db.StaffUsers.AnyAsync(cancellationToken))
+            {
+                db.StaffUsers.AddRange(
+                    new StaffUser
+                    {
+                        Email = "admin@smartayurveda.local",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Admin1"),
+                        FullName = "Hospital Administrator",
+                        Role = StaffRole.Admin,
+                        Phone = "0000000000"
+                    },
+                    new StaffUser
+                    {
+                        Email = "doctor@smartayurveda.local",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("ChangeMe!Doctor1"),
+                        FullName = "Dr. Ananya Sharma",
+                        Role = StaffRole.Doctor,
+                        Specialization = "Kayachikitsa",
+                        Phone = "0000000001"
+                    });
+            }
+
+            await SeedSampleDoctorsAsync(db, cancellationToken);
+        }
+        else
+        {
+            // Production / Staging: Seed accounts exist only in Development.
+            // Require initial-admin setup via environment variables.
+            var hasAdmin = await db.Users.AnyAsync(u => u.Role == UserRole.Admin, cancellationToken);
+            if (!hasAdmin)
+            {
+                var adminEmail = Environment.GetEnvironmentVariable("ADMIN_INITIAL_EMAIL");
+                var adminPassword = Environment.GetEnvironmentVariable("ADMIN_INITIAL_PASSWORD");
+                var adminName = Environment.GetEnvironmentVariable("ADMIN_INITIAL_NAME") ?? "System Administrator";
+                var adminPhone = Environment.GetEnvironmentVariable("ADMIN_INITIAL_PHONE") ?? "0000000000";
+
+                if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
+                {
+                    logger.LogInformation("Provisioning initial Production administrator for {Email}", adminEmail);
+                    db.Users.Add(new User
+                    {
+                        Email = adminEmail.Trim().ToLowerInvariant(),
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                        FullName = adminName.Trim(),
+                        PhoneNumber = adminPhone.Trim(),
+                        Role = UserRole.Admin,
+                        IsActive = true,
+                        TokenVersion = 1,
+                        MustChangePassword = true
+                    });
+                }
+                else
+                {
+                    logger.LogWarning("Production environment detected but no Admin user exists and ADMIN_INITIAL_EMAIL / ADMIN_INITIAL_PASSWORD are not set.");
+                }
+            }
         }
 
         await db.SaveChangesAsync(cancellationToken);
 
         await SeedTreatmentsInformationAsync(db, cancellationToken);
 
-        if (!await db.Medicines.AnyAsync(cancellationToken))
-        {
-            db.Medicines.AddRange(
-                new Medicine { Name = "Triphala Churna", Form = MedicineForm.Churna, DosageGuidelines = "3-6 g at bedtime with warm water.", UnitPrice = 180 },
-                new Medicine { Name = "Ashwagandha", Form = MedicineForm.Churna, DosageGuidelines = "3 g twice daily with milk.", UnitPrice = 240 },
-                new Medicine { Name = "Dashamoola Kashayam", Form = MedicineForm.Kashayam, DosageGuidelines = "15 ml twice daily after food.", UnitPrice = 210 });
-        }
-
         await db.SaveChangesAsync(cancellationToken);
 
         await SeedPatientsAsync(db, cancellationToken);
         await SeedTreatmentSchedulesAsync(db, cancellationToken);
+        await EnsureBookableScheduleSlotsAsync(db, cancellationToken);
         await SeedWardsAndBedsAsync(db, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -118,7 +157,41 @@ public static class DbSeeder
         await db.SaveChangesAsync(cancellationToken);
 
         await SeedFeedbackAndCommunicationAsync(db, cancellationToken);
+        await EnsureCompletedVisitPerPatientAsync(db, cancellationToken);
         logger.LogInformation("Database schema ready and seed data applied.");
+    }
+
+    /// <summary>
+    /// Development-only physician directory rows. Names and <see cref="Doctor.IsSample"/> mark them as sample data.
+    /// Production never calls this method.
+    /// </summary>
+    private static async Task SeedSampleDoctorsAsync(HospitalDbContext db, CancellationToken cancellationToken)
+    {
+        if (await db.Doctors.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        const string sampleBio = "Sample development profile. Not a practising physician at this hospital.";
+        db.Doctors.AddRange(
+            new Doctor
+            {
+                Name = Doctor.SampleNamePrefix + "Vd. Ananya Sharma",
+                Specialty = "Kayachikitsa",
+                Qualifications = "BAMS, MD (Kayachikitsa)",
+                Bio = sampleBio,
+                IsActive = true,
+                IsSample = true
+            },
+            new Doctor
+            {
+                Name = Doctor.SampleNamePrefix + "Vd. Rohan Dissanayake",
+                Specialty = "Panchakarma",
+                Qualifications = "BAMS, Diploma in Panchakarma",
+                Bio = sampleBio,
+                IsActive = true,
+                IsSample = true
+            });
     }
 
     private static async Task SeedTreatmentsInformationAsync(HospitalDbContext db, CancellationToken cancellationToken)
@@ -276,6 +349,24 @@ public static class DbSeeder
     {
         if (await db.Patients.AnyAsync(cancellationToken))
         {
+            const string patientLoginEmail = "meera.nair@example.local";
+            if (!await db.Patients.AnyAsync(p => p.Email == patientLoginEmail, cancellationToken))
+            {
+                db.Patients.Add(new Patient
+                {
+                    Uhid = "SAH-2026-00007",
+                    FirstName = "Meera",
+                    LastName = "Nair",
+                    DateOfBirth = new DateOnly(1990, 6, 15),
+                    Gender = Gender.Female,
+                    Phone = "9876500001",
+                    Email = patientLoginEmail,
+                    Address = "Colombo",
+                    Prakriti = DoshaType.Pitta,
+                    IsActive = true
+                });
+                await db.SaveChangesAsync(cancellationToken);
+            }
             return;
         }
 
@@ -348,6 +439,19 @@ public static class DbSeeder
                 Phone = "0771000006",
                 Address = "Anuradhapura",
                 Prakriti = DoshaType.Vata | DoshaType.Kapha
+            },
+            new Patient
+            {
+                Uhid = "SAH-2026-00007",
+                FirstName = "Meera",
+                LastName = "Nair",
+                DateOfBirth = new DateOnly(1990, 6, 15),
+                Gender = Gender.Female,
+                Phone = "9876500001",
+                Email = "meera.nair@example.local",
+                Address = "Colombo",
+                Prakriti = DoshaType.Pitta,
+                IsActive = true
             });
     }
 
@@ -376,6 +480,56 @@ public static class DbSeeder
                     TimeSlot = "14:00-15:00",
                     MaxPatients = 6
                 });
+        }
+    }
+
+    /// <summary>
+    /// Each seeded treatment needs a bookable weekday in the coming weeks.
+    /// Staff-created rows stored start and end times only, so TimeSlot stayed
+    /// blank and the patient date list looked fully unavailable. Idempotent:
+    /// blank labels are filled, and a treatment with no active day gets
+    /// Monday, Wednesday, and Friday.
+    /// </summary>
+    private static async Task EnsureBookableScheduleSlotsAsync(HospitalDbContext db, CancellationToken cancellationToken)
+    {
+        var blank = await db.TreatmentSchedules
+            .Where(schedule => schedule.TimeSlot == "")
+            .ToListAsync(cancellationToken);
+        foreach (var schedule in blank)
+        {
+            schedule.TimeSlot = TreatmentSchedule.FormatSlot(schedule.StartTime, schedule.EndTime);
+            if (schedule.MaxPatients <= 0 && schedule.MaxSlotsPerDay > 0)
+            {
+                schedule.MaxPatients = schedule.MaxSlotsPerDay;
+            }
+        }
+
+        var treatments = await db.Treatments
+            .Include(treatment => treatment.Schedules)
+            .ToListAsync(cancellationToken);
+        foreach (var treatment in treatments.Where(treatment => treatment.IsActive))
+        {
+            if (treatment.Schedules.Any(schedule => schedule.IsActive && !string.IsNullOrWhiteSpace(schedule.TimeSlot)))
+            {
+                continue;
+            }
+
+            foreach (var day in new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday })
+            {
+                var start = new TimeOnly(9, 0);
+                var end = new TimeOnly(10, 0);
+                db.TreatmentSchedules.Add(new TreatmentSchedule
+                {
+                    TreatmentId = treatment.Id,
+                    DayOfWeek = day,
+                    StartTime = start,
+                    EndTime = end,
+                    TimeSlot = TreatmentSchedule.FormatSlot(start, end),
+                    MaxSlotsPerDay = 8,
+                    MaxPatients = 8,
+                    IsActive = true
+                });
+            }
         }
     }
 
@@ -759,6 +913,54 @@ public static class DbSeeder
                 Type = NotificationType.General,
                 IsRead = false
             });
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Feedback linked to a visit is accepted only after that visit is Completed.
+    /// Every seeded patient gets one completed Abhyanga (or first treatment) visit
+    /// so that path can be tried. Idempotent: a patient who already has a
+    /// completed appointment is left unchanged.
+    /// </summary>
+    private static async Task EnsureCompletedVisitPerPatientAsync(HospitalDbContext db, CancellationToken cancellationToken)
+    {
+        var treatment = await db.Treatments.FirstOrDefaultAsync(
+                item => item.Name == "Abhyanga",
+                cancellationToken)
+            ?? await db.Treatments.OrderBy(item => item.Name).FirstOrDefaultAsync(cancellationToken);
+        if (treatment is null)
+        {
+            return;
+        }
+
+        var completedPatientIds = await db.Appointments
+            .Where(appointment => appointment.Status == AppointmentStatus.Completed)
+            .Select(appointment => appointment.PatientId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var missing = await db.Patients
+            .Where(patient => !completedPatientIds.Contains(patient.Id))
+            .ToListAsync(cancellationToken);
+        if (missing.Count == 0)
+        {
+            return;
+        }
+
+        var requestedDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7));
+        var decidedAt = DateTimeOffset.UtcNow.AddDays(-7);
+        foreach (var patient in missing)
+        {
+            db.Appointments.Add(new Appointment
+            {
+                PatientId = patient.Id,
+                TreatmentId = treatment.Id,
+                RequestedDate = requestedDate,
+                RequestedTimeSlot = "09:00-10:00",
+                Status = AppointmentStatus.Completed,
+                DecidedAt = decidedAt
+            });
+        }
 
         await db.SaveChangesAsync(cancellationToken);
     }

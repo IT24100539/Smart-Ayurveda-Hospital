@@ -1,4 +1,4 @@
-using Hospital.Application.Appointments;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hospital.Api.Controllers;
@@ -8,15 +8,24 @@ namespace Hospital.Api.Controllers;
 [Route("api/internal")]
 public sealed class InternalController : ControllerBase
 {
-    private readonly IAppointmentService _appointments;
+    private readonly IValidator<CheckSlotRequest> _checkSlotValidator;
 
-    public InternalController(IAppointmentService appointments) => _appointments = appointments;
+    public InternalController(IValidator<CheckSlotRequest> checkSlotValidator) =>
+        _checkSlotValidator = checkSlotValidator;
 
-    // This endpoint is intended to be called by the internal Scheduling & Bed Agent using the X-Internal-Service-Key header.
+    // Called by the internal scheduling agent with the X-Internal-Service-Key header.
     [HttpPost("appointments/check-slot")]
-    public Task<ActionResult> CheckSlot([FromBody] object payload)
+    public async Task<ActionResult> CheckSlot([FromBody] CheckSlotRequest request, CancellationToken cancellationToken)
     {
-        // For now this is a thin passthrough placeholder. The agent should call a dedicated endpoint later.
-        return Task.FromResult<ActionResult>(Ok());
+        await _checkSlotValidator.ValidateAndThrowAsync(request, cancellationToken);
+        return Ok();
     }
+}
+
+public sealed class CheckSlotRequest
+{
+    public Guid? PatientId { get; init; }
+    public Guid? TreatmentId { get; init; }
+    public DateOnly? RequestedDate { get; init; }
+    public string? RequestedTimeSlot { get; init; }
 }

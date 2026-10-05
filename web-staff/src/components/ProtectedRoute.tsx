@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import type { UserRole } from "../auth/roles";
+import { isStaffRole } from "../auth/roles";
 import { hasValidJwt, useAuthStore } from "../store/authStore";
 
 type ProtectedRouteProps = {
@@ -30,6 +31,10 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
 
   if (!hasValidJwt(token) || !user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (!isStaffRole(user.role)) {
+    return <Navigate to="/login" replace state={{ staffOnly: true }} />;
   }
 
   if (roles && roles.length > 0 && !roles.includes(user.role)) {

@@ -1,4 +1,6 @@
+using System.Net;
 using System.Text.Json;
+using Hospital.Application.Communication;
 using Hospital.Application.Communication.Dtos;
 using Hospital.Domain.Entities;
 using Hospital.Domain.Enums;
@@ -124,7 +126,8 @@ public sealed class FeedbackServiceTests
             new UpdateFeedbackRequest(null, null, null, true),
             CancellationToken.None);
 
-        Assert.Equal(FeedbackStatus.Hidden, updated.Status);
+        Assert.Equal(FeedbackStatus.Withdrawn, updated.Status);
+        Assert.Empty(updated.Replies);
     }
 
     [Fact]
@@ -159,6 +162,75 @@ public sealed class FeedbackServiceTests
         Assert.Null(item.PatientId);
         Assert.DoesNotContain("Secret Name", JsonSerializer.Serialize(feed), StringComparison.Ordinal);
         Assert.DoesNotContain("Should stay off the feed.", feed.Select(x => x.Comment));
+    }
+
+    [Fact]
+    public async Task PublicFeed_OmitsWithdrawnFeedback()
+    {
+        var harness = new FeedbackHarness();
+        var withdrawn = harness.SeedFeedback(Now);
+        withdrawn.Status = FeedbackStatus.Withdrawn;
+        withdrawn.Comment = "Please take this note down.";
+
+        var feed = await harness.Feedback.GetPublicFeedAsync(CancellationToken.None);
+
+        Assert.Empty(feed);
+    }
+
+    [Fact]
+    public async Task ListMine_IncludesPostedReplies_AndOmitsDrafts()
+    {
+        var harness = new FeedbackHarness();
+        var feedback = harness.SeedFeedback(Now);
+        feedback.Status = FeedbackStatus.PendingModeration;
+        feedback.IsAnonymous = true;
+        feedback.Replies.Add(new FeedbackReply
+        {
+            FeedbackId = feedback.Id,
+            UserRole = FeedbackReplyUserRole.Staff,
+            Reply = "Namaste. We will review the morning queue.",
+            IsAiGenerated = false,
+            Status = FeedbackReplyStatus.Posted,
+            CreatedAt = Now
+        });
+        feedback.Replies.Add(new FeedbackReply
+        {
+            FeedbackId = feedback.Id,
+            UserRole = FeedbackReplyUserRole.Staff,
+            Reply = "Unpublished draft.",
+            IsAiGenerated = true,
+            Status = FeedbackReplyStatus.Draft,
+            CreatedAt = Now
+        });
+
+        var mine = await harness.Feedback.ListMineAsync(CancellationToken.None);
+
+        var item = Assert.Single(mine);
+        Assert.True(item.IsAnonymous);
+        var reply = Assert.Single(item.Replies);
+        Assert.Equal(FeedbackReplyUserRole.Staff, reply.UserRole);
+        Assert.Equal("Namaste. We will review the morning queue.", reply.Reply);
+    }
+
+    [Fact]
+    public async Task GetStats_ExcludesWithdrawnFeedback()
+    {
+        var harness = new FeedbackHarness(actAsStaff: true);
+        var counted = harness.SeedFeedback(Now);
+        counted.Status = FeedbackStatus.Visible;
+        counted.Rating = 4;
+        counted.Sentiment = FeedbackSentiment.Positive;
+        var withdrawn = harness.SeedFeedback(Now);
+        withdrawn.Status = FeedbackStatus.Withdrawn;
+        withdrawn.Rating = 1;
+        withdrawn.Sentiment = FeedbackSentiment.Negative;
+
+        var stats = await harness.Feedback.GetStatsAsync(CancellationToken.None);
+
+        Assert.Equal(1, stats.Total);
+        Assert.Equal(4, stats.AverageRating);
+        Assert.Equal(0, stats.Negative);
+        Assert.DoesNotContain(stats.ByStatus, row => row.Key == nameof(FeedbackStatus.Withdrawn));
     }
 
     [Fact]
@@ -300,6 +372,46 @@ public sealed class FeedbackServiceTests
         Assert.Equal(FeedbackStatus.PendingModeration, created.Status);
         Assert.Null(harness.FeedbackStore.Items.Single().Sentiment);
         Assert.Empty(harness.ReplyStore.Items);
+        var logged = Assert.Single(harness.AgentLog.Entries);
+        Assert.Contains("InvalidOperationException", logged.Message, StringComparison.Ordinal);
+        Assert.Contains("HttpStatus=none", logged.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("dev-internal-agent-secret", logged.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Analyse_WhenAgentSucceeds_WritesSentimentAndCategory()
+    {
+        var harness = new FeedbackHarness(actAsStaff: true);
+        var feedback = harness.SeedFeedback(FeedbackTestClock.Now);
+        harness.Agents.Sentiment = "Neutral";
+        harness.Agents.Category = "FacilityIssue";
+        harness.Agents.DraftSkipped = true;
+
+        var detail = await harness.Feedback.AnalyseAsync(feedback.Id, CancellationToken.None);
+
+        Assert.Equal(FeedbackSentiment.Neutral, detail.Sentiment);
+        Assert.Equal(FeedbackCategory.FacilityIssue, detail.Category);
+        Assert.Equal(FeedbackSentiment.Neutral, feedback.Sentiment);
+        Assert.Equal(FeedbackCategory.FacilityIssue, feedback.Category);
+        Assert.Empty(detail.Replies);
+    }
+
+    [Fact]
+    public async Task Analyse_WhenAgentIsDown_KeepsTheCommentAndExplains()
+    {
+        var harness = new FeedbackHarness(actAsStaff: true);
+        var feedback = harness.SeedFeedback(FeedbackTestClock.Now);
+        harness.Agents.Failure = new HttpRequestException("connection refused", null, HttpStatusCode.ServiceUnavailable);
+
+        var error = await Assert.ThrowsAsync<DomainException>(() =>
+            harness.Feedback.AnalyseAsync(feedback.Id, CancellationToken.None));
+
+        Assert.Equal(ReplyService.AiUnavailableMessage, error.Message);
+        Assert.Equal("Original comment.", feedback.Comment);
+        Assert.Null(feedback.Sentiment);
+        Assert.Null(feedback.Category);
+        var logged = Assert.Single(harness.AgentLog.Entries);
+        Assert.Contains("503", logged.Message, StringComparison.Ordinal);
     }
 
     [Fact]

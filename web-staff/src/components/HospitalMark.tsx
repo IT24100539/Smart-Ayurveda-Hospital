@@ -39,6 +39,7 @@ export function HospitalLogo({ className = "h-11 w-11" }: MarkProps) {
 /** Hospital photos cycling inside the sidebar leaf. */
 export function LeafImageSlide() {
   const [index, setIndex] = useState(0);
+  const [failedSrcs, setFailedSrcs] = useState<Set<string>>(new Set());
   const boxRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLParagraphElement>(null);
   const [fontSize, setFontSize] = useState(48);
@@ -93,6 +94,22 @@ export function LeafImageSlide() {
         >
           HEALTH
         </p>
+        {LEAF_SLIDES.map((item) => (
+          <img
+            key={`${item.src}-preload`}
+            src={item.src}
+            alt=""
+            className="hidden"
+            onError={() =>
+              setFailedSrcs((current) => {
+                if (current.has(item.src)) return current;
+                const next = new Set(current);
+                next.add(item.src);
+                return next;
+              })
+            }
+          />
+        ))}
         {LEAF_SLIDES.map((item, itemIndex) => (
           <p
             key={item.src}
@@ -101,7 +118,8 @@ export function LeafImageSlide() {
             style={{
               fontSize,
               transform: "scaleY(1.42)",
-              backgroundImage: `url(${item.src})`,
+              backgroundImage: failedSrcs.has(item.src) ? undefined : `url(${item.src})`,
+              backgroundColor: failedSrcs.has(item.src) ? "#1a7573" : undefined,
               WebkitBackgroundClip: "text",
               backgroundClip: "text",
               opacity: itemIndex === index ? 1 : 0

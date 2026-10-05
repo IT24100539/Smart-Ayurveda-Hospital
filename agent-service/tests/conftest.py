@@ -1,5 +1,9 @@
 """Unit tests talk to a fake Hospital.Api so workflow persistence stays in-process."""
 
+import os
+
+os.environ.setdefault("AGENT_SHARED_SECRET", "unit-test-agent-shared-secret")
+
 import json
 
 import httpx

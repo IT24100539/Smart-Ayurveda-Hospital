@@ -24,6 +24,7 @@ from app.agents.treatment_info_agent import (
 )
 from app.main import app
 from app.schemas import TreatmentInfoAgentRequest
+from app.settings import settings
 
 # ---------------------------------------------------------------------------
 # Fixtures: mock backend responses
@@ -197,11 +198,45 @@ async def test_diagnostic_question_triggers_refusal():
     assert len(response.matched_treatment_ids) == 0
 
 
+@pytest.mark.asyncio
+async def test_days_question_and_sinhala_question_returns_grounded_answer():
+    """Questions with 'days' or in Sinhala should resolve treatments correctly."""
+    with (
+        patch("app.agents.treatment_info_agent.httpx.AsyncClient") as mock_client_cls,
+        patch("app.agents.treatment_info_agent.ChatOllama") as mock_llm_cls,
+    ):
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(
+            return_value=_make_httpx_response(SEED_PANCHAKARMA_RESPONSE)
+        )
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client_cls.return_value = mock_client
+
+        mock_llm = AsyncMock()
+        mock_llm.ainvoke = AsyncMock(
+            return_value=_make_llm_response("Panchakarma is available on Monday, Wednesday, Friday.")
+        )
+        mock_llm_cls.return_value = mock_llm
+
+        # 1. Multi-word inquiry with 'days'
+        req1 = TreatmentInfoAgentRequest(question="What days is Panchakarma available?")
+        res1 = await run_treatment_info_agent(req1)
+        assert res1.refused is False
+        assert "aaaaaaaa-0000-0000-0000-000000000001" in res1.matched_treatment_ids
+
+        # 2. Sinhala inquiry
+        req2 = TreatmentInfoAgentRequest(question="පංචකර්ම ගැන විස්තර කියන්න")
+        res2 = await run_treatment_info_agent(req2)
+        assert res2.refused is False
+        assert "aaaaaaaa-0000-0000-0000-000000000001" in res2.matched_treatment_ids
+
+
 # ---------------------------------------------------------------------------
 # Route-level tests (via TestClient)
 # ---------------------------------------------------------------------------
 
-INTERNAL_SECRET = "dev-internal-agent-secret"
+INTERNAL_SECRET = settings.shared_secret.get_secret_value()
 
 
 class TestTreatmentInfoRoute:

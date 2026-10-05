@@ -70,12 +70,33 @@ enum NotificationKind {
   reply('FeedbackReply'),
   statusChange('ComplaintUpdate'),
   escalation('ComplaintEscalated'),
-  general('General');
+  general('General'),
+  appointmentApproved('AppointmentApproved'),
+  appointmentRejected('AppointmentRejected'),
+  appointmentRescheduled('AppointmentRescheduled'),
+  appointmentCancelled('AppointmentCancelled'),
+  prescriptionIssued('PrescriptionIssued'),
+  invoiceIssued('InvoiceIssued');
 
   const NotificationKind(this.wireName);
   final String wireName;
 
   static NotificationKind fromWire(Object? value) {
+    if (value is num) {
+      return switch (value.toInt()) {
+        1 => NotificationKind.reply,
+        2 => NotificationKind.statusChange,
+        3 => NotificationKind.escalation,
+        4 => NotificationKind.general,
+        6 => NotificationKind.appointmentApproved,
+        7 => NotificationKind.appointmentRejected,
+        8 => NotificationKind.appointmentRescheduled,
+        9 => NotificationKind.appointmentCancelled,
+        10 => NotificationKind.prescriptionIssued,
+        11 => NotificationKind.invoiceIssued,
+        _ => NotificationKind.general,
+      };
+    }
     return NotificationKind.values.firstWhere(
       (kind) => kind.wireName == value,
       orElse: () => NotificationKind.general,
@@ -190,6 +211,7 @@ class PatientFeedback {
     required this.canEdit,
     this.appointmentId,
     this.treatmentId,
+    this.replies = const [],
   });
 
   final String id;
@@ -201,6 +223,7 @@ class PatientFeedback {
   final bool canEdit;
   final String? appointmentId;
   final String? treatmentId;
+  final List<PublicReply> replies;
 
   factory PatientFeedback.fromJson(Map<String, dynamic> json) {
     return PatientFeedback(
@@ -213,6 +236,7 @@ class PatientFeedback {
       canEdit: json['canEdit'] as bool? ?? false,
       appointmentId: json['appointmentId'] as String?,
       treatmentId: json['treatmentId'] as String?,
+      replies: _list(json['replies'], PublicReply.fromJson),
     );
   }
 }

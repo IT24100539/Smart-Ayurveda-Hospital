@@ -1,9 +1,31 @@
-export enum TreatmentCategory {
-  Consultation = 0,
-  Panchakarma = 1,
-  Therapy = 2,
-  Massage = 3,
-  Other = 4
+/** Matches Hospital.Domain.Enums.TreatmentCategory. The API serializes these as names. */
+export const TREATMENT_CATEGORIES = [
+  "Panchakarma",
+  "Shirodhara",
+  "HerbalSteam",
+  "Nasya",
+  "General",
+  "Abhyanga",
+  "Consultation"
+] as const;
+
+export type TreatmentCategory = (typeof TREATMENT_CATEGORIES)[number];
+
+/** Sunday-first labels for the schedule grid. Values match the API Weekday names. */
+export const WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday"
+] as const;
+
+export type WeekdayName = (typeof WEEKDAYS)[number];
+
+export function formatCategory(category: string): string {
+  return category.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
 export interface ScheduleEntryDto {
@@ -11,7 +33,7 @@ export interface ScheduleEntryDto {
   treatmentId: string;
   therapistId?: string;
   therapistName?: string;
-  dayOfWeek: number; // 0 = Sunday, 6 = Saturday
+  dayOfWeek: WeekdayName;
   startTime: string; // "HH:mm:ss"
   endTime: string; // "HH:mm:ss"
   maxSlotsPerDay: number;
@@ -28,7 +50,7 @@ export interface TreatmentSummaryDto {
   durationMinutes: number;
   unitPrice: number;
   isActive: boolean;
-  availableDays: number[]; // 0-6
+  availableDays: WeekdayName[];
 }
 
 export interface TreatmentDetailDto extends TreatmentSummaryDto {
@@ -47,12 +69,16 @@ export interface CreateTreatmentRequest {
 }
 
 export interface CreateScheduleEntryRequest {
-  dayOfWeek: number;
+  dayOfWeek: WeekdayName;
   startTime: string;
   endTime: string;
   maxSlotsPerDay: number;
   therapistId?: string;
   isActive?: boolean;
+}
+
+export interface UpdateScheduleEntryRequest extends CreateScheduleEntryRequest {
+  isActive: boolean;
 }
 
 export interface UpdateTreatmentRequest {
@@ -115,6 +141,17 @@ export const deactivateTreatment = async (id: string): Promise<void> => {
 export const createScheduleEntry = async (treatmentId: string, data: CreateScheduleEntryRequest): Promise<ScheduleEntryDto> => {
   return api.request(`/treatments/${treatmentId}/schedule`, {
     method: 'POST',
+    body: JSON.stringify(data)
+  });
+};
+
+export const updateScheduleEntry = async (
+  treatmentId: string,
+  entryId: string,
+  data: UpdateScheduleEntryRequest
+): Promise<ScheduleEntryDto> => {
+  return api.request(`/treatments/${treatmentId}/schedule/${entryId}`, {
+    method: 'PUT',
     body: JSON.stringify(data)
   });
 };

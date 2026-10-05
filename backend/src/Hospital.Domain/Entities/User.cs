@@ -15,4 +15,10 @@ public class User : BaseEntity
     public string PasswordHash { get; set; } = string.Empty;
     public UserRole Role { get; set; } = UserRole.Patient;
     public bool IsActive { get; set; } = true;
+    public int TokenVersion { get; set; } = 1;
+    public bool MustChangePassword { get; set; } = false;
+    public int FailedLoginCount { get; set; } = 0;
+    public DateTimeOffset? LockoutEnd { get; set; }
+    public string? PasswordResetTokenHash { get; set; }
+    public DateTimeOffset? PasswordResetTokenExpiresAt { get; set; }
 }

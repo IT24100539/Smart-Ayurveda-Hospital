@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+
+import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/language_switcher.dart';
+import '../../../router/app_routes.dart';
+import '../../../shared/release_text_input.dart';
+import '../../../shared/widgets/clinic_widgets.dart';
 import '../../../theme/app_theme.dart';
 import '../application/auth_controller.dart';
+import '../domain/auth_form_rules.dart';
 
 enum AuthFormMode { login, register }
 
@@ -18,6 +26,7 @@ abstract final class LoginScreenKeys {
   static const phoneNumber = Key('login_phone_number_field');
   static const submit = Key('login_submit_button');
   static const modeToggle = Key('login_mode_toggle');
+  static const forgotPassword = Key('login_forgot_password_link');
 }
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -32,9 +41,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneNumberController = TextEditingController();
+  final _dateOfBirthController = TextEditingController();
   final _passwordController = TextEditingController();
 
   AuthFormMode _mode = AuthFormMode.login;
+  String? _gender;
   bool _isSubmitting = false;
   bool _obscurePassword = true;
   String? _errorMessage;
@@ -43,9 +54,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    releaseTextInput();
     _fullNameController.dispose();
     _emailController.dispose();
     _phoneNumberController.dispose();
+    _dateOfBirthController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -58,8 +71,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _formKey.currentState?.reset();
   }
 
+  Future<void> _pickDateOfBirth() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year - 30, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: DateUtils.dateOnly(now),
+    );
+    if (picked == null) return;
+    setState(() {
+      _dateOfBirthController.text = DateFormat('yyyy-MM-dd').format(picked);
+    });
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    releaseTextInput();
 
     setState(() {
       _isSubmitting = true;
@@ -77,6 +105,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: email,
           phoneNumber: _phoneNumberController.text.trim(),
           password: password,
+          dateOfBirth: _dateOfBirthController.text.trim(),
+          gender: _gender!,
         );
       } else {
         await controller.login(email: email, password: password);
@@ -99,8 +129,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String _describe(ApiException error) {
     final l10n = AppLocalizations.of(context);
     if (error.isNetworkError) return l10n.networkErrorMessage;
-    if (error.isUnauthorized) return l10n.invalidCredentialsMessage;
-    if (error.isConflict) return l10n.emailAlreadyRegisteredMessage;
+    if (error.statusCode == 429) return l10n.tooManyAttempts;
+    if (error.isUnauthorized) {
+      final detail = error.detail?.toLowerCase() ?? '';
+      if (detail.contains('locked')) return l10n.accountTemporarilyLocked;
+      return l10n.invalidCredentialsMessage;
+    }
+    if (error.isConflict) return l10n.registrationUnavailableMessage;
     return error.message ?? l10n.genericErrorMessage;
   }
 
@@ -108,22 +143,78 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final brand = AyurvedaThemeExtension.of(context);
     final sessionExpired = ref.watch(authControllerProvider).sessionExpired;
 
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: _AuthFrame(
+                child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.spa, size: 40, color: theme.colorScheme.primary),
-                    const SizedBox(height: 18),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      height: 52,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          colors: [
+                            brand.headerGradientStart,
+                            brand.headerGradientEnd,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned.fill(
+                            child: Opacity(
+                              opacity: 0.16,
+                              child: Image.asset(
+                                'assets/images/ayurveda-courtyard.png',
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const SizedBox.shrink(),
+                              ),
+                            ),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: brand.onHeader.withValues(alpha: 0.15),
+                                  border: Border.all(color: brand.avatarBackground, width: 1.2),
+                                ),
+                                child: Icon(Icons.spa, size: 16, color: brand.avatarBackground),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'SMART AYURVEDA',
+                                style: TextStyle(
+                                  color: brand.onHeader,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                     Text(
                       _isRegister ? l10n.register : l10n.signIn,
                       textAlign: TextAlign.center,
@@ -131,7 +222,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       _isRegister ? l10n.registerSubtitle : l10n.signInSubtitle,
                       textAlign: TextAlign.center,
@@ -139,7 +230,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 14),
+                    Text(
+                      l10n.chooseLanguage,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Center(child: LanguageSwitcher()),
+                    const SizedBox(height: 16),
 
                     if (sessionExpired && _errorMessage == null)
                       _MessageBanner(
@@ -151,8 +252,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (_errorMessage != null)
                       _MessageBanner(
                         message: _errorMessage!,
-                        color: AyurvedaColors.danger.withValues(alpha: 0.10),
-                        textColor: AyurvedaColors.danger,
+                        color: theme.colorScheme.errorContainer,
+                        textColor: theme.colorScheme.error,
                         icon: Icons.error_outline,
                       ),
 
@@ -222,6 +323,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _dateOfBirthController,
+                        readOnly: true,
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
+                          labelText: l10n.dateOfBirthLabel,
+                          prefixIcon: const Icon(Icons.cake_outlined),
+                        ),
+                        onTap: _pickDateOfBirth,
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                            ? l10n.dateOfBirthRequired
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: _gender,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: l10n.genderLabel,
+                          prefixIcon: const Icon(Icons.wc_outlined),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'Female',
+                            child: Text(l10n.genderFemale),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Male',
+                            child: Text(l10n.genderMale),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Other',
+                            child: Text(l10n.genderOther),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Unspecified',
+                            child: Text(l10n.genderUnspecified),
+                          ),
+                        ],
+                        onChanged: _isSubmitting
+                            ? null
+                            : (value) => setState(() => _gender = value),
+                        validator: (value) =>
+                            (value == null || value.isEmpty)
+                            ? l10n.genderRequired
+                            : null,
+                      ),
                     ],
 
                     const SizedBox(height: 16),
@@ -234,6 +384,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onFieldSubmitted: (_) => _submit(),
                       decoration: InputDecoration(
                         labelText: l10n.passwordLabel,
+                        helperText: _isRegister ? registerPasswordHint(l10n) : null,
+                        helperMaxLines: 6,
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           onPressed: () => setState(
@@ -247,6 +399,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       validator: (value) {
+                        if (_isRegister) return validateNewPassword(value, l10n);
                         final password = value ?? '';
                         if (password.isEmpty) return l10n.passwordRequired;
                         if (password.length < AppConfig.minPasswordLength) {
@@ -262,6 +415,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         return null;
                       },
                     ),
+
+                    if (!_isRegister)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Semantics(
+                          button: true,
+                          label: l10n.forgotPasswordLink,
+                          child: TextButton(
+                            key: LoginScreenKeys.forgotPassword,
+                            onPressed: _isSubmitting
+                                ? null
+                                : () => context.push(AppRoutes.forgotPassword),
+                            child: Text(l10n.forgotPasswordLink),
+                          ),
+                        ),
+                      ),
 
                     const SizedBox(height: 28),
                     FilledButton(
@@ -288,11 +457,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
               ),
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// Phones keep the form on the plain page. Tablets and web wrap it in a rounded panel.
+class _AuthFrame extends StatelessWidget {
+  const _AuthFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).width >= 600;
+    if (!wide) return child;
+    return RoundedPanel(padding: const EdgeInsets.all(28), child: child);
   }
 }
 

@@ -18,7 +18,7 @@ public sealed class WardService : IWardService
         _uow = uow;
     }
 
-    public async Task<IEnumerable<WardOccupancyDto>> GetAllOccupancyAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<WardOccupancyDto>> GetAllOccupancyAsync(bool includeBeds, CancellationToken cancellationToken)
     {
         var wards = await _wards.ListAllAsync(cancellationToken);
         return wards.Select(w => new WardOccupancyDto(
@@ -28,7 +28,9 @@ public sealed class WardService : IWardService
             w.Gender,
             w.TotalCapacity,
             w.Beds.Count(b => b.IsOccupied),
-            w.Beds.Select(b => new BedDto(b.Id, b.BedLabel, b.IsOccupied))));
+            includeBeds
+                ? w.Beds.Select(b => new BedDto(b.Id, b.BedLabel, b.IsOccupied))
+                : Enumerable.Empty<BedDto>()));
     }
 
     public async Task<WardOccupancyDto?> GetOccupancyAsync(Guid id, bool forPatient, CancellationToken cancellationToken)

@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using FluentValidation;
 using Hospital.Api.Authentication;
 using Hospital.Application.Appointments;
+using Hospital.Application.Common;
 using Hospital.Application.Wards;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +12,10 @@ namespace Hospital.Api.Controllers;
 
 [ApiController]
 [Authorize(Policy = InternalServiceAuthenticationHandler.PolicyName)]
-public sealed class InternalSchedulingController(IWardService wards, TreatmentAvailabilityService treatments) : ControllerBase
+public sealed class InternalSchedulingController(
+    IWardService wards,
+    TreatmentAvailabilityService treatments,
+    IValidator<InternalAdmissionRequest> admissions) : ControllerBase
 {
     [HttpGet("api/internal/wards/{id:guid}/availability")]
     public async Task<ActionResult> WardAvailability(Guid id, CancellationToken cancellationToken)
@@ -27,12 +32,15 @@ public sealed class InternalSchedulingController(IWardService wards, TreatmentAv
         var patientId = request.PatientId ?? request.SnakePatientId;
         var wardId = request.WardId ?? request.SnakeWardId;
         var date = request.PreferredDate ?? request.SnakePreferredDate;
+        await admissions.ValidateAndThrowAsync(request, cancellationToken);
         if (patientId is null || patientId == Guid.Empty || wardId is null || wardId == Guid.Empty ||
-            date is null || date == default(DateOnly) ||
+            date is null || !DateSanity.IsCalendarDate(date.Value) ||
             (request.PatientId.HasValue && request.SnakePatientId.HasValue && request.PatientId != request.SnakePatientId) ||
             (request.WardId.HasValue && request.SnakeWardId.HasValue && request.WardId != request.SnakeWardId) ||
             (request.PreferredDate.HasValue && request.SnakePreferredDate.HasValue && request.PreferredDate != request.SnakePreferredDate))
-            return BadRequest(new { message = "Patient, ward and preferred date are required and must be unambiguous." });
+        {
+            throw new FluentValidation.ValidationException("Patient, ward and preferred date are required and must be unambiguous.");
+        }
 
         var created = await wards.RequestAdmissionAsync(new(patientId.Value, wardId.Value, request.Reason, date.Value, true), cancellationToken);
         return StatusCode(StatusCodes.Status201Created, new { admissionRequestId = created.Id });

@@ -19,6 +19,22 @@ public sealed class ApproveAgentWorkflowRequestValidator : AbstractValidator<App
     }
 }
 
+public sealed class AskPatientInfoRequestValidator : AbstractValidator<AskPatientInfoRequest>
+{
+    public AskPatientInfoRequestValidator()
+    {
+        RuleFor(x => x.Question).NotEmpty().MaximumLength(2000);
+    }
+}
+
+public sealed class AskTreatmentInfoRequestValidator : AbstractValidator<AskTreatmentInfoRequest>
+{
+    public AskTreatmentInfoRequestValidator()
+    {
+        RuleFor(x => x.Question).NotEmpty().MaximumLength(2000);
+    }
+}
+
 public sealed class AgentInvokeRequestValidator : AbstractValidator<AgentInvokeRequest>
 {
     public AgentInvokeRequestValidator()

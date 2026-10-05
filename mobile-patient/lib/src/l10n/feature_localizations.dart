@@ -21,6 +21,16 @@ class FeatureLocalizations {
 
   String get bookAppointment =>
       text('Book appointment', 'හමුවක් වෙන්කරවා ගන්න');
+  String get therapyStep => text('Therapy', 'ප්‍රතිකාරය');
+  String get confirmStep => text('Confirm', 'තහවුරු');
+  String get chooseTherapy =>
+      text('Choose a therapy', 'ප්‍රතිකාරයක් තෝරන්න');
+  String get noTherapies => text(
+    'No therapies are available to book right now.',
+    'මේ මොහොතේ වෙන්කරවා ගැනීමට ප්‍රතිකාර නොමැත.',
+  );
+  String get loadTherapiesError =>
+      text('Could not load therapies.', 'ප්‍රතිකාර පූරණය කළ නොහැක.');
   String get chooseDate => text('Choose a date', 'දිනයක් තෝරන්න');
   String get unavailableGrey => text(
     'Unavailable days are shown in grey.',
@@ -51,8 +61,10 @@ class FeatureLocalizations {
   );
   String get appointmentRequested =>
       text('Appointment requested', 'හමුවීම ඉල්ලා ඇත');
-  String get pendingApproval =>
-      text('Pending staff approval', 'කාර්ය මණ්ඩල අනුමැතිය බලාපොරොත්තුවෙන්');
+  String get pendingApproval => text(
+    'Request sent - pending staff approval',
+    'ඉල්ලීම යවා ඇත - කාර්ය මණ්ඩල අනුමැතිය බලාපොරොත්තුවෙන්',
+  );
   String get pendingExplanation => text(
     'Your request was sent successfully. It is not confirmed yet; you can track its status in My appointments.',
     'ඔබගේ ඉල්ලීම සාර්ථකව යවා ඇත. එය තවම තහවුරු කර නැත; මගේ හමුවීම් තුළ එහි තත්ත්වය බලන්න.',
@@ -142,5 +154,57 @@ class FeatureLocalizations {
   String occupied(int occupied, int total) => text(
     '$occupied of $total beds occupied',
     'ඇඳන් $total න් $occupied ක් භාවිතයේ ඇත',
+  );
+
+  String get askAboutTreatments =>
+      text('Ask about treatments', 'ප්‍රතිකාර ගැන අසන්න');
+  String get askAboutTreatmentsHint => text(
+    'Ask when a therapy is offered or what it costs. Answers come from the catalogue only and are not medical advice.',
+    'ප්‍රතිකාරයක් ලබා දෙන දින හෝ ගාස්තු ගැන අසන්න. පිළිතුරු ලැයිස්තුවෙන් පමණක් ලැබෙන අතර වෛද්‍ය උපදෙස් නොවේ.',
+  );
+  String get askQuestionLabel => text('Your question', 'ඔබේ ප්‍රශ්නය');
+  String get askQuestionPlaceholder => text(
+    'Example: When is Panchakarma available and what is the fee?',
+    'උදාහරණය: පංචකර්ම ලබා දෙන්නේ කවදාද සහ ගාස්තුව කීයද?',
+  );
+  String get askButton => text('Ask', 'අසන්න');
+  String get asking => text('Asking…', 'අසමින්…');
+  String get askSignInRequired => text(
+    'Sign in to ask about therapies, days, and fees.',
+    'ප්‍රතිකාර, දින සහ ගාස්තු ගැන අසන්නට පුරනය වන්න.',
+  );
+  String get askSignIn => text('Sign in', 'පුරනය වන්න');
+  String get medicalAdviceRefused =>
+      text('Medical advice refused', 'වෛද්‍ය උපදෙස් ප්‍රතික්ෂේපයි');
+  String get askUnavailable => text(
+    'The treatment information assistant is unavailable. Please try again.',
+    'ප්‍රතිකාර තොරතුරු සහායකයා ලබාගත නොහැක. නැවත උත්සාහ කරන්න.',
+  );
+  String get charakaChatTitle =>
+      text('Charaka AI Assistant', 'චරක AI සහායකයා');
+  String get charakaDisclaimer => text(
+    'Charaka provides general information on hospital therapies and administrative records. It does not provide medical advice or diagnoses. Always consult a qualified physician.',
+    'චරක රෝහල් ප්‍රතිකාර සහ පරිපාලන වාර්තා පිළිබඳ සාමාන්‍ය තොරතුරු සපයයි. එය වෛද්‍ය උපදෙස් හෝ රෝග විනිශ්චය ලබා නොදේ. සෑමවිටම සුදුසුකම් ලත් වෛද්‍යවරයෙකුගෙන් උපදෙස් ලබාගන්න.',
+  );
+  String get charakaOfflineBanner => text(
+    'AI assistant is currently unreachable. Please check your network connection.',
+    'AI සහායකයා මේ අවස්ථාවේ සම්බන්ධ කරගත නොහැක. ඔබගේ ජාල සබඳතාව පරීක්ෂා කරන්න.',
+  );
+  String get charakaTyping =>
+      text('Charaka is checking hospital records…', 'චරක රෝහල් වාර්තා පරීක්ෂා කරමින්…');
+  String get charakaRetry => text('Retry', 'නැවත උත්සාහ කරන්න');
+  String get charakaInputHint =>
+      text('Ask a question about therapies or your records…', 'ප්‍රතිකාර හෝ ඔබගේ වාර්තා ගැන ප්‍රශ්නයක් අසන්න…');
+  String get charakaTopicTreatments =>
+      text('Therapies & Fees', 'ප්‍රතිකාර සහ ගාස්තු');
+  String get charakaTopicPatient =>
+      text('My Patient Info', 'මගේ රෝගී තොරතුරු');
+  String get charakaWelcomeTreatments => text(
+    'Ayubowan! I am Charaka, your hospital assistant. You can ask about hospital therapies, fees, schedules, and treatment durations.',
+    'ආයුබෝවන්! මම ඔබගේ රෝහල් සහායක චරක. ඔබට අපගේ ආයුර්වේද ප්‍රතිකාර, ගාස්තු, කාලසටහන් සහ ප්‍රතිකාර කාලසීමාවන් ගැන විමසිය හැක.',
+  );
+  String get charakaWelcomePatient => text(
+    'Ayubowan! You can ask me about your administrative details such as registered UHID, address, contact number, or constitution type.',
+    'ආයුබෝවන්! ලියාපදිංචි UHID අංකය, ලිපිනය, දුරකථන අංකය හෝ ප්‍රකෘති වර්ගය වැනි ඔබගේ පරිපාලන තොරතුරු විමසිය හැක.',
   );
 }

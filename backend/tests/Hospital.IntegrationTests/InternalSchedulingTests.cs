@@ -176,7 +176,9 @@ public sealed class InternalSchedulingTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<HospitalDbContext>>();
-                services.AddDbContext<HospitalDbContext>(options => options.UseInMemoryDatabase(_database));
+                services.AddDbContext<HospitalDbContext>((sp, options) =>
+                    options.UseInMemoryDatabase(_database)
+                        .AddInterceptors(sp.GetRequiredService<ClinicalAuditInterceptor>()));
             });
         }
         public HttpClient Client(string? key = "test-internal-service-key")

@@ -1,16 +1,22 @@
 import type { ReactNode } from "react";
 
-export type BadgeTone = "pending" | "approved" | "rejected" | "success" | "error";
+export type BadgeTone = "pending" | "approved" | "rejected" | "success" | "error" | "neutral";
 
 const tones: Record<BadgeTone, string> = {
-  pending: "bg-status-pending-bg text-status-pending-fg",
-  approved: "bg-status-approved-bg text-status-approved-fg",
-  rejected: "bg-status-rejected-bg text-status-rejected-fg",
-  success: "bg-status-success-bg text-status-success-fg",
-  error: "bg-status-error-bg text-status-error-fg"
+  neutral: "border border-surface-border bg-neutral-100 text-neutral-700",
+  pending: "border border-status-pending-fg/25 bg-status-pending-bg text-status-pending-fg",
+  approved: "border border-status-approved-fg/25 bg-status-approved-bg text-status-approved-fg",
+  rejected: "border border-status-rejected-fg/25 bg-status-rejected-bg text-status-rejected-fg",
+  success: "border border-status-success-fg/25 bg-status-success-bg text-status-success-fg",
+  error: "border border-status-error-fg/25 bg-status-error-bg text-status-error-fg"
 };
 
 const icons: Record<BadgeTone, ReactNode> = {
+  neutral: (
+    <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3.5 w-3.5">
+      <circle cx="8" cy="8" r="2.5" fill="currentColor" />
+    </svg>
+  ),
   pending: (
     <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3.5 w-3.5">
       <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -49,7 +55,7 @@ type BadgeProps = {
 
 export function Badge({ tone, children }: BadgeProps) {
   return (
-    <span className={["inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold", tones[tone]].join(" ")}>
+    <span className={["inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold", tones[tone]].join(" ")}>
       {icons[tone]}
       {children}
     </span>

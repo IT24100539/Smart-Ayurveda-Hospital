@@ -25,8 +25,9 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<HospitalDbContext>>();
-            services.AddDbContext<HospitalDbContext>(options =>
-                options.UseNpgsql(_connectionString));
+            services.AddDbContext<HospitalDbContext>((sp, options) =>
+                options.UseNpgsql(_connectionString)
+                    .AddInterceptors(sp.GetRequiredService<ClinicalAuditInterceptor>()));
         });
     }
 
@@ -113,20 +114,42 @@ public sealed class PostgreSqlHospitalApiFactory : WebApplicationFactory<Program
     public HttpClient CreateAuthenticatedClient(Guid userId, UserRole role)
     {
         using var scope = Services.CreateScope();
-        var tokens = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
-        var (token, _) = tokens.Create(new User
+        var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+        if (!db.Users.Any(u => u.Id == userId))
         {
-            Id = userId,
-            FullName = $"Integration {role}",
-            Email = $"{role.ToString().ToLowerInvariant()}-{userId:N}@integration.test",
-            PhoneNumber = "0000000000",
-            Role = role,
-            IsActive = true
-        });
+            db.Users.Add(new User
+            {
+                Id = userId,
+                FullName = $"Integration {role}",
+                Email = $"{role.ToString().ToLowerInvariant()}-{userId:N}@integration.test",
+                PhoneNumber = UniquePhone(userId),
+                Role = role,
+                IsActive = true,
+                TokenVersion = 1,
+                PasswordHash = "test-hash"
+            });
+            db.SaveChanges();
+        }
+
+        var tokens = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
+        var user = db.Users.First(u => u.Id == userId);
+        var (token, _) = tokens.Create(user);
 
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         return client;
+    }
+
+    private static string UniquePhone(Guid userId)
+    {
+        var hex = userId.ToString("N");
+        var digits = new char[10];
+        for (var i = 0; i < digits.Length; i++)
+        {
+            digits[i] = (char)('0' + (hex[i] % 10));
+        }
+
+        return new string(digits);
     }
 }

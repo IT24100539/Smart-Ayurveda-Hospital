@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ApiError, api } from "../api/client";
-import { PageHeader } from "../components/ui";
+import { Badge, PageHeader, SafeImage, type BadgeTone } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
 
 type AppointmentStatus = "Pending" | "Approved" | "Rejected" | "Cancelled" | "Completed";
@@ -17,13 +17,11 @@ type Appointment = {
 
 type AppointmentPage = { items: Appointment[] };
 
-const statusStyles: Record<AppointmentStatus, string> = {
-  Pending: "bg-amber-100 text-amber-800",
-  Approved: "bg-emerald-100 text-emerald-800",
-  Rejected: "bg-red-100 text-red-700",
-  Cancelled: "bg-slate-100 text-slate-600",
-  Completed: "bg-primary-muted text-primary-dark"
-};
+function appointmentTone(status: AppointmentStatus): BadgeTone {
+  if (status === "Approved" || status === "Completed") return "approved";
+  if (status === "Rejected" || status === "Cancelled") return "rejected";
+  return "pending";
+}
 
 function startOfWeek(date: Date): Date {
   const result = new Date(date);
@@ -116,7 +114,7 @@ export function AppointmentsPage() {
         title="Appointment calendar"
         description="Review the working week and action pending requests."
       />
-      <img
+      <SafeImage
         src="/images/consultation-desk.png"
         alt="Consultation desk with an appointment book and tulsi"
         className="h-44 w-full rounded-2xl object-cover shadow-md"
@@ -125,7 +123,7 @@ export function AppointmentsPage() {
         <label className="text-sm font-medium text-ink">
           Treatment
           <select
-            className="ml-2 rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-sm"
+            className="field ml-2 w-auto"
             value={selectedTreatment}
             onChange={(event) => setSelectedTreatment(event.target.value)}
           >
@@ -143,7 +141,7 @@ export function AppointmentsPage() {
         <button className="rounded-lg border border-surface-border px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary-muted" onClick={() => setWeekStart(addDays(weekStart, 7))}>Next →</button>
       </div>
 
-      {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger">{error}</div>}
+      {error && <div role="alert" className="rounded-xl border border-status-error-fg/30 bg-status-error-bg px-4 py-3 text-sm text-danger">{error}</div>}
       {loading ? (
         <div className="rounded-xl border border-surface-border bg-surface-raised p-8 text-center text-muted">Loading appointments…</div>
       ) : (
@@ -165,12 +163,12 @@ export function AppointmentsPage() {
                       type="button"
                       disabled={appointment.status !== "Pending"}
                       onClick={() => { setSelected(appointment); setNote(""); }}
-                      className="w-full rounded-lg border border-surface-border bg-white p-3 text-left shadow-sm transition hover:border-primary disabled:cursor-default disabled:hover:border-surface-border"
+                      className="w-full rounded-lg border border-surface-border bg-surface-raised p-3 text-left shadow-sm transition hover:border-primary disabled:cursor-default disabled:hover:border-surface-border"
                     >
                       <p className="text-xs font-semibold text-primary">{appointment.requestedTimeSlot}</p>
                       <p className="mt-1 text-sm font-semibold text-ink">{appointment.treatmentName}</p>
                       <p className="mt-0.5 truncate text-xs text-muted">{appointment.patientName}</p>
-                      <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusStyles[appointment.status]}`}>{appointment.status}</span>
+                      <span className="mt-2 inline-flex"><Badge tone={appointmentTone(appointment.status)}>{appointment.status}</Badge></span>
                     </button>
                   ))}
                 </div>
@@ -180,8 +178,67 @@ export function AppointmentsPage() {
         </div>
       )}
 
+      {!loading ? (
+        <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised shadow-card">
+          <div className="border-b border-surface-border px-5 py-4">
+            <h2 className="font-display text-lg text-heading">Week list</h2>
+            <p className="mt-1 text-sm text-muted">The same visits as the calendar, with status and a row action for pending requests.</p>
+          </div>
+          {appointments.filter((item) => selectedTreatment === "all" || item.treatmentName === selectedTreatment).length === 0 ? (
+            <p className="p-8 text-center text-sm text-muted">No appointments this week.</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="data-table min-w-[40rem]">
+                <caption className="sr-only">Appointments for the working week</caption>
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Patient</th>
+                    <th>Treatment</th>
+                    <th>Status</th>
+                    <th className="text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {appointments
+                    .filter((item) => selectedTreatment === "all" || item.treatmentName === selectedTreatment)
+                    .map((appointment) => (
+                      <tr key={appointment.id}>
+                        <td className="px-4 py-3 whitespace-nowrap text-ink">
+                          {appointment.requestedDate} · {appointment.requestedTimeSlot}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-ink">{appointment.patientName}</td>
+                        <td className="px-4 py-3 text-muted">{appointment.treatmentName}</td>
+                        <td className="px-4 py-3">
+                          <Badge tone={appointmentTone(appointment.status)}>{appointment.status}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {appointment.status === "Pending" ? (
+                            <button
+                              type="button"
+                              className="rounded-lg border border-field-border px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary-muted"
+                              onClick={() => {
+                                setSelected(appointment);
+                                setNote("");
+                              }}
+                            >
+                              Review
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {selected && (
-        <div className="fixed inset-0 z-20 flex items-center justify-end bg-ink/25" onMouseDown={() => !deciding && setSelected(null)}>
+        <div className="fixed inset-0 z-20 flex items-center justify-end bg-scrim/40" onMouseDown={() => !deciding && setSelected(null)}>
           <aside className="h-full w-full max-w-md bg-surface-raised p-6 shadow-2xl" onMouseDown={(event) => event.stopPropagation()} aria-label="Appointment decision">
             <div className="flex items-start justify-between">
               <div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Pending appointment</p><h2 className="mt-1 font-serif text-xl font-semibold">Review request</h2></div>
@@ -193,11 +250,11 @@ export function AppointmentsPage() {
               <div><dt className="text-xs text-muted">Schedule</dt><dd className="font-semibold">{selected.requestedDate} · {selected.requestedTimeSlot}</dd></div>
             </dl>
             <label className="mt-5 block text-sm font-semibold">Decision note <span className="font-normal text-muted">(optional)</span>
-              <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} className="mt-2 w-full rounded-lg border border-surface-border bg-white p-3 font-normal outline-none focus:border-primary" placeholder="Add a note for the care team" />
+              <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} className="mt-2 field p-3 font-normal" placeholder="Add a note for the care team" />
             </label>
             <div className="mt-6 flex gap-3">
-              <button disabled={deciding} onClick={() => decide("Approved")} className="flex-1 rounded-lg bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-dark disabled:opacity-60">Approve</button>
-              <button disabled={deciding} onClick={() => decide("Rejected")} className="flex-1 rounded-lg border border-danger px-4 py-2.5 font-semibold text-danger hover:bg-red-50 disabled:opacity-60">Reject</button>
+              <button disabled={deciding} onClick={() => decide("Approved")} className="flex-1 rounded-lg bg-primary px-4 py-2.5 font-semibold text-primary-on hover:bg-primary-dark disabled:opacity-60">Approve</button>
+              <button disabled={deciding} onClick={() => decide("Rejected")} className="flex-1 rounded-lg border border-danger px-4 py-2.5 font-semibold text-danger hover:bg-status-error-bg disabled:opacity-60">Reject</button>
             </div>
           </aside>
         </div>

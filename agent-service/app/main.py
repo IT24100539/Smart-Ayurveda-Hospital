@@ -1,3 +1,5 @@
+import secrets
+
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
 
@@ -6,10 +8,13 @@ from app.agents.feedback_support_agent import (
     FeedbackAgentResponse,
     run_feedback_support,
 )
+from app.agents.patient_info_agent import run_patient_info_agent
 from app.agents.scheduling_bed_agent import run_scheduling_bed_agent
 from app.agents.treatment_info_agent import run_treatment_info_agent
 from app.graph.coordinator import CoordinatorRequest, CoordinatorResponse, coordinate, invoke_graph
 from app.schemas import (
+    PatientInfoAgentRequest,
+    PatientInfoAgentResponse,
     SchedulingAgentRequest,
     SchedulingAgentResponse,
     TreatmentInfoAgentRequest,
@@ -25,15 +30,27 @@ app = FastAPI(
 )
 
 
+@app.get("/")
+async def root() -> dict[str, str]:
+    return {"service": "agent-service", "health": "/health", "docs": "/docs"}
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "service": "agent-service"}
 
 
+def _shared_secret_value() -> str:
+    return settings.shared_secret.get_secret_value()
+
+
 async def require_internal_secret(
     x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
 ) -> None:
-    if x_internal_secret != settings.shared_secret:
+    """Reject a missing or wrong X-Internal-Secret. The value is never logged or returned."""
+    received = x_internal_secret or ""
+    expected = _shared_secret_value()
+    if not received or not expected or not secrets.compare_digest(received, expected):
         raise HTTPException(status_code=401, detail="Invalid internal secret.")
 
 
@@ -62,22 +79,21 @@ async def invoke(payload: dict) -> JSONResponse:
     return JSONResponse(result)
 
 
-@app.post("/internal/agents/treatment-info")
-async def treatment_info(
-    request: TreatmentInfoAgentRequest,
-    x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
-) -> TreatmentInfoAgentResponse:
-    if x_internal_secret != settings.shared_secret:
-        raise HTTPException(status_code=401, detail="Invalid internal secret.")
+@app.post("/internal/agents/treatment-info", dependencies=[Depends(require_internal_secret)])
+async def treatment_info(request: TreatmentInfoAgentRequest) -> TreatmentInfoAgentResponse:
     return await run_treatment_info_agent(request)
 
 
-@app.post("/internal/agents/feedback-support", response_model=FeedbackAgentResponse)
-async def feedback_support(
-    payload: FeedbackAgentRequest,
-    x_internal_secret: str | None = Header(default=None, alias="X-Internal-Secret"),
-) -> FeedbackAgentResponse:
+@app.post("/internal/agents/patient-info", dependencies=[Depends(require_internal_secret)])
+async def patient_info(request: PatientInfoAgentRequest) -> PatientInfoAgentResponse:
+    return await run_patient_info_agent(request)
+
+
+@app.post(
+    "/internal/agents/feedback-support",
+    response_model=FeedbackAgentResponse,
+    dependencies=[Depends(require_internal_secret)],
+)
+async def feedback_support(payload: FeedbackAgentRequest) -> FeedbackAgentResponse:
     """Run the feedback-support graph. The agent returns a draft; it does not publish one."""
-    if x_internal_secret != settings.shared_secret:
-        raise HTTPException(status_code=401, detail="Invalid internal secret.")
     return await run_feedback_support(payload)

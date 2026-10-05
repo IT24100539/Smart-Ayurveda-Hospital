@@ -86,24 +86,64 @@ docs/deployment-*.md
 docs/individual/    per-member contribution and AI logs
 ```
 
+## Run the project
+
+PostgreSQL must be listening on port 5432, and Ollama must be serving `llama3.1` on port 11434. From the repo root:
+
+```powershell
+.\scripts\dev-start.ps1
+```
+
+The script stops listeners on the dev ports, checks Postgres, Ollama, and the HTTPS dev certificate, syncs `InternalServiceKey` into `agent-service\.env` as `AGENT_INTERNAL_SERVICE_KEY` without printing the value, and opens a window each for the API, the agent (port 8100), and the staff portal.
+
+```powershell
+.\scripts\dev-stop.ps1
+```
+
+That stops only the processes listening on 7443, 5080, 8100, 5173, and 5174, including child processes such as reload workers.
+
+`.\scripts\dev-start.ps1 -Only backend` starts one service. `-Only backend,agent,web,mobile` also starts the Flutter web app. `-SkipStop` leaves current listeners in place.
+
+| Service | URL |
+| --- | --- |
+| API | https://localhost:7443 and http://localhost:5080 |
+| API health | https://localhost:7443/api/health |
+| Staff portal | http://localhost:5173 |
+| Agent docs | http://127.0.0.1:8100/docs |
+| Patient web (`-Only mobile`) | http://localhost:5174 |
+
 ## Installation and startup
 
 Prerequisites: .NET 8 SDK, Python 3.12, Node 22, Flutter 3.41+, Docker (Postgres 16 and Ollama).
 
-Copy `.env.example` to `.env`. Local placeholders:
+`appsettings.json` has no passwords or signing keys. Copy `.env.example` to `.env` for Docker and the agent. Put the API secrets in user-secrets (Development) or environment variables (any host). Do not commit the values.
+
+```powershell
+cd backend
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=ayurveda_hospital;Username=postgres;Password=<your-db-password>" --project src/Hospital.Api
+dotnet user-secrets set "Jwt:SigningKey" "<at-least-32-random-characters>" --project src/Hospital.Api
+dotnet user-secrets set "AgentService:SharedSecret" "<same-value-as-AGENT_SHARED_SECRET>" --project src/Hospital.Api
+dotnet user-secrets set "INTERNAL_SERVICE_KEY" "<same-value-as-the-agent>" --project src/Hospital.Api
+```
+
+The same keys work as environment variables: `ConnectionStrings__DefaultConnection`, `Jwt__SigningKey` (or `Jwt__Secret`), `AgentService__SharedSecret` (or `AGENT_SHARED_SECRET`), and `INTERNAL_SERVICE_KEY`.
 
 | Variable | Used by |
 | --- | --- |
 | `POSTGRES_PASSWORD` | `docker compose` |
-| `ConnectionStrings__DefaultConnection` | API and `dotnet ef` (Host, Port, Database, Username, Password) |
-| `Jwt__Secret` or `Jwt__SigningKey` | API signing key, at least 32 characters |
+| `ConnectionStrings__DefaultConnection` | API and `dotnet ef` |
+| `Jwt__SigningKey` or `Jwt__Secret` | API signing key, at least 32 characters |
 | `Jwt__Issuer`, `Jwt__Audience` | API token validation |
-| `InternalServiceKey` or `InternalService__ApiKey` | API internal header |
-| `AGENT_HOSPITAL_API_BASE_URL`, `AGENT_BACKEND_BASE_URL` | Agent → API origin, no `/api` suffix |
-| `AGENT_INTERNAL_SERVICE_KEY` | Same value as the API internal key |
-| `AGENT_SHARED_SECRET` | Same value as `AgentService:SharedSecret` |
+| `INTERNAL_SERVICE_KEY` | API and agent, header `X-Internal-Service-Key` |
+| `AGENT_HOSPITAL_API_BASE_URL`, `AGENT_BACKEND_BASE_URL` | Agent → API origin, default `http://127.0.0.1:5080`, no `/api` suffix |
+| `AGENT_PORT` | Agent listen port, default `8001` |
+| `AGENT_SHARED_SECRET` | Same value as `AgentService:SharedSecret` (`X-Internal-Secret`, API → agent) |
 | `AGENT_OLLAMA_BASE_URL` | Default `http://127.0.0.1:11434` |
+| `AllowedOrigins` | Production CORS: staff web origin, then Flutter web origin. `https` only |
+| `Kestrel__Certificates__Default__Path` and `Kestrel__Certificates__Default__Password` | Production certificate when this process terminates TLS. Omit both when `PORT` is set (Render terminates TLS) |
 | `VITE_API_BASE_URL` | Staff portal, default `http://localhost:5080/api` |
+
+Development serves HTTPS on `https://localhost:7443` with the ASP.NET development certificate (`dotnet dev-certs https --trust`). Production redirects to HTTPS and sends HSTS unless `PORT` is set, in which case the host terminates TLS. Production CORS allows only `AllowedOrigins`, or `Cors:StaffOrigins` plus `Cors:FlutterWebOrigins`. Startup fails if a secret is missing or still a development placeholder.
 
 ### 1. PostgreSQL and Ollama
 
@@ -113,6 +153,21 @@ docker exec sah-ollama ollama pull llama3.1
 ```
 
 Postgres listens on `localhost:5432`, database `ayurveda_hospital`. Ollama listens on `http://127.0.0.1:11434`.
+
+### Shared internal key
+
+The API and the agent both read `INTERNAL_SERVICE_KEY` and send it as `X-Internal-Service-Key`. Generate a random value and store that same value in the gitignored repo-root `.env` and in backend user-secrets. Do not commit it.
+
+```powershell
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$key = [Convert]::ToBase64String($bytes)
+# Put INTERNAL_SERVICE_KEY=<that value> in the repo-root .env
+cd backend
+dotnet user-secrets set "INTERNAL_SERVICE_KEY" "<that value>" --project src/Hospital.Api
+```
+
+An empty key is rejected. In Development the API serves `/api/internal/*` on plain HTTP (`http://127.0.0.1:5080`) and does not redirect those calls to HTTPS.
 
 Apply the schema from `backend/` (the API also migrates on startup):
 
@@ -159,7 +214,7 @@ pip install -r requirements.txt
 python run.py
 ```
 
-Listens on `127.0.0.1:8100`. Check `http://127.0.0.1:8100/health`. Start Ollama before a coordinate or scheduling-bed call. Full sequence: [docs/deployment-agent-service.md](docs/deployment-agent-service.md).
+Listens on `127.0.0.1:8001` (`AGENT_PORT` overrides the port). Check `http://127.0.0.1:8001/health`. The API calls that origin (`AgentService:BaseUrl`, default `http://127.0.0.1:8001`). Start Ollama before a coordinate or scheduling-bed call. Full sequence: [docs/deployment-agent-service.md](docs/deployment-agent-service.md).
 
 ## API documentation
 
@@ -181,7 +236,7 @@ Performance scripts (API and agent already running): [docs/performance-report.md
 ```bash
 k6 run perf/k6/treatments.js -e BASE_URL=http://127.0.0.1:5000
 k6 run perf/k6/double-booking.js -e BASE_URL=http://127.0.0.1:5000
-k6 run perf/k6/scheduling-agent.js -e AGENT_URL=http://127.0.0.1:8100
+k6 run perf/k6/scheduling-agent.js -e AGENT_URL=http://127.0.0.1:8001
 ```
 
 ## Deployment
@@ -196,7 +251,7 @@ Free tier only. The live demo runs the whole stack on one machine, including Oll
 | Postgres (Neon) | [docs/deployment-backend.md](docs/deployment-backend.md) | connection string in the API env, not a browser URL |
 | Staff portal (Vercel) | [docs/deployment-web-staff.md](docs/deployment-web-staff.md) | `https://<project>.vercel.app` (not deployed yet) |
 | Patient APK | [docs/deployment-mobile-patient.md](docs/deployment-mobile-patient.md) | `mobile-patient/build/app/outputs/flutter-apk/app-release.apk` |
-| Agent + Ollama | [docs/deployment-agent-service.md](docs/deployment-agent-service.md) | local `http://127.0.0.1:8100` for the demo |
+| Agent + Ollama | [docs/deployment-agent-service.md](docs/deployment-agent-service.md) | local `http://127.0.0.1:8001` for the demo |
 
 Test accounts (seeded when the user table is empty; change them on any shared host):
 

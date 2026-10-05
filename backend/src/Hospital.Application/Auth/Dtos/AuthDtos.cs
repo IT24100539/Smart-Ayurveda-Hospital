@@ -7,7 +7,9 @@ public sealed record RegisterRequest(
     string Email,
     string PhoneNumber,
     string Password,
-    UserRole? Role = null);
+    UserRole? Role = null,
+    DateOnly? DateOfBirth = null,
+    Gender? Gender = null);
 
 public sealed record LoginRequest(string Email, string Password);
 
@@ -16,9 +18,27 @@ public sealed record UserSummary(
     string FullName,
     string Email,
     string PhoneNumber,
-    UserRole Role);
+    UserRole Role,
+    bool MustChangePassword = false);
 
 public sealed record AuthResponse(
     string Token,
     DateTimeOffset ExpiresAt,
     UserSummary User);
+
+public sealed record ChangePasswordRequest(
+    string CurrentPassword,
+    string NewPassword,
+    string ConfirmPassword);
+
+public sealed record ForgotPasswordRequest(string Email);
+
+public sealed record ForgotPasswordResponse(string Message);
+
+public sealed record ResetPasswordRequest(
+    string Email,
+    string Token,
+    string NewPassword,
+    string ConfirmPassword);
+
+public sealed record ResetPasswordResponse(string Message);

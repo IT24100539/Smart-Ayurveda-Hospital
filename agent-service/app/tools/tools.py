@@ -189,6 +189,8 @@ Write 2 to 4 sentences.
 Never promise a specific compensation, refund, discount, reimbursement, or complimentary session. Do not promise anything the hospital cannot already verify.
 Do not invent clinical results.
 If ANONYMOUS is yes, do not address the patient by name.
+If the comment is in Sinhala, draft the reply in polite, natural Sinhala. Otherwise draft in English.
+Output only the draft message itself without conversational preamble or notes.
 
 """ + _USER_COMMENT_BLOCK + "\n"
 
@@ -217,6 +219,15 @@ def _tone(sentiment: FeedbackSentiment) -> str:
     return "Use a courteous, specific tone."
 
 
+def _generation_options(prompt: str) -> dict[str, float | int]:
+    """Classification must be one token. A draft may be a short paragraph."""
+    if "TASK: classify_" in prompt:
+        return {"temperature": 0, "num_predict": 16}
+    if "TASK: draft_reply" in prompt:
+        return {"temperature": 0.2, "num_predict": 220}
+    return {"temperature": 0}
+
+
 async def ollama_complete(prompt: str) -> str:
     """One non-streaming Ollama generate call. Raises OllamaCallError on failure or timeout."""
     timeout = httpx.Timeout(settings.ollama_timeout_seconds)
@@ -229,6 +240,7 @@ async def ollama_complete(prompt: str) -> str:
                     "model": settings.ollama_model,
                     "prompt": prompt,
                     "stream": False,
+                    "options": _generation_options(prompt),
                 },
             )
             response.raise_for_status()
@@ -242,10 +254,26 @@ async def ollama_complete(prompt: str) -> str:
     return text
 
 
+def _internal_headers() -> dict[str, str]:
+    """Hospital API auth header. httpx rejects a SecretStr, so this is always a str."""
+    return {"X-Internal-Service-Key": settings.internal_service_key.get_secret_value()}
+
+
+def _is_timeout(exc: BaseException) -> bool:
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, (TimeoutError, httpx.TimeoutException)):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 async def fetch_hospital(path: str, params: dict[str, str] | None = None) -> dict:
     """GET an internal hospital route with the service key."""
     url = f"{settings.hospital_api_base_url.rstrip('/')}{path}"
-    headers = {"X-Internal-Service-Key": settings.internal_service_key}
+    headers = _internal_headers()
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
             response = await client.get(url, params=params, headers=headers)
@@ -292,7 +320,10 @@ async def get_feedback(feedback_id: str) -> FeedbackRecord | None:
         payload = await fetch_hospital(path)
         return _record_from_payload(feedback_id, payload)
     except HospitalApiError:
-        logger.warning("get_feedback failed for %s; continuing without hospital context.", feedback_id)
+        logger.exception(
+            "get_feedback failed for %s; continuing without hospital context.",
+            feedback_id,
+        )
         return None
 
 
@@ -321,6 +352,22 @@ def _enum_from_text(raw: str, enum_type: type[Enum]) -> Enum:
     for member in enum_type:
         if candidate.lower() == str(member.value).lower():
             return member
+
+    # llama3.1 often wraps the token ("The sentiment is Negative.").
+    blob = candidate.lower()
+    ranked = sorted(enum_type, key=lambda member: len(str(member.value)), reverse=True)
+    for member in ranked:
+        value = str(member.value).lower()
+        if value == "other":
+            continue
+        if re.search(rf"\b(?:not|no)\s+{re.escape(value)}\b", blob):
+            continue
+        if re.search(rf"\b{re.escape(value)}\b", blob):
+            return member
+    if re.fullmatch(r"other[.!]?", blob.strip()):
+        for member in enum_type:
+            if str(member.value).lower() == "other":
+                return member
     raise MalformedClassification(raw[:200])
 
 
@@ -350,13 +397,118 @@ async def _classify(prompt: str, enum_type: type[_EnumT], default: _EnumT, label
     return default
 
 
+def _tokens(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9\u0d80-\u0dff]+", (text or "").lower())
+
+
+# Checked in this order. An equal score keeps the earlier category so the result is deterministic.
+_CATEGORY_KEYWORDS: tuple[tuple[FeedbackCategory, frozenset[str]], ...] = (
+    (FeedbackCategory.WAITING_TIME, frozenset({
+        "wait", "waiting", "queue", "queued", "delay", "delayed", "late", "hour", "hours",
+        "ප්‍රමාදය", "ප්‍රමාද", "පෝලිම", "කාලය", "පැය", "බලා",
+    })),
+    (FeedbackCategory.STAFF_SERVICE, frozenset({
+        "staff", "nurse", "nurses", "doctor", "doctors", "vaidya", "receptionist",
+        "rude", "dismissive", "therapist", "therapists", "seva",
+        "කාර්යමණ්ඩලය", "වෛද්‍ය", "දොස්තර", "හෙද", "සේවය", "කාරුණික", "නපුරු",
+    })),
+    (FeedbackCategory.FACILITY_ISSUE, frozenset({
+        "room", "rooms", "clean", "dirty", "cold", "bed", "beds", "toilet", "facility",
+        "facilities", "crowded", "smell", "ward", "wards", "bathroom",
+        "කාමරය", "කාමර", "පිරිසිදු", "අපිරිසිදු", "වැසිකිලි", "සුවපහසු", "රෝහල",
+    })),
+    (FeedbackCategory.TREATMENT_QUALITY, frozenset({
+        "treatment", "treatments", "therapy", "therapies", "abhyanga", "shirodhara",
+        "panchakarma", "herbal", "oil", "medicine", "medicines", "nadi", "pariksha",
+        "ප්‍රතිකාර", "ප්‍රතිකාරය", "තෙල්", "බෙහෙත්", "ඖෂධ", "අභ්‍යංග", "ශිරෝධාරා", "පංචකර්ම", "නාඩි",
+    })),
+)
+
+_POSITIVE_WORDS = frozenset({
+    "thank", "thanks", "great", "excellent", "wonderful", "helpful", "kind", "calm",
+    "calming", "calmed", "eased", "good", "pleasant", "appreciate", "appreciated",
+    "warm", "clear", "caring", "lovely", "comforting", "thorough", "gentle",
+    "professional", "comfortable",
+    "ස්තූතියි", "ස්තුතියි", "හොඳ", "විශිෂ්ට", "කාරුණික", "ගුණ", "සුවය", "සුවපත්", "අගය", "සතුටුයි", "තෘප්තිමත්",
+})
+
+_NEGATIVE_WORDS = frozenset({
+    "bad", "poor", "rude", "dismissive", "worst", "unhappy", "terrible", "awful",
+    "complaint", "slow", "crowded", "cold", "dirty", "long", "late", "wait", "waiting",
+    "delay", "delayed", "never", "noisy", "noise", "worn", "broken", "ignored",
+    "painful", "disappointed", "smell", "smelled", "smelly", "problem", "problems",
+    "නරක", "අපිරිසිදු", "ප්‍රමාද", "ප්‍රමාදය", "දුර්වල", "අසතුටුදායක", "වේදනාකාරී", "ගැටලුව", "අමාරුයි", "කණගාටුයි",
+})
+
+_NEGATIONS = frozenset({"not", "no", "never", "nt", "නැත", "නැහැ", "නොවේ", "නෙවෙයි", "එපා"})
+
+
+def _polarity(tokens: list[str]) -> tuple[int, int]:
+    """Count praise and complaint words. 'not pleasant' counts as a complaint."""
+    positive = 0
+    negative = 0
+    for index, token in enumerate(tokens):
+        negated = index > 0 and tokens[index - 1] in _NEGATIONS
+        if token in _POSITIVE_WORDS:
+            if negated:
+                negative += 1
+            else:
+                positive += 1
+        elif token in _NEGATIVE_WORDS and not negated:
+            negative += 1
+        elif token in _NEGATIVE_WORDS and negated:
+            positive += 1
+    return positive, negative
+
+
+def classify_by_rules(text: str) -> tuple[FeedbackSentiment, FeedbackCategory]:
+    """Keyword classifier. Callers use it only when the model is unavailable or times out."""
+    tokens = _tokens(text)
+    category = FeedbackCategory.OTHER
+    best_score = 0
+    for candidate, words in _CATEGORY_KEYWORDS:
+        score = sum(1 for token in tokens if token in words)
+        if score > best_score:
+            best_score = score
+            category = candidate
+    # The clause after but/however is the point of a mixed comment.
+    clauses = re.split(r"\b(?:but|however|though)\b", text or "", flags=re.IGNORECASE)
+    positive, negative = _polarity(_tokens(clauses[-1]))
+    if positive > negative:
+        sentiment = FeedbackSentiment.POSITIVE
+    elif negative > positive:
+        sentiment = FeedbackSentiment.NEGATIVE
+    else:
+        sentiment = FeedbackSentiment.NEUTRAL
+    return sentiment, category
+
+
+def reconcile_sentiment(
+    text: str,
+    sentiment: FeedbackSentiment,
+    rating: int | None,
+) -> FeedbackSentiment:
+    """Use the star rating only when the comment itself does not contradict it."""
+    if rating is None or sentiment is not FeedbackSentiment.NEUTRAL:
+        return sentiment
+    _, negative = _polarity(_tokens(text))
+    if rating <= 2:
+        return FeedbackSentiment.NEGATIVE
+    if rating >= 4 and negative == 0:
+        return FeedbackSentiment.POSITIVE
+    return sentiment
+
+
 async def analyze_sentiment(text: str) -> FeedbackSentiment | None:
     """Positive, Neutral, or Negative. None when Ollama fails. Malformed output becomes Neutral."""
     prompt = _render(SENTIMENT_PROMPT, text=text.strip())
     try:
         value = await _classify(prompt, FeedbackSentiment, FeedbackSentiment.NEUTRAL, "Sentiment")
-    except OllamaCallError:
-        logger.warning("Sentiment analysis failed or timed out; leaving sentiment unset.")
+    except OllamaCallError as exc:
+        if _is_timeout(exc):
+            logger.exception("Sentiment analysis timed out.")
+        else:
+            logger.exception("Sentiment analysis failed.")
         return None
     return value
 
@@ -366,8 +518,11 @@ async def categorize(text: str) -> FeedbackCategory | None:
     prompt = _render(CATEGORY_PROMPT, text=text.strip())
     try:
         value = await _classify(prompt, FeedbackCategory, FeedbackCategory.OTHER, "Category")
-    except OllamaCallError:
-        logger.warning("Category analysis failed or timed out; leaving category unset.")
+    except OllamaCallError as exc:
+        if _is_timeout(exc):
+            logger.exception("Category analysis timed out.")
+        else:
+            logger.exception("Category analysis failed.")
         return None
     return value
 
@@ -402,8 +557,43 @@ def flag_priority(feedback_summary: FeedbackSummary) -> PriorityFlag:
     return PriorityFlag(priority=priority, immediate_dashboard_alert=priority == FeedbackPriority.HIGH)
 
 
+def _clean_draft(text: str) -> str:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:markdown|text)?\s*|\s*```$", "", cleaned, flags=re.IGNORECASE).strip()
+
+    # Strip conversational LLM introductory phrases
+    cleaned = re.sub(
+        r"^(?:here(?:'s|\s+is)\s+(?:a\s+)?(?:suggested\s+|polite\s+|draft\s+)?reply(?:\s+for\s+the\s+hospital)?(?:\s+to\s+the\s+patient)?[:\s\-\n]+)",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip()
+    cleaned = re.sub(
+        r"^(?:draft\s+reply[:\s\-\n]+)",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip()
+
+    # Strip trailing LLM notes/disclaimers
+    cleaned = re.sub(
+        r"(?:\n|\s)*[\(\[\{]?(?:note|please note|disclaimer):.*$",
+        "",
+        cleaned,
+        flags=re.IGNORECASE | re.DOTALL,
+    ).strip()
+
+    # Strip surrounding quotes if the LLM quoted the entire reply
+    if (cleaned.startswith('"') and cleaned.endswith('"')) or (cleaned.startswith("'") and cleaned.endswith("'")):
+        cleaned = cleaned[1:-1].strip()
+
+    return cleaned
+
+
 def _limit_sentences(text: str, maximum: int = 4) -> str:
-    parts = [part.strip() for part in _SENTENCE_SPLIT.split(text.strip()) if part.strip()]
+    text = _clean_draft(text)
+    parts = [part.strip() for part in _SENTENCE_SPLIT.split(text) if part.strip()]
     if len(parts) > maximum:
         parts = parts[:maximum]
     kept = [part for part in parts if not _UNVERIFIED_PROMISE.search(part)]
@@ -433,8 +623,11 @@ async def draft_reply(
     for _attempt in range(2):
         try:
             raw = await ollama_complete(prompt)
-        except OllamaCallError:
-            logger.warning("Draft reply skipped because the model call failed or timed out.")
+        except OllamaCallError as exc:
+            if _is_timeout(exc):
+                logger.exception("Draft reply skipped because the model call timed out.")
+            else:
+                logger.exception("Draft reply skipped because the model call failed.")
             return None
         cleaned = _limit_sentences(raw)
         if cleaned:

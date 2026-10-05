@@ -17,42 +17,36 @@ class SectionBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = AyurvedaThemeExtension.of(context);
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AyurvedaColors.forest,
-        borderRadius: BorderRadius.circular(20),
-        border: const Border(
-          bottom: BorderSide(color: AyurvedaColors.gold, width: 3),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [brand.headerGradientStart, brand.headerGradientEnd],
         ),
+        borderRadius: BorderRadius.circular(brand.headerRadius),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             kicker.toUpperCase(),
-            style: const TextStyle(
-              color: AyurvedaColors.sageMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.4,
-            ),
+            style: AyurvedaType.eyebrow(context, color: brand.avatarBackground),
           ),
           const SizedBox(height: 8),
           Text(
             title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+              color: brand.onHeader,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            body,
-            style: const TextStyle(color: AyurvedaColors.sageMuted, height: 1.4),
-          ),
+          Text(body, style: TextStyle(color: brand.onHeader, height: 1.4)),
         ],
       ),
     );

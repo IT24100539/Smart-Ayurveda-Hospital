@@ -14,14 +14,17 @@ public sealed class PatientRepository : IPatientRepository
     public Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.Patients.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-    public Task<Patient?> GetByPhoneAsync(string phone, CancellationToken cancellationToken) =>
-        _db.Patients.FirstOrDefaultAsync(x => x.Phone == phone, cancellationToken);
+    public Task<Patient?> GetByPhoneAsync(string phone, CancellationToken cancellationToken)
+    {
+        var normalized = phone.Trim();
+        return _db.Patients.FirstOrDefaultAsync(x => x.Phone.Trim() == normalized, cancellationToken);
+    }
 
     public Task<Patient?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var normalized = email.Trim().ToLowerInvariant();
         return _db.Patients.FirstOrDefaultAsync(
-            x => x.Email != null && x.Email.ToLower() == normalized,
+            x => x.Email != null && x.Email.Trim().ToLower() == normalized,
             cancellationToken);
     }
 
@@ -65,8 +68,13 @@ public sealed class UserRepository : IUserRepository
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
-        _db.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        return _db.Users.FirstOrDefaultAsync(
+            x => x.Email.Trim().ToLower() == normalized,
+            cancellationToken);
+    }
 
     public Task<User?> FindActiveByRoleAsync(UserRole role, CancellationToken cancellationToken) =>
         _db.Users
@@ -76,6 +84,98 @@ public sealed class UserRepository : IUserRepository
 
     public async Task AddAsync(User user, CancellationToken cancellationToken) =>
         await _db.Users.AddAsync(user, cancellationToken);
+
+    public async Task<IReadOnlyList<User>> ListStaffAsync(
+        string? query,
+        UserRole? role,
+        bool? isActive,
+        int skip,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var q = _db.Users.AsNoTracking().Where(x => x.Role != UserRole.Patient);
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var trimmed = query.Trim().ToLower();
+            q = q.Where(x => x.FullName.ToLower().Contains(trimmed) ||
+                             x.Email.ToLower().Contains(trimmed) ||
+                             x.PhoneNumber.Contains(trimmed));
+        }
+
+        if (role.HasValue)
+        {
+            q = q.Where(x => x.Role == role.Value);
+        }
+
+        if (isActive.HasValue)
+        {
+            q = q.Where(x => x.IsActive == isActive.Value);
+        }
+
+        return await q.OrderByDescending(x => x.CreatedAt)
+                      .Skip(skip)
+                      .Take(take)
+                      .ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> CountStaffAsync(
+        string? query,
+        UserRole? role,
+        bool? isActive,
+        CancellationToken cancellationToken)
+    {
+        var q = _db.Users.AsNoTracking().Where(x => x.Role != UserRole.Patient);
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var trimmed = query.Trim().ToLower();
+            q = q.Where(x => x.FullName.ToLower().Contains(trimmed) ||
+                             x.Email.ToLower().Contains(trimmed) ||
+                             x.PhoneNumber.Contains(trimmed));
+        }
+
+        if (role.HasValue)
+        {
+            q = q.Where(x => x.Role == role.Value);
+        }
+
+        if (isActive.HasValue)
+        {
+            q = q.Where(x => x.IsActive == isActive.Value);
+        }
+
+        return await q.CountAsync(cancellationToken);
+    }
+
+    public Task<int> CountActiveAdminsAsync(CancellationToken cancellationToken) =>
+        _db.Users.AsNoTracking().CountAsync(x => x.Role == UserRole.Admin && x.IsActive, cancellationToken);
+}
+
+public sealed class AuditLogRepository : IAuditLogRepository
+{
+    private readonly HospitalDbContext _db;
+
+    public AuditLogRepository(HospitalDbContext db) => _db = db;
+
+    public async Task AddAsync(AuditLog log, CancellationToken cancellationToken) =>
+        await _db.AuditLogs.AddAsync(log, cancellationToken);
+
+    public async Task<(IReadOnlyList<AuditLog> Items, int Total)> ListAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var total = await _db.AuditLogs.CountAsync(cancellationToken);
+        var items = await _db.AuditLogs
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
 }
 
 public sealed class StaffUserRepository : IStaffUserRepository
@@ -90,7 +190,7 @@ public sealed class StaffUserRepository : IStaffUserRepository
     public Task<StaffUser?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var normalized = email.Trim().ToLowerInvariant();
-        return _db.StaffUsers.FirstOrDefaultAsync(x => x.Email.ToLower() == normalized, cancellationToken);
+        return _db.StaffUsers.FirstOrDefaultAsync(x => x.Email.Trim().ToLower() == normalized, cancellationToken);
     }
 
     public Task<StaffUser?> FindActiveByRoleAsync(StaffRole role, CancellationToken cancellationToken) =>
@@ -185,24 +285,102 @@ public sealed class AppointmentRepository : IAppointmentRepository
 
     public async Task<bool> TryAddWithinCapacityAsync(Appointment appointment, int maxPatients, CancellationToken cancellationToken)
     {
-        await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
-        await _db.Database.ExecuteSqlRawAsync("LOCK TABLE appointments IN SHARE ROW EXCLUSIVE MODE", cancellationToken);
-
-        var activeCount = await CountActiveAppointmentsAsync(
-            appointment.TreatmentId,
-            appointment.RequestedDate,
-            appointment.RequestedTimeSlot,
-            cancellationToken);
-        if (activeCount >= maxPatients)
+        if (_db.Database.IsRelational())
         {
-            await tx.RollbackAsync(cancellationToken);
-            return false;
-        }
+            await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+            await _db.Database.ExecuteSqlRawAsync("LOCK TABLE appointments IN SHARE ROW EXCLUSIVE MODE", cancellationToken);
 
-        await _db.Appointments.AddAsync(appointment, cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
-        await tx.CommitAsync(cancellationToken);
-        return true;
+            var activeCount = await CountActiveAppointmentsAsync(
+                appointment.TreatmentId,
+                appointment.RequestedDate,
+                appointment.RequestedTimeSlot,
+                cancellationToken);
+            if (maxPatients > 0 && activeCount >= maxPatients)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return false;
+            }
+
+            await _db.Appointments.AddAsync(appointment, cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+            return true;
+        }
+        else
+        {
+            var activeCount = await CountActiveAppointmentsAsync(
+                appointment.TreatmentId,
+                appointment.RequestedDate,
+                appointment.RequestedTimeSlot,
+                cancellationToken);
+            if (maxPatients > 0 && activeCount >= maxPatients)
+            {
+                return false;
+            }
+
+            await _db.Appointments.AddAsync(appointment, cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+    }
+
+    public async Task<bool> TryRescheduleWithinCapacityAsync(
+        Appointment appointment,
+        DateOnly newDate,
+        string newSlot,
+        Guid? newScheduleId,
+        int maxPatients,
+        CancellationToken cancellationToken)
+    {
+        if (_db.Database.IsRelational())
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+            await _db.Database.ExecuteSqlRawAsync("LOCK TABLE appointments IN SHARE ROW EXCLUSIVE MODE", cancellationToken);
+
+            var activeCount = await _db.Appointments.CountAsync(x =>
+                x.TreatmentId == appointment.TreatmentId &&
+                x.RequestedDate == newDate &&
+                x.RequestedTimeSlot == newSlot &&
+                x.Status != Domain.Enums.AppointmentStatus.Cancelled &&
+                x.Id != appointment.Id,
+                cancellationToken);
+
+            if (maxPatients > 0 && activeCount >= maxPatients)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return false;
+            }
+
+            appointment.RequestedDate = newDate;
+            appointment.RequestedTimeSlot = newSlot;
+            appointment.ScheduleId = newScheduleId;
+            appointment.UpdatedAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+            return true;
+        }
+        else
+        {
+            var activeCount = await _db.Appointments.CountAsync(x =>
+                x.TreatmentId == appointment.TreatmentId &&
+                x.RequestedDate == newDate &&
+                x.RequestedTimeSlot == newSlot &&
+                x.Status != Domain.Enums.AppointmentStatus.Cancelled &&
+                x.Id != appointment.Id,
+                cancellationToken);
+
+            if (maxPatients > 0 && activeCount >= maxPatients)
+            {
+                return false;
+            }
+
+            appointment.RequestedDate = newDate;
+            appointment.RequestedTimeSlot = newSlot;
+            appointment.ScheduleId = newScheduleId;
+            appointment.UpdatedAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+            return true;
+        }
     }
 
     public async Task AddAsync(Appointment appointment, CancellationToken cancellationToken) =>
@@ -216,7 +394,10 @@ public sealed class TreatmentRepository : ITreatmentRepository
     public TreatmentRepository(HospitalDbContext db) => _db = db;
 
     public async Task<IReadOnlyList<TreatmentSchedule>> ListSchedulesAsync(Guid treatmentId, CancellationToken cancellationToken) =>
-        await _db.TreatmentSchedules.AsNoTracking().Where(x => x.TreatmentId == treatmentId).ToListAsync(cancellationToken);
+        await _db.TreatmentSchedules.AsNoTracking()
+            .Include(x => x.Therapist)
+            .Where(x => x.TreatmentId == treatmentId)
+            .ToListAsync(cancellationToken);
 
     public Task<TreatmentSchedule?> GetScheduleByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.TreatmentSchedules.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -336,6 +517,19 @@ public sealed class EfUnitOfWork : IUnitOfWork
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken) =>
         _db.SaveChangesAsync(cancellationToken);
+
+    public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken)
+    {
+        if (!_db.Database.IsRelational())
+        {
+            await action(cancellationToken);
+            return;
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        await action(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
 }
 
 public sealed class WardRepository : IWardRepository
@@ -375,29 +569,57 @@ public sealed class WardRepository : IWardRepository
 
     public async Task<bool> TryApproveAdmissionAssignBedAsync(Guid admissionRequestId, Guid decidedBy, DateTimeOffset decidedAt, CancellationToken cancellationToken)
     {
-        await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
-        var req = await _db.AdmissionRequests.Include(ar => ar.Ward).FirstOrDefaultAsync(ar => ar.Id == admissionRequestId, cancellationToken);
-        if (req == null) return false;
-        if (req.Status != AdmissionRequestStatus.Pending) return false;
-
-        var wardId = req.WardId ?? throw new InvalidOperationException("Ward must be assigned for approval.");
-        var freeBed = await _db.Beds
-            .FromSqlInterpolated($"SELECT * FROM beds WHERE \"WardId\" = {wardId} AND NOT \"IsOccupied\" ORDER BY \"BedLabel\" FOR UPDATE SKIP LOCKED")
-            .FirstOrDefaultAsync(cancellationToken);
-        if (freeBed == null)
+        if (_db.Database.IsRelational())
         {
-            await tx.RollbackAsync(cancellationToken);
-            return false;
+            await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+            var req = await _db.AdmissionRequests.Include(ar => ar.Ward).FirstOrDefaultAsync(ar => ar.Id == admissionRequestId, cancellationToken);
+            if (req == null) return false;
+            if (req.Status != AdmissionRequestStatus.Pending) return false;
+
+            var wardId = req.WardId ?? throw new InvalidOperationException("Ward must be assigned for approval.");
+            var freeBed = await _db.Beds
+                .FromSqlInterpolated($"SELECT * FROM beds WHERE \"WardId\" = {wardId} AND NOT \"IsOccupied\" ORDER BY \"BedLabel\" FOR UPDATE SKIP LOCKED")
+                .FirstOrDefaultAsync(cancellationToken);
+            if (freeBed == null)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return false;
+            }
+
+            freeBed.IsOccupied = true;
+            req.BedId = freeBed.Id;
+            req.Status = AdmissionRequestStatus.Approved;
+            req.DecidedById = decidedBy;
+            req.DecidedAt = decidedAt;
+
+            await _db.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+            return true;
         }
+        else
+        {
+            var req = await _db.AdmissionRequests.Include(ar => ar.Ward).FirstOrDefaultAsync(ar => ar.Id == admissionRequestId, cancellationToken);
+            if (req == null) return false;
+            if (req.Status != AdmissionRequestStatus.Pending) return false;
 
-        freeBed.IsOccupied = true;
-        req.BedId = freeBed.Id;
-        req.Status = AdmissionRequestStatus.Approved;
-        req.DecidedById = decidedBy;
-        req.DecidedAt = decidedAt;
+            var wardId = req.WardId ?? throw new InvalidOperationException("Ward must be assigned for approval.");
+            var freeBed = await _db.Beds
+                .Where(b => b.WardId == wardId && !b.IsOccupied)
+                .OrderBy(b => b.BedLabel)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (freeBed == null)
+            {
+                return false;
+            }
 
-        await _db.SaveChangesAsync(cancellationToken);
-        await tx.CommitAsync(cancellationToken);
-        return true;
+            freeBed.IsOccupied = true;
+            req.BedId = freeBed.Id;
+            req.Status = AdmissionRequestStatus.Approved;
+            req.DecidedById = decidedBy;
+            req.DecidedAt = decidedAt;
+
+            await _db.SaveChangesAsync(cancellationToken);
+            return true;
+        }
     }
 }

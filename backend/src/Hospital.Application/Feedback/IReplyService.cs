@@ -12,10 +12,15 @@ public interface IReplyService
 
     /// <summary>
     /// Runs the support agent after the feedback row is already stored.
-    /// A timeout or invalid agent response is ignored so submission still succeeds.
+    /// A timeout or invalid agent response is logged and ignored so submission still succeeds.
     /// Any draft is left unpublished.
     /// </summary>
     Task TryCaptureAnalysisAsync(Feedback feedback, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Staff re-runs analysis. The feedback row is kept. A failure is returned to the caller.
+    /// </summary>
+    Task CaptureAnalysisAsync(Feedback feedback, CancellationToken cancellationToken);
 
     /// <summary>Asks the agent for a draft. The draft is stored and is not posted.</summary>
     Task<ReplyDto> RequestAiDraftAsync(Guid feedbackId, CancellationToken cancellationToken);

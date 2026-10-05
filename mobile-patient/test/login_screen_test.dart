@@ -53,6 +53,7 @@ void main() {
     expect(find.byKey(LoginScreenKeys.email), findsOneWidget);
     expect(find.byKey(LoginScreenKeys.password), findsOneWidget);
     expect(find.byKey(LoginScreenKeys.submit), findsOneWidget);
+    expect(find.byKey(LoginScreenKeys.forgotPassword), findsOneWidget);
 
     // Registration-only fields stay hidden in login mode.
     expect(find.byKey(LoginScreenKeys.fullName), findsNothing);
@@ -66,6 +67,31 @@ void main() {
     expect(find.text(si.emailLabel), findsOneWidget);
     expect(find.text(si.passwordLabel), findsOneWidget);
     expect(find.text(si.signIn), findsWidgets);
+    expect(find.text(si.chooseLanguage), findsOneWidget);
+    expect(find.text(si.languageSinhala), findsOneWidget);
+    expect(find.text(si.languageEnglish), findsOneWidget);
+  });
+
+  testWidgets('login language switcher changes the form to English', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tokenStorageProvider.overrideWithValue(InMemoryTokenStorage()),
+        ],
+        child: const _LocaleLoginApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final en = await AppLocalizations.delegate.load(const Locale('en'));
+    await tester.tap(find.text(en.languageEnglish));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.chooseLanguage), findsOneWidget);
+    expect(find.text(en.signIn), findsWidgets);
+    expect(find.text(en.emailLabel), findsOneWidget);
   });
 
   testWidgets('switching to register mode reveals name and phone fields', (
@@ -76,9 +102,35 @@ void main() {
     await tester.tap(find.byKey(LoginScreenKeys.modeToggle));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TextFormField), findsNWidgets(4));
+    expect(find.byType(TextFormField), findsNWidgets(5));
     expect(find.byKey(LoginScreenKeys.fullName), findsOneWidget);
     expect(find.byKey(LoginScreenKeys.phoneNumber), findsOneWidget);
     expect(find.byKey(LoginScreenKeys.submit), findsOneWidget);
+
+    final si = await AppLocalizations.delegate.load(const Locale('si'));
+    expect(find.text(si.passwordNeedsUppercase), findsNothing);
+
+    await tester.enterText(find.byKey(LoginScreenKeys.password), 'abcdefgh');
+    await tester.ensureVisible(find.byKey(LoginScreenKeys.submit));
+    await tester.tap(find.byKey(LoginScreenKeys.submit));
+    await tester.pumpAndSettle();
+
+    expect(find.text(si.passwordNeedsUppercase), findsOneWidget);
   });
+}
+
+class _LocaleLoginApp extends ConsumerWidget {
+  const _LocaleLoginApp();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeControllerProvider);
+    return MaterialApp(
+      theme: AppTheme.light,
+      locale: locale,
+      supportedLocales: supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      home: const LoginScreen(),
+    );
+  }
 }

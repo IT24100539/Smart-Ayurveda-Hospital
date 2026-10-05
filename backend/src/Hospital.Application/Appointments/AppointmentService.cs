@@ -15,6 +15,7 @@ public sealed class AppointmentService : IAppointmentService
     private readonly IBookingValidator _bookingValidator;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly IPatientEventNotifier _events;
 
     public AppointmentService(
         IAppointmentRepository appointments,
@@ -22,7 +23,8 @@ public sealed class AppointmentService : IAppointmentService
         ITreatmentRepository treatments,
         IBookingValidator bookingValidator,
         IUnitOfWork unitOfWork,
-        IClock clock)
+        IClock clock,
+        IPatientEventNotifier events)
     {
         _appointments = appointments;
         _patients = patients;
@@ -30,6 +32,7 @@ public sealed class AppointmentService : IAppointmentService
         _bookingValidator = bookingValidator;
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _events = events;
     }
 
     public async Task<AppointmentDto> CreateAsync(CreateAppointmentRequest request, CancellationToken cancellationToken)
@@ -40,6 +43,7 @@ public sealed class AppointmentService : IAppointmentService
         var treatment = await _treatments.GetByIdAsync(request.TreatmentId, cancellationToken)
             ?? throw new NotFoundException(nameof(Treatment), request.TreatmentId);
 
+        var slot = request.RequestedTimeSlot.Trim();
         TreatmentSchedule? schedule = null;
         if (request.ScheduleId is { } scheduleId)
         {
@@ -51,39 +55,105 @@ public sealed class AppointmentService : IAppointmentService
                 throw new DomainException("Schedule does not belong to the requested treatment.");
             }
 
-            // Validate booking date/time against the schedule
-            _bookingValidator.Validate(schedule, request.RequestedDate, request.RequestedTimeSlot);
-            // Check capacity based on schedule.MaxPatients
-            if (schedule.MaxPatients > 0)
+            _bookingValidator.Validate(schedule, request.RequestedDate, slot);
+        }
+        else
+        {
+            var schedules = await _treatments.ListSchedulesAsync(treatment.Id, cancellationToken);
+            schedule = schedules.FirstOrDefault(s =>
+                s.DayOfWeek == request.RequestedDate.DayOfWeek &&
+                (string.Equals(s.TimeSlot?.Trim(), slot, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(s.SlotLabel?.Trim(), slot, StringComparison.OrdinalIgnoreCase)));
+
+            if (schedule is not null)
             {
-                var capacitySlot = request.RequestedTimeSlot.Trim();
-                if (await _appointments.HasActiveSlotAsync(
-                        patient.Id, treatment.Id, request.RequestedDate, capacitySlot, excludeId: null, cancellationToken))
-                {
-                    throw new ConflictException("This patient already has an appointment for that treatment date and time slot.");
-                }
-
-                var capacityAppointment = CreateAppointment(patient, treatment, schedule, request, capacitySlot);
-                if (!await _appointments.TryAddWithinCapacityAsync(capacityAppointment, schedule.MaxPatients, cancellationToken))
-                {
-                    throw new ConflictException("Selected time slot is full.");
-                }
-
-                return Map(capacityAppointment);
+                _bookingValidator.Validate(schedule, request.RequestedDate, slot);
             }
         }
 
-        var slot = request.RequestedTimeSlot.Trim();
         if (await _appointments.HasActiveSlotAsync(
                 patient.Id, treatment.Id, request.RequestedDate, slot, excludeId: null, cancellationToken))
         {
             throw new ConflictException("This patient already has an appointment for that treatment date and time slot.");
         }
 
+        var capacity = schedule is not null
+            ? (schedule.MaxPatients > 0 ? schedule.MaxPatients : (schedule.MaxSlotsPerDay > 0 ? schedule.MaxSlotsPerDay : 1))
+            : 1;
+
         var appointment = CreateAppointment(patient, treatment, schedule, request, slot);
 
-        await _appointments.AddAsync(appointment, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        if (!await _appointments.TryAddWithinCapacityAsync(appointment, capacity, cancellationToken))
+        {
+            throw new ConflictException("Selected time slot is full.");
+        }
+
+        return Map(appointment);
+    }
+
+    public async Task<AppointmentDto> RescheduleAsync(
+        Guid id,
+        RescheduleAppointmentRequest request,
+        Guid? requestingPatientId,
+        CancellationToken cancellationToken)
+    {
+        var appointment = await _appointments.GetByIdAsync(id, cancellationToken)
+            ?? throw new NotFoundException(nameof(Appointment), id);
+
+        if (requestingPatientId.HasValue && appointment.PatientId != requestingPatientId.Value)
+        {
+            throw new UnauthorizedException("Only the owning patient or hospital staff can reschedule this appointment.");
+        }
+
+        if (appointment.Status is AppointmentStatus.Cancelled or AppointmentStatus.Completed)
+        {
+            throw new DomainException($"Cannot reschedule an appointment with status {appointment.Status}.");
+        }
+
+        var newSlot = request.RequestedTimeSlot.Trim();
+        TreatmentSchedule? schedule = null;
+        if (request.ScheduleId is { } scheduleId)
+        {
+            schedule = await _treatments.GetScheduleByIdAsync(scheduleId, cancellationToken)
+                ?? throw new NotFoundException(nameof(TreatmentSchedule), scheduleId);
+
+            if (schedule.TreatmentId != appointment.TreatmentId)
+            {
+                throw new DomainException("Schedule does not belong to the requested treatment.");
+            }
+
+            _bookingValidator.Validate(schedule, request.RequestedDate, newSlot);
+        }
+        else
+        {
+            var schedules = await _treatments.ListSchedulesAsync(appointment.TreatmentId, cancellationToken);
+            schedule = schedules.FirstOrDefault(s =>
+                s.DayOfWeek == request.RequestedDate.DayOfWeek &&
+                (string.Equals(s.TimeSlot?.Trim(), newSlot, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(s.SlotLabel?.Trim(), newSlot, StringComparison.OrdinalIgnoreCase)));
+
+            if (schedule is not null)
+            {
+                _bookingValidator.Validate(schedule, request.RequestedDate, newSlot);
+            }
+        }
+
+        if (await _appointments.HasActiveSlotAsync(
+                appointment.PatientId, appointment.TreatmentId, request.RequestedDate, newSlot, excludeId: appointment.Id, cancellationToken))
+        {
+            throw new ConflictException("This patient already has an appointment for that treatment date and time slot.");
+        }
+
+        var capacity = schedule is not null
+            ? (schedule.MaxPatients > 0 ? schedule.MaxPatients : (schedule.MaxSlotsPerDay > 0 ? schedule.MaxSlotsPerDay : 1))
+            : 1;
+
+        if (!await _appointments.TryRescheduleWithinCapacityAsync(appointment, request.RequestedDate, newSlot, schedule?.Id, capacity, cancellationToken))
+        {
+            throw new ConflictException("Selected time slot is full.");
+        }
+
+        await _events.PublishAsync(RescheduledNotice(appointment), cancellationToken);
         return Map(appointment);
     }
 
@@ -95,11 +165,8 @@ public sealed class AppointmentService : IAppointmentService
         string slot) => new()
         {
             PatientId = patient.Id,
-            Patient = patient,
             TreatmentId = treatment.Id,
-            Treatment = treatment,
             ScheduleId = schedule?.Id,
-            Schedule = schedule,
             RequestedDate = request.RequestedDate,
             RequestedTimeSlot = slot,
             Status = AppointmentStatus.Pending
@@ -112,12 +179,17 @@ public sealed class AppointmentService : IAppointmentService
 
         if (appointment.PatientId != requestingPatientId)
         {
-            throw new UnauthorizedException("Only the owning patient can cancel their appointment.");
+            throw new ForbiddenException("Only the owning patient can cancel their appointment.");
+        }
+
+        if (appointment.Status == AppointmentStatus.Cancelled)
+        {
+            return;
         }
 
         appointment.Status = AppointmentStatus.Cancelled;
         appointment.UpdatedAt = _clock.UtcNow;
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _events.PublishAsync(CancelledNotice(appointment), cancellationToken);
     }
 
     public async Task<AppointmentDto> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -152,6 +224,7 @@ public sealed class AppointmentService : IAppointmentService
         var appointment = await _appointments.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException(nameof(Appointment), id);
 
+        var previous = appointment.Status;
         appointment.Status = request.Status;
         if (request.Status is AppointmentStatus.Approved or AppointmentStatus.Rejected)
         {
@@ -160,8 +233,62 @@ public sealed class AppointmentService : IAppointmentService
         }
 
         appointment.UpdatedAt = _clock.UtcNow;
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        var notice = previous == appointment.Status ? null : NoticeForStatus(appointment);
+        if (notice is null)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        else
+        {
+            await _events.PublishAsync(notice, cancellationToken);
+        }
+
         return Map(appointment);
+    }
+
+    private static PatientNotice? NoticeForStatus(Appointment appointment) => appointment.Status switch
+    {
+        AppointmentStatus.Approved => ApprovedNotice(appointment),
+        AppointmentStatus.Rejected => RejectedNotice(appointment),
+        AppointmentStatus.Cancelled => CancelledNotice(appointment),
+        _ => null
+    };
+
+    private static PatientNotice ApprovedNotice(Appointment appointment) => new(
+        appointment.PatientId,
+        NotificationType.AppointmentApproved,
+        "Appointment approved",
+        $"Your {VisitLabel(appointment)} is approved.");
+
+    private static PatientNotice RejectedNotice(Appointment appointment) => new(
+        appointment.PatientId,
+        NotificationType.AppointmentRejected,
+        "Appointment not approved",
+        $"Your {VisitLabel(appointment)} was not approved.");
+
+    private static PatientNotice CancelledNotice(Appointment appointment) => new(
+        appointment.PatientId,
+        NotificationType.AppointmentCancelled,
+        "Appointment cancelled",
+        $"Your {VisitLabel(appointment)} was cancelled.");
+
+    private static PatientNotice RescheduledNotice(Appointment appointment)
+    {
+        var treatment = TreatmentName(appointment);
+        return new PatientNotice(
+            appointment.PatientId,
+            NotificationType.AppointmentRescheduled,
+            "Appointment rescheduled",
+            $"Your {treatment} visit is now on {appointment.RequestedDate:yyyy-MM-dd} at {appointment.RequestedTimeSlot}.");
+    }
+
+    private static string VisitLabel(Appointment appointment) =>
+        $"{TreatmentName(appointment)} visit on {appointment.RequestedDate:yyyy-MM-dd} at {appointment.RequestedTimeSlot}";
+
+    private static string TreatmentName(Appointment appointment)
+    {
+        var name = appointment.Treatment?.Name?.Trim();
+        return string.IsNullOrWhiteSpace(name) ? "treatment" : name;
     }
 
     private static AppointmentDto Map(Appointment a) => new(

@@ -9,6 +9,7 @@ import {
   listStaffFeedback,
   moderateFeedback,
   requestAiDraft,
+  analyseFeedback,
   type FeedbackCategory,
   type FeedbackDetail,
   type FeedbackSentiment,
@@ -34,15 +35,16 @@ import {
   replyStatusLabel,
   sentimentLabel
 } from "./labels";
+import { Badge, type BadgeTone } from "../../components/ui";
 
 const PAGE_SIZE = 10;
 
 const fieldClass =
-  "mt-1 w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm outline-none ring-primary focus:ring-2";
+  "field mt-1";
 const secondaryButton =
-  "rounded-lg border border-surface-border bg-white px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary-muted disabled:opacity-60";
+  "rounded-lg border border-surface-border bg-surface-raised px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary-muted disabled:opacity-60";
 const primaryButton =
-  "rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-60";
+  "rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-on hover:bg-primary-dark disabled:opacity-60";
 
 type Filters = {
   status: FeedbackStatus | "";
@@ -68,7 +70,7 @@ type RowExtra = {
   detailError?: string;
 };
 
-type BusyKind = "generate" | "decide" | "moderate" | "manual";
+type BusyKind = "generate" | "decide" | "moderate" | "manual" | "analyse";
 
 function findDraft(replies: Reply[]): Reply | undefined {
   return [...replies]
@@ -322,6 +324,35 @@ export function FeedbackDashboardPage() {
     }
   }
 
+  async function refreshDetail(id: string, generation: number) {
+    try {
+      const detail = await getStaffFeedback(id);
+      if (generation !== listGeneration.current) {
+        return;
+      }
+      applyDetail(detail);
+    } catch {
+      // The action error or the draft already on screen stays visible.
+    }
+  }
+
+  async function onAnalyse(id: string) {
+    const generation = listGeneration.current;
+    setBusy({ id, kind: "analyse" });
+    setRowError(null);
+    try {
+      const detail = await analyseFeedback(id);
+      if (generation !== listGeneration.current) {
+        return;
+      }
+      applyDetail(detail);
+    } catch (err: unknown) {
+      setRowError({ id, message: errorMessage(err, "AI service unavailable - reply manually") });
+    } finally {
+      setBusy((current) => (current?.id === id ? null : current));
+    }
+  }
+
   async function onGenerate(id: string) {
     const generation = listGeneration.current;
     setBusy({ id, kind: "generate" });
@@ -331,9 +362,13 @@ export function FeedbackDashboardPage() {
       if (generation !== listGeneration.current) {
         return;
       }
+      await refreshDetail(id, generation);
       upsertReply(id, reply);
     } catch (err: unknown) {
-      setRowError({ id, message: errorMessage(err, "Unable to generate a reply.") });
+      setRowError({ id, message: errorMessage(err, "AI service unavailable - reply manually") });
+      if (generation === listGeneration.current) {
+        await refreshDetail(id, generation);
+      }
     } finally {
       setBusy((current) => (current?.id === id ? null : current));
     }
@@ -388,7 +423,7 @@ export function FeedbackDashboardPage() {
       {alerts.length > 0 ? (
         <section aria-label="Feedback alerts" className="mb-4 space-y-2">
           {alerts.map((alert) => (
-            <p key={alert.id} className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger" role="status">
+            <p key={alert.id} className="rounded-xl border border-status-error-fg/30 bg-status-error-bg px-4 py-3 text-sm text-danger" role="status">
               <span className="font-semibold">{alert.title}. </span>
               {alert.message}
             </p>
@@ -400,19 +435,19 @@ export function FeedbackDashboardPage() {
         <dl className="mb-4 grid gap-3 sm:grid-cols-4">
           <div className="rounded-xl border border-surface-border bg-surface-raised px-4 py-3">
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Comments</dt>
-            <dd className="mt-1 font-serif text-2xl text-primary-dark">{stats.total}</dd>
+            <dd className="mt-1 font-serif text-2xl text-heading">{stats.total}</dd>
           </div>
           <div className="rounded-xl border border-surface-border bg-surface-raised px-4 py-3">
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Average rating</dt>
-            <dd className="mt-1 font-serif text-2xl text-primary-dark">{stats.averageRating.toFixed(1)}</dd>
+            <dd className="mt-1 font-serif text-2xl text-heading">{stats.averageRating.toFixed(1)}</dd>
           </div>
           <div className="rounded-xl border border-surface-border bg-surface-raised px-4 py-3">
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Awaiting review</dt>
-            <dd className="mt-1 font-serif text-2xl text-primary-dark">{stats.pendingModeration}</dd>
+            <dd className="mt-1 font-serif text-2xl text-heading">{stats.pendingModeration}</dd>
           </div>
           <div className="rounded-xl border border-surface-border bg-surface-raised px-4 py-3">
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Negative</dt>
-            <dd className="mt-1 font-serif text-2xl text-primary-dark">{stats.negative}</dd>
+            <dd className="mt-1 font-serif text-2xl text-heading">{stats.negative}</dd>
           </div>
         </dl>
       ) : null}
@@ -421,7 +456,7 @@ export function FeedbackDashboardPage() {
         aria-labelledby="weekly-digest-heading"
         className="rounded-2xl border border-surface-border bg-surface-raised p-4"
       >
-        <h2 id="weekly-digest-heading" className="font-serif text-lg font-semibold text-primary-dark">
+        <h2 id="weekly-digest-heading" className="font-serif text-lg font-semibold text-heading">
           Weekly digest
         </h2>
         <p className="mt-1 text-sm text-muted">Recurring themes from the feedback on this page.</p>
@@ -547,7 +582,7 @@ export function FeedbackDashboardPage() {
       ) : null}
 
       {error ? (
-        <div className="mt-6 rounded-xl border border-danger/30 bg-white p-4" role="alert">
+        <div className="mt-6 rounded-xl border border-danger/30 bg-surface-raised p-4" role="alert">
           <p className="text-sm text-danger">{error}</p>
           <button type="button" className={`${secondaryButton} mt-3`} onClick={() => setReloadKey((key) => key + 1)}>
             Try again
@@ -562,9 +597,9 @@ export function FeedbackDashboardPage() {
       ) : null}
 
       {!loading && !error && visibleItems.length > 0 ? (
-        <div className="mt-6 overflow-x-auto rounded-3xl border border-white/70 bg-surface-raised/95 shadow-[0_10px_30px_rgba(26,46,45,0.06)]">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-surface-border bg-surface text-xs uppercase tracking-[0.14em] text-muted">
+        <div className="table-scroll mt-6 rounded-2xl border border-surface-border bg-surface-raised shadow-card">
+          <table className="data-table">
+            <thead>
               <tr>
                 <th className="px-4 py-3 font-semibold" scope="col">
                   Patient
@@ -602,6 +637,7 @@ export function FeedbackDashboardPage() {
                   onRetryDetail={() => beginDetailLoad(item.id)}
                   onModerate={(action) => onModerate(item.id, action)}
                   onGenerate={() => onGenerate(item.id)}
+                  onAnalyse={() => onAnalyse(item.id)}
                   onDecide={(decision, replyText) => onDecide(item.id, decision, replyText)}
                   onManual={(reply) => onManual(item.id, reply)}
                 />
@@ -641,32 +677,30 @@ export function FeedbackDashboardPage() {
   );
 }
 
-function sentimentTone(sentiment: FeedbackSentiment | null): string {
-  if (sentiment === "Positive") {
-    return "bg-primary-muted text-primary-dark";
-  }
-  if (sentiment === "Negative") {
-    return "bg-red-100 text-danger";
-  }
-  if (sentiment === "Neutral") {
-    return "bg-surface text-ink";
-  }
-  return "bg-surface text-muted";
+function sentimentTone(sentiment: FeedbackSentiment | null): BadgeTone {
+  if (sentiment === "Positive") return "approved";
+  if (sentiment === "Negative") return "rejected";
+  if (sentiment === "Neutral") return "pending";
+  return "neutral";
 }
 
-function statusTone(status: FeedbackStatus): string {
-  if (status === "Visible") {
-    return "bg-primary-muted text-primary-dark";
-  }
-  if (status === "Hidden") {
-    return "bg-surface text-muted";
-  }
-  return "bg-amber-100 text-amber-950";
+function categoryTone(category: FeedbackCategory | null): BadgeTone {
+  if (category === "TreatmentQuality") return "approved";
+  if (category === "WaitingTime") return "pending";
+  if (category === "StaffService") return "success";
+  if (category === "FacilityIssue") return "rejected";
+  return "neutral";
+}
+
+function statusTone(status: FeedbackStatus): BadgeTone {
+  if (status === "Visible") return "approved";
+  if (status === "Hidden" || status === "Withdrawn") return "neutral";
+  return "pending";
 }
 
 function AiBadge() {
   return (
-    <span className="rounded-full bg-primary-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary-dark">
+    <span className="rounded-full bg-primary-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-heading">
       AI
     </span>
   );
@@ -682,6 +716,7 @@ type FeedbackRowProps = {
   onRetryDetail: () => void;
   onModerate: (action: ModerationAction) => Promise<void>;
   onGenerate: () => Promise<void>;
+  onAnalyse: () => Promise<void>;
   onDecide: (decision: ReplyDecision, replyText?: string) => Promise<void>;
   onManual: (reply: string) => Promise<void>;
 };
@@ -696,6 +731,7 @@ function FeedbackRow({
   onRetryDetail,
   onModerate,
   onGenerate,
+  onAnalyse,
   onDecide,
   onManual
 }: FeedbackRowProps) {
@@ -719,6 +755,9 @@ function FeedbackRow({
   const showActions = extra?.detailState === "ready" || extra?.detailState === "error";
   const generating = busy === "generate";
   const deciding = busy === "decide";
+  const analysing = busy === "analyse";
+  const withdrawn = item.status === "Withdrawn";
+  const needsAnalysis = item.sentiment === null || item.category === null;
 
   async function submitManual(event: FormEvent) {
     event.preventDefault();
@@ -753,22 +792,31 @@ function FeedbackRow({
           <span aria-label={`Rating ${item.rating} out of 5`}>{item.rating} / 5</span>
         </td>
         <td className="px-4 py-3">
-          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${sentimentTone(item.sentiment)}`}>
-            {sentimentLabel(item.sentiment)}
-          </span>
+          <Badge tone={sentimentTone(item.sentiment)}>{sentimentLabel(item.sentiment)}</Badge>
+          {needsAnalysis ? (
+            <button
+              type="button"
+              className={`${secondaryButton} mt-2 block`}
+              disabled={analysing || generating}
+              onClick={() => void onAnalyse()}
+            >
+              {analysing ? "Analysing…" : "Re-analyse"}
+            </button>
+          ) : null}
+          {actionError && !expanded ? (
+            <p className="mt-2 max-w-[14rem] text-xs text-danger" role="alert">
+              {actionError}
+            </p>
+          ) : null}
         </td>
         <td className="px-4 py-3">
-          <span className="inline-flex rounded-md border border-surface-border bg-surface px-2 py-0.5 text-xs font-medium text-ink">
-            {categoryLabel(item.category)}
-          </span>
+          <Badge tone={categoryTone(item.category)}>{categoryLabel(item.category)}</Badge>
         </td>
         <td className="min-w-[16rem] px-4 py-3">
           <p className="text-sm leading-6 text-ink">{commentSnippet(item.comment)}</p>
         </td>
         <td className="px-4 py-3">
-          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusTone(item.status)}`}>
-            {feedbackStatusLabel(item.status)}
-          </span>
+          <Badge tone={statusTone(item.status)}>{feedbackStatusLabel(item.status)}</Badge>
         </td>
         <td className="px-4 py-3">
           <button
@@ -786,10 +834,27 @@ function FeedbackRow({
       {expanded ? (
         <tr className="border-b border-surface-border bg-surface/60">
           <td id={panelId} className="px-4 py-4" colSpan={7}>
-            <blockquote className="whitespace-pre-wrap rounded-xl border-l-4 border-amber-300 bg-white px-4 py-3 font-display text-base leading-7 text-ink">
+            <blockquote className="whitespace-pre-wrap rounded-xl border-l-4 border-status-pending-fg/40 bg-surface-raised px-4 py-3 font-display text-base leading-7 text-ink">
               {item.comment}
             </blockquote>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Badge tone={sentimentTone(item.sentiment)}>{sentimentLabel(item.sentiment)}</Badge>
+              <Badge tone={categoryTone(item.category)}>{categoryLabel(item.category)}</Badge>
+              {needsAnalysis ? (
+                <button
+                  type="button"
+                  className={secondaryButton}
+                  disabled={analysing || generating}
+                  onClick={() => void onAnalyse()}
+                >
+                  {analysing ? "Analysing…" : "Re-analyse"}
+                </button>
+              ) : null}
+            </div>
             <div className="mt-3">
+              {withdrawn ? (
+                <p className="text-sm text-muted">Replies are closed because the patient withdrew this feedback.</p>
+              ) : (
               <span className="group relative inline-flex">
                 <button
                   type="button"
@@ -803,12 +868,13 @@ function FeedbackRow({
                 {note ? (
                   <span
                     role="tooltip"
-                    className="invisible absolute left-0 top-full z-10 mt-1 w-72 rounded-md bg-primary-dark px-2 py-1 text-xs font-normal text-white group-hover:visible"
+                    className="invisible absolute left-0 top-full z-10 mt-1 w-72 rounded-md on-dark bg-hero px-2 py-1 text-xs font-normal text-white group-hover:visible"
                   >
                     {note}
                   </span>
                 ) : null}
               </span>
+              )}
             </div>
 
             <div className="mt-4 space-y-3">
@@ -831,9 +897,9 @@ function FeedbackRow({
               {showActions && history.length > 0 ? (
                 <ul className="space-y-2" aria-label="Replies">
                   {history.map((reply) => (
-                    <li key={reply.id} className="rounded-xl border border-surface-border bg-white px-4 py-3">
+                    <li key={reply.id} className="rounded-xl border border-surface-border bg-surface-raised px-4 py-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        {reply.isAiGenerated ? <AiBadge /> : <span className="text-xs font-semibold text-primary-dark">Care team</span>}
+                        {reply.isAiGenerated ? <AiBadge /> : <span className="text-xs font-semibold text-heading">Care team</span>}
                         <span className="text-xs text-muted">{replyStatusLabel(reply.status)}</span>
                       </div>
                       <p className="mt-2 whitespace-pre-wrap font-display text-[15px] leading-6 text-ink">{reply.reply}</p>
@@ -842,8 +908,8 @@ function FeedbackRow({
                 </ul>
               ) : null}
 
-              {showActions && draft ? (
-                <div className="rounded-lg border border-primary/20 bg-white p-3">
+              {showActions && draft && !withdrawn ? (
+                <div className="rounded-lg border border-primary/20 bg-surface-raised p-3">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-ink">AI draft</h3>
                     {draft.isAiGenerated ? <AiBadge /> : null}
@@ -860,7 +926,7 @@ function FeedbackRow({
                 </div>
               ) : null}
 
-              {showActions ? (
+              {showActions && !withdrawn ? (
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className={secondaryButton} onClick={() => setManualOpen((open) => !open)}>
                     Reply manually
@@ -868,16 +934,16 @@ function FeedbackRow({
                   <button
                     type="button"
                     className={secondaryButton}
-                    disabled={generating || deciding}
+                    disabled={generating || deciding || analysing}
                     aria-busy={generating}
                     onClick={() => void onGenerate()}
                   >
-                    {generating ? "Generating reply…" : "Generate Reply"}
+                    {generating ? "Generating reply…" : "Generate AI reply"}
                   </button>
                   {draft ? (
                     <>
-                      <button type="button" className={secondaryButton} disabled={deciding || generating} onClick={submitEdit}>
-                        Save edit
+                  <button type="button" className={secondaryButton} disabled={deciding || generating} onClick={submitEdit}>
+                        Edit
                       </button>
                       <button
                         type="button"
@@ -892,7 +958,7 @@ function FeedbackRow({
                       </button>
                       <button
                         type="button"
-                        className="rounded-lg border border-danger/40 px-3 py-1.5 text-sm font-medium text-danger hover:bg-red-50 disabled:opacity-60"
+                        className="rounded-lg border border-danger/40 px-3 py-1.5 text-sm font-medium text-danger hover:bg-status-error-bg disabled:opacity-60"
                         disabled={deciding || generating}
                         onClick={() => void onDecide("Reject")}
                       >
@@ -903,7 +969,7 @@ function FeedbackRow({
                 </div>
               ) : null}
 
-              {showActions && manualOpen ? (
+              {showActions && manualOpen && !withdrawn ? (
                 <form onSubmit={submitManual}>
                   <label className="block text-sm font-semibold" htmlFor={`manual-${item.id}`}>
                     Staff reply

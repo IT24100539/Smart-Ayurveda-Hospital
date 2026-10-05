@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/page_layout.dart';
 import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
 import '../domain/communication_models.dart';
@@ -69,8 +70,8 @@ class _SubmitComplaintScreenState extends ConsumerState<SubmitComplaintScreen> {
       appBar: AppBar(title: Text(l10n.submitComplaintTitle)),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: PageListView(
+          maxWidth: 640,
           children: [
             TextFormField(
               controller: _subject,
@@ -129,10 +130,13 @@ class _SubmitComplaintScreenState extends ConsumerState<SubmitComplaintScreen> {
             FilledButton(
               onPressed: _submitting ? null : _submit,
               child: _submitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 22,
                       width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: theme.colorScheme.onPrimary,
+                      ),
                     )
                   : Text(l10n.newComplaint),
             ),

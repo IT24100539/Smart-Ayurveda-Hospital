@@ -1,6 +1,8 @@
+using FluentValidation;
+using Hospital.Application.Abstractions;
 using Hospital.Application.Appointments;
-using Hospital.Application.Appointments.Dtos;
 using Hospital.Application.Common;
+using Hospital.Application.Appointments.Dtos;
 using Hospital.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,17 +15,26 @@ namespace Hospital.Api.Controllers;
 public sealed class AppointmentActionsController : ControllerBase
 {
     private readonly IAppointmentService _appointments;
+    private readonly IActorContext _actors;
+    private readonly IValidator<AppointmentDecisionRequest> _decisionValidator;
 
-    public AppointmentActionsController(IAppointmentService appointments) => _appointments = appointments;
+    public AppointmentActionsController(
+        IAppointmentService appointments,
+        IActorContext actors,
+        IValidator<AppointmentDecisionRequest> decisionValidator)
+    {
+        _appointments = appointments;
+        _actors = actors;
+        _decisionValidator = decisionValidator;
+    }
 
     [HttpGet("me")]
     [Authorize(Roles = "Patient")]
     public async Task<ActionResult<PagedResult<AppointmentDto>>> MyAppointments([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
-        // Try to read patient id from claims (sub or custom). Fallback: return bad request.
-        var sub = User.Claims.FirstOrDefault(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(sub, out var patientId)) return BadRequest(new { message = "Unable to determine patient id from token." });
-        var result = await _appointments.ListAsync(null, patientId, null, page, pageSize, cancellationToken);
+        QueryLimits.EnsurePage(page, pageSize);
+        var patient = await _actors.RequirePatientAsync(cancellationToken);
+        var result = await _appointments.ListAsync(null, patient.Id, null, page, pageSize, cancellationToken);
         return Ok(result);
     }
 
@@ -31,7 +42,7 @@ public sealed class AppointmentActionsController : ControllerBase
     [Authorize(Roles = "FrontDeskStaff,Admin,Doctor")]
     public async Task<ActionResult<AppointmentDto>> Decide(Guid id, AppointmentDecisionRequest request, CancellationToken cancellationToken)
     {
-        // Map to existing UpdateAppointmentStatusRequest
+        await _decisionValidator.ValidateAndThrowAsync(request, cancellationToken);
         var update = new UpdateAppointmentStatusRequest(request.Status, request.DecidedBy);
         var res = await _appointments.UpdateStatusAsync(id, update, cancellationToken);
         return Ok(res);
@@ -41,9 +52,8 @@ public sealed class AppointmentActionsController : ControllerBase
     [Authorize(Roles = "Patient")]
     public async Task<ActionResult<AppointmentDto>> Cancel(Guid id, CancellationToken cancellationToken)
     {
-        var sub = User.Claims.FirstOrDefault(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(sub, out var patientId)) return BadRequest(new { message = "Unable to determine patient id from token." });
-        await _appointments.CancelAsync(id, patientId, cancellationToken);
+        var patient = await _actors.RequirePatientAsync(cancellationToken);
+        await _appointments.CancelAsync(id, patient.Id, cancellationToken);
         return NoContent();
     }
 }

@@ -6,24 +6,69 @@ namespace Hospital.Application.Appointments;
 
 public sealed record TreatmentAvailabilityDto(Guid TreatmentId, DateOnly Date, bool Available, string? Reason = null);
 
+public sealed record TreatmentSlotAvailabilityDto(
+    Guid ScheduleId,
+    string Time,
+    bool Available,
+    string? DoctorName);
+
+public sealed record TreatmentDayAvailabilityDto(
+    Guid TreatmentId,
+    DateOnly Date,
+    bool Available,
+    string? Reason,
+    IReadOnlyList<TreatmentSlotAvailabilityDto> Slots);
+
 public sealed class TreatmentAvailabilityService(
     ITreatmentRepository treatments, IAppointmentRepository appointments, IBookingValidator validator)
 {
     public async Task<TreatmentAvailabilityDto> GetAsync(Guid treatmentId, DateOnly date, CancellationToken cancellationToken)
     {
+        var day = await GetDayAsync(treatmentId, date, cancellationToken);
+        return new(day.TreatmentId, day.Date, day.Available, day.Reason);
+    }
+
+    public async Task<TreatmentDayAvailabilityDto> GetDayAsync(
+        Guid treatmentId,
+        DateOnly date,
+        CancellationToken cancellationToken)
+    {
         _ = await treatments.GetByIdAsync(treatmentId, cancellationToken)
             ?? throw new NotFoundException(nameof(Treatment), treatmentId);
         var schedules = await treatments.ListSchedulesAsync(treatmentId, cancellationToken);
+        var slots = new List<TreatmentSlotAvailabilityDto>();
         foreach (var schedule in schedules)
         {
-            try { validator.Validate(schedule, date, schedule.TimeSlot); }
-            catch (DomainException) { continue; }
+            var slot = schedule.SlotLabel;
+            try
+            {
+                validator.Validate(schedule, date, slot);
+            }
+            catch (DomainException)
+            {
+                continue;
+            }
 
-            // Same unlimited-capacity convention and active booking count as appointment creation.
-            if (schedule.MaxPatients <= 0 ||
-                await appointments.CountActiveAppointmentsAsync(treatmentId, date, schedule.TimeSlot.Trim(), cancellationToken) < schedule.MaxPatients)
-                return new(treatmentId, date, true);
+            var booked = await appointments.CountActiveAppointmentsAsync(
+                treatmentId,
+                date,
+                slot,
+                cancellationToken);
+            var capacity = schedule.MaxPatients > 0 ? schedule.MaxPatients : schedule.MaxSlotsPerDay;
+            var available = capacity <= 0 || booked < capacity;
+            slots.Add(new(
+                schedule.Id,
+                slot,
+                available,
+                schedule.Therapist?.FullName));
         }
-        return new(treatmentId, date, false, "No matching schedule with remaining capacity.");
+
+        if (slots.Count == 0)
+        {
+            return new(treatmentId, date, false, "No matching schedule with remaining capacity.", slots);
+        }
+
+        var open = slots.Exists(slot => slot.Available);
+        return new(treatmentId, date, open, open ? null : "Selected time slot is full.", slots);
     }
 }

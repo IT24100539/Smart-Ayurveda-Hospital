@@ -21,12 +21,39 @@ class AuthRepository {
     required String email,
     required String phoneNumber,
     required String password,
+    required String dateOfBirth,
+    required String gender,
   }) {
     return _post('/auth/register', {
       'fullName': fullName,
       'email': email,
       'phoneNumber': phoneNumber,
       'password': password,
+      'dateOfBirth': dateOfBirth,
+      'gender': gender,
+    });
+  }
+
+  /// `POST /auth/request-reset`. Always succeeds from the caller's point of
+  /// view when the API is reachable — the same generic body is returned
+  /// whether or not the email is registered.
+  Future<void> requestReset({required String email}) {
+    return _postAnonymous('/auth/request-reset', {'email': email});
+  }
+
+  /// `POST /auth/complete-reset`. Revokes the token and invalidates sessions
+  /// on the API when the token is valid.
+  Future<void> completeReset({
+    required String email,
+    required String token,
+    required String newPassword,
+    required String confirmPassword,
+  }) {
+    return _postAnonymous('/auth/complete-reset', {
+      'email': email,
+      'token': token,
+      'newPassword': newPassword,
+      'confirmPassword': confirmPassword,
     });
   }
 
@@ -38,6 +65,18 @@ class AuthRepository {
         options: anonymousRequest,
       );
       return AuthResult.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw ApiException.fromDioException(error);
+    }
+  }
+
+  Future<void> _postAnonymous(String path, Map<String, dynamic> body) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        path,
+        data: body,
+        options: anonymousRequest,
+      );
     } on DioException catch (error) {
       throw ApiException.fromDioException(error);
     }

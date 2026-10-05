@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../feedback/presentation/unread_count_badge.dart';
 
-/// Bottom navigation host for the five patient tabs.
+/// Bottom navigation on phones, rail on wide screens.
 ///
 /// Each tab is a branch of a [StatefulShellRoute], so its navigation stack and
 /// scroll position survive switching tabs.
@@ -16,17 +17,15 @@ class HomeShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        // `initialLocation: true` re-taps back to the branch root, which is the
-        // behaviour patients expect from a bottom bar.
-        onDestinationSelected: (index) => navigationShell.goBranch(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final expanded = constraints.maxWidth > 1024;
+        void select(int index) => navigationShell.goBranch(
           index,
           initialLocation: index == navigationShell.currentIndex,
-        ),
-        destinations: [
+        );
+
+        final barDestinations = [
           NavigationDestination(
             icon: const Icon(Icons.home_outlined),
             selectedIcon: const Icon(Icons.home),
@@ -43,8 +42,12 @@ class HomeShell extends StatelessWidget {
             label: l10n.navAppointments,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.reviews_outlined),
-            selectedIcon: const Icon(Icons.reviews),
+            icon: const UnreadCountBadge(
+              child: Icon(Icons.reviews_outlined),
+            ),
+            selectedIcon: const UnreadCountBadge(
+              child: Icon(Icons.reviews),
+            ),
             label: l10n.navFeedback,
           ),
           NavigationDestination(
@@ -52,8 +55,64 @@ class HomeShell extends StatelessWidget {
             selectedIcon: const Icon(Icons.person),
             label: l10n.navProfile,
           ),
-        ],
-      ),
+        ];
+
+        if (expanded) {
+          return Scaffold(
+            body: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: navigationShell.currentIndex,
+                  onDestinationSelected: select,
+                  labelType: NavigationRailLabelType.all,
+                  destinations: [
+                    NavigationRailDestination(
+                      icon: const Icon(Icons.home_outlined),
+                      selectedIcon: const Icon(Icons.home),
+                      label: Text(l10n.navHome),
+                    ),
+                    NavigationRailDestination(
+                      icon: const Icon(Icons.spa_outlined),
+                      selectedIcon: const Icon(Icons.spa),
+                      label: Text(l10n.navTreatments),
+                    ),
+                    NavigationRailDestination(
+                      icon: const Icon(Icons.event_available_outlined),
+                      selectedIcon: const Icon(Icons.event_available),
+                      label: Text(l10n.navAppointments),
+                    ),
+                    NavigationRailDestination(
+                      icon: const UnreadCountBadge(
+                        child: Icon(Icons.reviews_outlined),
+                      ),
+                      selectedIcon: const UnreadCountBadge(
+                        child: Icon(Icons.reviews),
+                      ),
+                      label: Text(l10n.navFeedback),
+                    ),
+                    NavigationRailDestination(
+                      icon: const Icon(Icons.person_outline),
+                      selectedIcon: const Icon(Icons.person),
+                      label: Text(l10n.navProfile),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: navigationShell),
+              ],
+            ),
+          );
+        }
+
+        return Scaffold(
+          body: navigationShell,
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: select,
+            destinations: barDestinations,
+          ),
+        );
+      },
     );
   }
 }

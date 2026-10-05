@@ -1,6 +1,14 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.settings import settings
+
+
+def test_root_points_at_health_and_docs():
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"service": "agent-service", "health": "/health", "docs": "/docs"}
 
 
 def test_health():
@@ -25,7 +33,7 @@ def test_invoke_does_not_serve_the_old_feedback_stub():
             "prompt": "Draft a reply",
             "context": {"rating": "2", "comment": "The nadi pariksha slot ran late", "anonymous": "true"},
         },
-        headers={"X-Internal-Secret": "dev-internal-agent-secret"},
+        headers={"X-Internal-Secret": settings.shared_secret.get_secret_value()},
     )
     assert response.status_code == 200
     body = response.json()
@@ -38,7 +46,7 @@ def test_invoke_routes_appointment():
     response = client.post(
         "/v1/invoke",
         json={"agent": "coordinator", "prompt": "Schedule an appointment tomorrow"},
-        headers={"X-Internal-Secret": "dev-internal-agent-secret"},
+        headers={"X-Internal-Secret": settings.shared_secret.get_secret_value()},
     )
     assert response.status_code == 200
     body = response.json()

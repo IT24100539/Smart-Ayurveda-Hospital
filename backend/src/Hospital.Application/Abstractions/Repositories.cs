@@ -25,7 +25,16 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken);
     Task<User?> FindActiveByRoleAsync(UserRole role, CancellationToken cancellationToken);
+    Task<IReadOnlyList<User>> ListStaffAsync(string? query, UserRole? role, bool? isActive, int skip, int take, CancellationToken cancellationToken);
+    Task<int> CountStaffAsync(string? query, UserRole? role, bool? isActive, CancellationToken cancellationToken);
+    Task<int> CountActiveAdminsAsync(CancellationToken cancellationToken);
     Task AddAsync(User user, CancellationToken cancellationToken);
+}
+
+public interface IAuditLogRepository
+{
+    Task AddAsync(AuditLog log, CancellationToken cancellationToken);
+    Task<(IReadOnlyList<AuditLog> Items, int Total)> ListAsync(int skip, int take, CancellationToken cancellationToken);
 }
 
 public interface ITreatmentRepository
@@ -79,10 +88,18 @@ public interface IAppointmentRepository
         CancellationToken cancellationToken);
     Task<int> CountActiveAppointmentsAsync(Guid treatmentId, DateOnly requestedDate, string requestedTimeSlot, CancellationToken cancellationToken);
     Task<bool> TryAddWithinCapacityAsync(Appointment appointment, int maxPatients, CancellationToken cancellationToken);
+    Task<bool> TryRescheduleWithinCapacityAsync(Appointment appointment, DateOnly newDate, string newSlot, Guid? newScheduleId, int maxPatients, CancellationToken cancellationToken);
     Task AddAsync(Appointment appointment, CancellationToken cancellationToken);
 }
 
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Runs <paramref name="action"/> in one database transaction when the store supports it.
+    /// A failure rolls the user and the patient chart back together.
+    /// </summary>
+    Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken)
+        => action(cancellationToken);
 }

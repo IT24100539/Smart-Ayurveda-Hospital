@@ -15,7 +15,8 @@ public sealed class WardsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<WardOccupancyDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var list = await _wards.GetAllOccupancyAsync(cancellationToken);
+        var includeBeds = User.IsInRole("FrontDeskStaff") || User.IsInRole("Doctor") || User.IsInRole("Admin");
+        var list = await _wards.GetAllOccupancyAsync(includeBeds, cancellationToken);
         return Ok(list);
     }
 

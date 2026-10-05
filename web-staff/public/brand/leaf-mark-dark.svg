@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Smart Ayurveda leaf mark">
+  <rect width="64" height="64" rx="16" fill="#0B1512"/>
+  <path d="M32 12c10 8 16 18 16 28a16 16 0 0 1-32 0c0-10 6-20 16-28Z" fill="#4FB3AA"/>
+  <path d="M32 18v30" fill="none" stroke="#06201C" stroke-width="2" stroke-linecap="round"/>
+  <path d="M32 28c-6-2-10-6-12-10M32 36c6-2 10-6 12-10" fill="none" stroke="#06201C" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

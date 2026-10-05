@@ -2,6 +2,168 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design tokens. Values are space-separated RGB channels so Tailwind can add
+ * opacity (bg-ink/40). The palette mirrors mobile-patient/lib/src/theme/app_theme.dart:
+ * cream and white with herbal green and saffron gold in light mode, near-black
+ * green with dark-teal cards in dark mode.
+ *
+ * The theme is chosen by data-theme on <html> (see src/store/themeStore.ts).
+ * Contrast of the key pairs is checked in src/theme/contrast.test.ts (WCAG AA).
+ */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --surface: 247 243 232; /* #F7F3E8 */
+  --surface-raised: 255 255 255; /* card */
+  --surface-sunken: 241 235 218; /* #F1EBDA card-raised */
+  --surface-border: 227 220 200; /* #E3DCC8 decorative */
+  --field-bg: 255 255 255;
+  --field-border: 93 111 105; /* #5D6F69 */
+
+  --ink: 27 43 39; /* #1B2B27 */
+  --muted: 86 104 98; /* #566862 */
+  --label: 86 104 98;
+  --heading: 27 43 39;
+
+  --primary: 31 111 95; /* #1F6F5F */
+  --primary-dark: 20 88 75;
+  --primary-light: 77 182 172; /* #4DB6AC */
+  --primary-muted: 229 244 242;
+  --on-primary: 255 255 255;
+
+  --gold: 107 68 16; /* #6B4410 */
+  --gold-muted: 246 231 200; /* #F6E7C8 */
+  --saffron: 201 138 27; /* #C98A1B decorative, not for small text */
+  --pill-bg: 246 231 200;
+  --pill-fg: 107 68 16;
+
+  --danger: 179 38 30; /* #B3261E */
+  --on-danger: 255 255 255;
+  --warning: 143 92 0; /* #8F5C00 */
+  --success: 22 110 72; /* #166E48 */
+
+  --focus: 31 111 95;
+  --shadow: 26 46 45;
+
+  --scrim: 11 21 18; /* #0B1512 */
+  --on-scrim: 255 255 255;
+
+  --header-start: 31 111 95; /* #1F6F5F */
+  --header-end: 39 125 109; /* #277D6D */
+  --on-header: 255 255 255;
+
+  --hero: 22 94 86; /* #165E56 */
+  --hero-deep: 10 63 58; /* #0A3F3A */
+  --hero-muted: 229 244 242; /* #E5F4F2 */
+  --hero-accent: 231 215 168; /* #E7D7A8 */
+  --hero-button: 255 255 255;
+  --hero-button-hover: 229 244 242;
+  --on-hero: 255 255 255;
+
+  --status-pending-bg: 251 233 198; /* #FBE9C6 */
+  --status-pending-fg: 122 78 15; /* #7A4E0F */
+  --status-approved-bg: 227 244 236; /* #E3F4EC */
+  --status-approved-fg: 23 97 63; /* #17613F */
+  --status-rejected-bg: 248 230 223; /* #F8E6DF */
+  --status-rejected-fg: 154 69 48; /* #9A4530 */
+  --status-success-bg: 229 244 242;
+  --status-success-fg: 31 111 95;
+  --status-error-bg: 253 236 234;
+  --status-error-fg: 179 38 30;
+
+  --neutral-50: 247 245 242;
+  --neutral-100: 239 234 227;
+  --neutral-200: 228 221 208;
+  --neutral-300: 207 198 184;
+  --neutral-400: 143 134 128;
+  --neutral-500: 93 111 110;
+  --neutral-600: 63 82 79;
+  --neutral-700: 44 61 59;
+  --neutral-800: 26 46 45;
+  --neutral-900: 16 28 27;
+
+  --glow-primary: 15 110 103;
+  --glow-gold: 201 162 39;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface: 11 21 18; /* #0B1512 */
+  --surface-raised: 19 36 31; /* #13241F */
+  --surface-sunken: 26 48 42; /* #1A302A */
+  --surface-border: 36 64 58; /* #24403A */
+  --field-bg: 26 48 42;
+  --field-border: 127 154 147; /* #7F9A93 */
+
+  --ink: 234 242 239; /* #EAF2EF */
+  --muted: 157 181 174; /* #9DB5AE */
+  --label: 127 154 147; /* #7F9A93 */
+  --heading: 234 242 239;
+
+  --primary: 77 182 172; /* #4DB6AC */
+  --primary-dark: 108 201 192; /* #6CC9C0 hover */
+  --primary-light: 77 182 172;
+  --primary-muted: 22 56 50;
+  --on-primary: 6 32 28; /* #06201C */
+
+  --gold: 231 194 125; /* #E7C27D text on dark surfaces */
+  --gold-muted: 61 52 32;
+  --saffron: 231 194 125;
+  --pill-bg: 246 231 200;
+  --pill-fg: 107 68 16;
+
+  --danger: 255 138 128; /* #FF8A80 */
+  --on-danger: 58 18 16;
+  --warning: 240 180 76; /* #F0B44C */
+  --success: 95 211 160; /* #5FD3A0 */
+
+  --focus: 79 179 170;
+  --shadow: 0 0 0;
+
+  --scrim: 11 21 18;
+  --on-scrim: 255 255 255;
+
+  --header-start: 15 89 83; /* #0F5953 */
+  --header-end: 24 115 112; /* #187370 */
+  --on-header: 234 242 239; /* #EAF2EF */
+
+  --hero: 22 94 86;
+  --hero-deep: 10 63 58;
+  --hero-muted: 229 244 242;
+  --hero-accent: 231 215 168;
+  --hero-button: 255 255 255;
+  --hero-button-hover: 229 244 242;
+  --on-hero: 255 255 255;
+
+  --status-pending-bg: 251 233 198;
+  --status-pending-fg: 122 78 15;
+  --status-approved-bg: 227 244 236;
+  --status-approved-fg: 23 97 63;
+  --status-rejected-bg: 248 230 223;
+  --status-rejected-fg: 154 69 48;
+  --status-success-bg: 229 244 242;
+  --status-success-fg: 31 111 95;
+  --status-error-bg: 58 34 32;
+  --status-error-fg: 255 138 128;
+
+  --neutral-50: 26 51 48;
+  --neutral-100: 31 60 56;
+  --neutral-200: 44 74 68;
+  --neutral-300: 78 110 102;
+  --neutral-400: 127 155 147;
+  --neutral-500: 197 214 208;
+  --neutral-600: 197 214 208;
+  --neutral-700: 220 232 227;
+  --neutral-800: 244 248 246;
+  --neutral-900: 255 255 255;
+
+  --glow-primary: 126 224 210;
+  --glow-gold: 228 195 106;
+}
+
 @layer base {
   html,
   body,
@@ -10,14 +172,125 @@
   }
 
   body {
-    @apply bg-surface font-sans text-ink antialiased;
+    @apply bg-surface font-sans text-body text-ink antialiased;
     background-image:
-      radial-gradient(ellipse 80% 50% at 100% -10%, rgba(15, 92, 91, 0.08), transparent 50%),
-      radial-gradient(ellipse 60% 40% at 0% 100%, rgba(201, 162, 39, 0.08), transparent 45%);
+      radial-gradient(ellipse 80% 50% at 100% -10%, rgb(var(--glow-primary) / 0.08), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 0% 100%, rgb(var(--glow-gold) / 0.08), transparent 45%);
     background-attachment: fixed;
   }
 
   h1 {
-    @apply font-display text-2xl font-semibold text-primary-dark;
+    @apply font-display text-page font-semibold text-heading;
+  }
+
+  /* Visible keyboard focus everywhere. Dark panels re-point --focus to white. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--focus));
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgb(var(--primary) / 0.28);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Surfaces that stay dark in both themes (sidebar, hero banners). */
+  .on-dark {
+    --focus: 255 255 255;
+  }
+
+  /*
+   * Data tables. Wrap in .table-scroll (scrolls both ways, so the header can stick)
+   * and put .data-table on the <table>. Works with any th/td classes already present.
+   */
+  .table-scroll {
+    @apply max-h-[70vh] overflow-auto;
+  }
+
+  .data-table {
+    @apply w-full border-separate border-spacing-0 text-left text-sm text-ink;
+  }
+
+  .data-table thead th {
+    @apply sticky top-0 z-10 whitespace-nowrap border-b border-surface-border bg-neutral-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted;
+  }
+
+  .data-table tbody td {
+    @apply border-b border-surface-border;
+  }
+
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .data-table tbody tr:hover td {
+    background-color: rgb(var(--primary-muted) / 0.45);
+  }
+
+  .chart-track {
+    stroke: rgb(var(--primary-muted));
+  }
+
+  .chart-value {
+    stroke: rgb(var(--primary));
+  }
+
+  .chart-label {
+    fill: rgb(var(--heading));
+  }
+
+  .chart-sub {
+    fill: rgb(var(--muted));
+  }
+
+  /* Text input, select and textarea. */
+  .field {
+    @apply min-h-12 w-full rounded-control border border-field-border bg-field px-4 py-2 text-body text-ink transition-colors;
+  }
+
+  .avatar-mark {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+  }
+
+  .header-card {
+    border-radius: 28px;
+    border: 1px solid rgb(var(--primary) / 0.35);
+    background-image: linear-gradient(90deg, rgb(var(--header-start)), rgb(var(--header-end)));
+    color: rgb(var(--on-header));
+  }
+
+  .field::placeholder {
+    @apply text-muted opacity-80;
+  }
+
+  .field:hover:not(:disabled) {
+    @apply border-primary;
+  }
+
+  .field:focus-visible {
+    @apply border-primary;
+    outline-offset: 0;
+  }
+
+  .field:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .field[aria-invalid="true"] {
+    @apply border-danger;
   }
 }

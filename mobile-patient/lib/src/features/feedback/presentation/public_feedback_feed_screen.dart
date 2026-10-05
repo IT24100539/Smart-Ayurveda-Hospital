@@ -4,13 +4,20 @@ import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/feature_localizations.dart';
+import '../../../shared/release_text_input.dart';
+import '../../../shared/widgets/clinic_widgets.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_layout.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../router/app_routes.dart';
-import '../../../theme/app_theme.dart';
 import '../application/communication_providers.dart';
 import '../data/communication_repository.dart';
 import '../domain/communication_models.dart';
 import 'feedback_banner.dart';
+import 'quote_block.dart';
+import 'star_rating.dart';
+import 'unread_count_badge.dart';
+import 'feedback_keys.dart';
 import 'feedback_messages.dart';
 
 class _ReactionView {
@@ -26,7 +33,10 @@ class _ReactionView {
 }
 
 class PublicFeedbackFeedScreen extends ConsumerStatefulWidget {
-  const PublicFeedbackFeedScreen({super.key});
+  const PublicFeedbackFeedScreen({this.embedded = false, super.key});
+
+  /// Shown inside the feedback hub, without a second app bar.
+  final bool embedded;
 
   @override
   ConsumerState<PublicFeedbackFeedScreen> createState() =>
@@ -94,7 +104,9 @@ class _PublicFeedbackFeedScreenState
       await ref
           .read(communicationRepositoryProvider)
           .replyToFeedback(item.id, text);
+      releaseTextInput();
       ref.invalidate(publicFeedProvider);
+      ref.invalidate(myFeedbackProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -112,42 +124,42 @@ class _PublicFeedbackFeedScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final feed = ref.watch(publicFeedProvider);
-    final notices = ref.watch(notificationsProvider);
-    final unread = notices.maybeWhen(
-      data: (items) => items.where((item) => !item.isRead).length,
-      orElse: () => 0,
-    );
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.publicFeedTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.myFeedbackTitle,
-            onPressed: () => context.push(AppRoutes.myFeedback),
-            icon: const Icon(Icons.rate_review_outlined),
-          ),
-          IconButton(
-            tooltip: l10n.complaintsTitle,
-            onPressed: () => context.push(AppRoutes.complaints),
-            icon: const Icon(Icons.report_outlined),
-          ),
-          IconButton(
-            tooltip: l10n.notificationsTitle,
-            onPressed: () => context.push(AppRoutes.notifications),
-            icon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text('$unread'),
-              child: const Icon(Icons.notifications_outlined),
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              title: Text(l10n.publicFeedTitle),
+              actions: [
+                IconButton(
+                  tooltip: l10n.myFeedbackTitle,
+                  onPressed: () => context.push(AppRoutes.myFeedback),
+                  icon: const Icon(Icons.rate_review_outlined),
+                ),
+                IconButton(
+                  tooltip: l10n.complaintsTitle,
+                  onPressed: () => context.push(AppRoutes.complaints),
+                  icon: const Icon(Icons.report_outlined),
+                ),
+                IconButton(
+                  tooltip: l10n.notificationsTitle,
+                  onPressed: () => context.push(AppRoutes.notifications),
+                  icon: const UnreadCountBadge(
+                    child: Icon(Icons.notifications_outlined),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
       body: feed.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SkeletonList(
+          lines: 3,
+          leading: true,
+          listKey: FeedbackKeys.feedSkeleton,
+        ),
         error: (error, _) => ErrorState(
           message: feedbackErrorText(error, l10n),
           actionLabel: l10n.retry,
+          actionKey: FeedbackKeys.feedRetry,
           onAction: () => ref.invalidate(publicFeedProvider),
         ),
         data: (items) {
@@ -158,14 +170,14 @@ class _PublicFeedbackFeedScreenState
                     items.length;
           return RefreshIndicator(
             onRefresh: () => ref.refresh(publicFeedProvider.future),
-            child: ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: PageListView.builder(
               itemCount: items.isEmpty ? 2 : items.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return FeedbackBanner(
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FeedbackBanner(
                     imageAsset: 'assets/images/feedback-note.png',
                     kicker: copy.text('After the visit', 'පැමිණීමෙන් පසු'),
                     title: l10n.publicFeedTitle,
@@ -179,18 +191,22 @@ class _PublicFeedbackFeedScreenState
                             '${items.length} notes · ${average.toStringAsFixed(1)} / 5',
                             'සටහන් ${items.length} · ${average.toStringAsFixed(1)} / 5',
                           ),
+                  ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        key: FeedbackKeys.writeFeedback,
+                        onPressed: () => context.push(AppRoutes.submitFeedback),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: Text(l10n.writeFeedback),
+                      ),
+                    ],
                   );
                 }
                 if (items.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 28),
-                    child: Text(
-                      l10n.publicFeedEmpty,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                  return EmptyState(
+                    compact: true,
+                    icon: Icons.rate_review_outlined,
+                    message: l10n.publicFeedEmpty,
                   );
                 }
                 final item = items[index - 1];
@@ -235,10 +251,9 @@ class _FeedbackCard extends StatelessWidget {
     final theme = Theme.of(context);
     final name = item.isAnonymous ? l10n.anonymousPatient : item.patientName;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-        child: Column(
+    return ClinicCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -254,9 +269,7 @@ class _FeedbackCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     name,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: theme.textTheme.titleSmall,
                   ),
                 ),
                 Text(
@@ -268,34 +281,12 @@ class _FeedbackCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Row(
-              children: [
-                for (var star = 1; star <= 5; star++)
-                  Icon(
-                    star <= item.rating ? Icons.star : Icons.star_border,
-                    size: 16,
-                    color: AyurvedaColors.gold,
-                  ),
-              ],
-            ),
+            StarDisplay(rating: item.rating),
             const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              decoration: const BoxDecoration(
-                color: AyurvedaColors.cream,
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-                border: Border(
-                  left: BorderSide(color: AyurvedaColors.gold, width: 3),
-                ),
-              ),
-              child: Text(
-                item.comment,
-                style: theme.textTheme.bodyLarge?.copyWith(height: 1.45),
-              ),
-            ),
+            QuoteBlock(text: item.comment),
             const SizedBox(height: 4),
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _ReactionButton(
                   icon: selected == ReactionType.like
@@ -339,7 +330,6 @@ class _FeedbackCard extends StatelessWidget {
               for (final reply in item.replies) _ReplyTile(reply: reply),
             _ReplyComposer(onReply: onReply),
           ],
-        ),
       ),
     );
   }
@@ -360,6 +350,7 @@ class _ReplyComposerState extends State<_ReplyComposer> {
 
   @override
   void dispose() {
+    releaseTextInput();
     _controller.dispose();
     super.dispose();
   }
@@ -455,7 +446,7 @@ class _ReplyTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AyurvedaColors.cream,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

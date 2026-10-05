@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../router/app_routes.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../theme/app_theme.dart';
+import '../../appointments/domain/appointment_models.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/availability_provider.dart';
 import '../application/treatments_provider.dart';
@@ -57,9 +59,17 @@ class _TreatmentDetailView extends ConsumerWidget {
   void _handleRequestAppointment(BuildContext context, WidgetRef ref) {
     final authState = ref.read(authControllerProvider);
     if (authState.isAuthenticated) {
-      context.push(AppRoutes.bookingFor(treatment.id));
+      context.push(
+        AppRoutes.bookingFor(treatment.id),
+        extra: TreatmentBooking(
+          id: treatment.id,
+          name: treatment.nameEnglish,
+        ),
+      );
     } else {
-      context.push('/login?returnPath=/treatments/${treatment.id}');
+      context.push(
+        AppRoutes.loginWithReturn(AppRoutes.bookingFor(treatment.id)),
+      );
     }
   }
 
@@ -75,18 +85,40 @@ class _TreatmentDetailView extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Photo placeholder
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.image_outlined,
-                  size: 64,
-                  color: theme.colorScheme.onSurfaceVariant,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: SizedBox(
+                height: 220,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.asset(
+                      _treatmentImageAsset(treatment.nameEnglish),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, _, _) => Container(
+                        color: theme.colorScheme.primaryContainer,
+                        child: Icon(
+                          Icons.spa_outlined,
+                          size: 64,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            AyurvedaColors.scrim.withValues(alpha: 0.45),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  ],
                 ),
               ),
             ),
@@ -201,7 +233,7 @@ class _TreatmentDetailView extends ConsumerWidget {
                                   Expanded(
                                     child: Text(
                                       availability.message ??
-                                          'Available for booking!',
+                                          'Slots are available on this date.',
                                       style: const TextStyle(
                                         color: AyurvedaColors.forest,
                                         fontWeight: FontWeight.bold,
@@ -251,7 +283,9 @@ class _TreatmentDetailView extends ConsumerWidget {
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
                     error: (error, stack) => ErrorState(
-                      message: 'Failed to check availability: $error',
+                      message: error is ApiException
+                          ? (error.message ?? 'Failed to check availability.')
+                          : 'Failed to check availability: $error',
                     ),
                   );
                 },
@@ -261,4 +295,17 @@ class _TreatmentDetailView extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _treatmentImageAsset(String name) {
+  final lower = name.toLowerCase();
+  if (lower.contains('panchakarma')) return 'assets/images/therapy-panchakarma.png';
+  if (lower.contains('shirodhara')) return 'assets/images/therapy-shirodhara.png';
+  if (lower.contains('abhyanga')) return 'assets/images/therapy-abhyanga.png';
+  if (lower.contains('herbal') || lower.contains('medicine') || lower.contains('apothecary')) {
+    return 'assets/images/therapy-herbal-medicine.png';
+  }
+  if (lower.contains('yoga') || lower.contains('meditation')) return 'assets/images/therapy-yoga.png';
+  if (lower.contains('diet') || lower.contains('nutrition')) return 'assets/images/therapy-nutrition.png';
+  return 'assets/images/panchakarma-room.png';
 }

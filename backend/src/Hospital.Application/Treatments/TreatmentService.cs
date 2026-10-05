@@ -209,7 +209,9 @@ public sealed class TreatmentService : ITreatmentService
         entry.DayOfWeek = ToSystemDay(request.DayOfWeek);
         entry.StartTime = request.StartTime;
         entry.EndTime = request.EndTime;
+        entry.TimeSlot = TreatmentSchedule.FormatSlot(request.StartTime, request.EndTime);
         entry.MaxSlotsPerDay = request.MaxSlotsPerDay;
+        entry.MaxPatients = request.MaxSlotsPerDay;
         entry.IsActive = request.IsActive;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -246,7 +248,9 @@ public sealed class TreatmentService : ITreatmentService
             DayOfWeek = ToSystemDay(request.DayOfWeek),
             StartTime = request.StartTime,
             EndTime = request.EndTime,
+            TimeSlot = TreatmentSchedule.FormatSlot(request.StartTime, request.EndTime),
             MaxSlotsPerDay = request.MaxSlotsPerDay,
+            MaxPatients = request.MaxSlotsPerDay,
             IsActive = request.IsActive
         };
     }

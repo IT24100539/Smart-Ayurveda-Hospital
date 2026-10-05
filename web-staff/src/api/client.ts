@@ -55,7 +55,8 @@ async function readProblem(response: Response): Promise<{ message: string; field
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && init.body) {
+  const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
+  if (!headers.has("Content-Type") && init.body && !isFormData) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -91,8 +92,48 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function fileNameFromDisposition(header: string | null): string {
+  const match = header?.match(/filename="([^"]+)"/i);
+  const name = match?.[1]?.trim();
+  return name && name.length > 0 ? name : "document";
+}
+
+async function requestBlob(path: string): Promise<{ blob: Blob; fileName: string }> {
+  const headers = new Headers();
+  const token = useAuthStore.getState().token;
+  if (token && hasValidJwt(token)) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(joinUrl(path), { headers });
+  } catch {
+    throw new ApiError("Unable to reach the hospital API.", 0);
+  }
+
+  if (response.status === 401) {
+    useAuthStore.getState().logout();
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
+    throw new ApiError("Please sign in again.", 401);
+  }
+
+  if (!response.ok) {
+    const problem = await readProblem(response);
+    throw new ApiError(problem.message, response.status, problem.fields);
+  }
+
+  return {
+    blob: await response.blob(),
+    fileName: fileNameFromDisposition(response.headers.get("Content-Disposition"))
+  };
+}
+
 export const api = {
   request,
+  requestBlob,
   login: (email: string, password: string) =>
     request<AuthResponse>("/auth/login", {
       method: "POST",

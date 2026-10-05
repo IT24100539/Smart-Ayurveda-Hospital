@@ -4,7 +4,7 @@ import { ApiError, api } from "../api/client";
 import { isStaffRole } from "../auth/roles";
 import { hasValidJwt, useAuthStore } from "../store/authStore";
 import { HospitalLogo } from "../components/HospitalMark";
-import { Button, Card } from "../components/ui";
+import { Button, Card, SafeImage } from "../components/ui";
 
 type FieldErrors = {
   email?: string;
@@ -34,13 +34,19 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const login = useAuthStore((state) => state.login);
+  const logout = useAuthStore((state) => state.logout);
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(() => {
+    const state = location.state as { staffOnly?: boolean } | null;
+    return state?.staffOnly
+      ? "This portal is for hospital staff. Patients, please use the Smart Ayurveda mobile app."
+      : null;
+  });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -49,7 +55,16 @@ export function LoginPage() {
     return unsub;
   }, []);
 
-  if (hydrated && hasValidJwt(token) && user) {
+  const staffSession = hydrated && hasValidJwt(token) && user != null && isStaffRole(user.role);
+  const patientSession = hydrated && hasValidJwt(token) && user != null && !isStaffRole(user.role);
+
+  useEffect(() => {
+    if (!patientSession) return;
+    logout();
+    setFormError("This portal is for hospital staff. Patients, please use the Smart Ayurveda mobile app.");
+  }, [patientSession, logout]);
+
+  if (staffSession) {
     const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
     return <Navigate to={from && from !== "/login" ? from : "/dashboard"} replace />;
   }
@@ -82,11 +97,13 @@ export function LoginPage() {
     try {
       const auth = await api.login(email.trim(), password);
       if (!isStaffRole(auth.user.role)) {
-        setFormError("This portal is for hospital staff.");
+        logout();
+        setFormError("This portal is for hospital staff. Patients, please use the Smart Ayurveda mobile app.");
         return;
       }
       login(auth.token, auth.user);
-      navigate("/dashboard", { replace: true });
+      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+      navigate(from && from !== "/login" ? from : "/dashboard", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         const emailError = firstFieldError(err.fields, ["email", "Email"]);
@@ -103,8 +120,8 @@ export function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <section className="relative hidden overflow-hidden bg-primary-dark px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between">
-        <img
+      <section className="relative hidden overflow-hidden on-dark bg-hero px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between">
+        <SafeImage
           src="/images/ayurveda-courtyard.png"
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-40"
@@ -115,20 +132,20 @@ export function LoginPage() {
           <HospitalLogo className="h-14 w-14" />
           <div>
             <p className="font-display text-2xl">Smart Ayurveda</p>
-            <p className="mt-1 text-sm text-primary-muted">Hospital operations</p>
+            <p className="mt-1 text-sm text-hero-muted">Hospital operations</p>
           </div>
         </div>
         <div className="relative">
           <h2 className="max-w-md font-display text-4xl leading-tight text-white">
             One desk for patients, therapies, and ward beds.
           </h2>
-          <ul className="mt-8 space-y-3 text-sm text-primary-muted">
+          <ul className="mt-8 space-y-3 text-sm text-hero-muted">
             <li>Look up a UHID and record prakriti and vikriti.</li>
             <li>Review the panchakarma schedule before a slot is double-booked.</li>
             <li>Approve admissions and agent plans before they reach the patient.</li>
           </ul>
         </div>
-        <p className="relative text-xs text-primary-muted">Staff only. Patients use the mobile app.</p>
+        <p className="relative text-xs text-hero-muted">Staff only. Patients use the mobile app.</p>
         </div>
       </section>
       <div className="grid place-items-center bg-surface px-4 py-10">
@@ -150,7 +167,7 @@ export function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(fieldErrors.email)}
-            className="mt-1 w-full rounded-md border border-surface-border bg-surface-raised px-3 py-2 text-ink outline-none ring-primary focus:ring-2"
+            className="field mt-1"
           />
           {fieldErrors.email ? (
             <p className="mt-1 flex items-center gap-1 text-sm text-status-error-fg" role="alert">
@@ -170,7 +187,7 @@ export function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={Boolean(fieldErrors.password)}
-            className="mt-1 w-full rounded-md border border-surface-border bg-surface-raised px-3 py-2 text-ink outline-none ring-primary focus:ring-2"
+            className="field mt-1"
           />
           {fieldErrors.password ? (
             <p className="mt-1 flex items-center gap-1 text-sm text-status-error-fg" role="alert">

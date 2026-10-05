@@ -1,9 +1,11 @@
 using Hospital.Application.Abstractions;
 using Hospital.Application.Appointments;
 using Hospital.Application.Appointments.Dtos;
+using Hospital.Application.Communication;
 using Hospital.Domain.Entities;
 using Hospital.Domain.Enums;
 using Hospital.Domain.Exceptions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hospital.UnitTests;
 
@@ -21,7 +23,8 @@ public sealed class AppointmentServiceTests
             new FakeTreatments(treatment),
             new FakeBookingValidator(),
             new FakeUnitOfWork(),
-            new FixedClock());
+            new FixedClock(),
+            NullPatientEventNotifier.Instance);
 
         var request = new CreateAppointmentRequest(
             patient.Id,
@@ -46,7 +49,8 @@ public sealed class AppointmentServiceTests
             new FakeTreatments(treatment, schedule),
             new FakeBookingValidator(),
             new FakeUnitOfWork(),
-            new FixedClock());
+            new FixedClock(),
+            NullPatientEventNotifier.Instance);
 
         var request = new CreateAppointmentRequest(
             patient.Id,
@@ -71,7 +75,8 @@ public sealed class AppointmentServiceTests
             new FakeTreatments(treatment, schedule),
             new FakeBookingValidator(),
             new FakeUnitOfWork(),
-            new FixedClock());
+            new FixedClock(),
+            NullPatientEventNotifier.Instance);
 
         var request = new CreateAppointmentRequest(
             patient.Id,
@@ -100,7 +105,8 @@ public sealed class AppointmentServiceTests
             new FakeTreatments(treatment),
             new FakeBookingValidator(),
             new FakeUnitOfWork(),
-            new FixedClock());
+            new FixedClock(),
+            NullPatientEventNotifier.Instance);
 
         // Owner can cancel
         await sut.CancelAsync(appt.Id, owner.Id, CancellationToken.None);
@@ -108,7 +114,7 @@ public sealed class AppointmentServiceTests
         Assert.Equal(AppointmentStatus.Cancelled, stored!.Status);
 
         // Other cannot cancel
-        await Assert.ThrowsAsync<UnauthorizedException>(() => sut.CancelAsync(appt.Id, other.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<ForbiddenException>(() => sut.CancelAsync(appt.Id, other.Id, CancellationToken.None));
     }
 
     [Fact]
@@ -124,7 +130,8 @@ public sealed class AppointmentServiceTests
             new FakeTreatments(treatment, schedule),
             new FakeBookingValidator(),
             new FakeUnitOfWork(),
-            new FixedClock());
+            new FixedClock(),
+            NullPatientEventNotifier.Instance);
 
         var request = new CreateAppointmentRequest(
             patient.Id,
@@ -135,6 +142,299 @@ public sealed class AppointmentServiceTests
 
         await Assert.ThrowsAsync<DomainException>(() => sut.CreateAsync(request, CancellationToken.None));
     }
+
+    [Fact]
+    public async Task RescheduleAsync_WithinCapacity_UpdatesAppointment()
+    {
+        var patient = new Patient { Id = Guid.NewGuid(), Uhid = "U-1", FirstName = "A", LastName = "B" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "T", DurationMinutes = 60 };
+        var originalSchedule = new TreatmentSchedule
+        {
+            Id = Guid.NewGuid(),
+            TreatmentId = treatment.Id,
+            DayOfWeek = DayOfWeek.Tuesday,
+            TimeSlot = "09:00-10:00",
+            MaxPatients = 5,
+            IsActive = true
+        };
+        var newSchedule = new TreatmentSchedule
+        {
+            Id = Guid.NewGuid(),
+            TreatmentId = treatment.Id,
+            DayOfWeek = DayOfWeek.Wednesday,
+            TimeSlot = "10:00-11:00",
+            MaxPatients = 5,
+            IsActive = true
+        };
+
+        var appt = new Appointment
+        {
+            Id = Guid.NewGuid(),
+            PatientId = patient.Id,
+            Patient = patient,
+            TreatmentId = treatment.Id,
+            Treatment = treatment,
+            ScheduleId = originalSchedule.Id,
+            RequestedDate = new DateOnly(2026, 9, 15), // Tuesday
+            RequestedTimeSlot = "09:00-10:00",
+            Status = AppointmentStatus.Approved
+        };
+
+        var repo = new FakeAppointmentRepository();
+        repo.Store(appt);
+        repo.ActiveCount = 1;
+
+        var treatments = new FakeTreatments(treatment, newSchedule);
+        var sut = new AppointmentService(
+            repo,
+            new FakePatients(patient),
+            treatments,
+            new FakeBookingValidator(),
+            new FakeUnitOfWork(),
+            new FixedClock(),
+            NullPatientEventNotifier.Instance);
+
+        var result = await sut.RescheduleAsync(
+            appt.Id,
+            new RescheduleAppointmentRequest(new DateOnly(2026, 9, 16), "10:00-11:00", newSchedule.Id),
+            patient.Id,
+            CancellationToken.None);
+
+        Assert.Equal(new DateOnly(2026, 9, 16), result.RequestedDate);
+        Assert.Equal("10:00-11:00", result.RequestedTimeSlot);
+        Assert.Equal(newSchedule.Id, result.ScheduleId);
+    }
+
+    [Fact]
+    public async Task RescheduleAsync_OverCapacity_ThrowsSlotFullException()
+    {
+        var patient = new Patient { Id = Guid.NewGuid(), Uhid = "U-1", FirstName = "A", LastName = "B" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "T", DurationMinutes = 60 };
+        var schedule = new TreatmentSchedule
+        {
+            Id = Guid.NewGuid(),
+            TreatmentId = treatment.Id,
+            DayOfWeek = DayOfWeek.Wednesday,
+            TimeSlot = "10:00-11:00",
+            MaxPatients = 2,
+            IsActive = true
+        };
+
+        var appt = new Appointment
+        {
+            Id = Guid.NewGuid(),
+            PatientId = patient.Id,
+            Patient = patient,
+            TreatmentId = treatment.Id,
+            Treatment = treatment,
+            ScheduleId = schedule.Id,
+            RequestedDate = new DateOnly(2026, 9, 15),
+            RequestedTimeSlot = "09:00-10:00",
+            Status = AppointmentStatus.Approved
+        };
+
+        var repo = new FakeAppointmentRepository();
+        repo.Store(appt);
+        repo.ActiveCount = 2; // Full!
+
+        var sut = new AppointmentService(
+            repo,
+            new FakePatients(patient),
+            new FakeTreatments(treatment, schedule),
+            new FakeBookingValidator(),
+            new FakeUnitOfWork(),
+            new FixedClock(),
+            NullPatientEventNotifier.Instance);
+
+        await Assert.ThrowsAsync<ConflictException>(() => sut.RescheduleAsync(
+            appt.Id,
+            new RescheduleAppointmentRequest(new DateOnly(2026, 9, 16), "10:00-11:00", schedule.Id),
+            patient.Id,
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RescheduleAsync_WhenCalledByNonOwner_ThrowsUnauthorizedException()
+    {
+        var owner = new Patient { Id = Guid.NewGuid(), Uhid = "U-1", FirstName = "A", LastName = "B" };
+        var other = new Patient { Id = Guid.NewGuid(), Uhid = "U-2", FirstName = "C", LastName = "D" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "T", DurationMinutes = 60 };
+        var schedule = new TreatmentSchedule
+        {
+            Id = Guid.NewGuid(),
+            TreatmentId = treatment.Id,
+            DayOfWeek = DayOfWeek.Wednesday,
+            TimeSlot = "10:00-11:00",
+            MaxPatients = 5,
+            IsActive = true
+        };
+
+        var appt = new Appointment
+        {
+            Id = Guid.NewGuid(),
+            PatientId = owner.Id,
+            Patient = owner,
+            TreatmentId = treatment.Id,
+            Treatment = treatment,
+            ScheduleId = schedule.Id,
+            RequestedDate = new DateOnly(2026, 9, 15),
+            RequestedTimeSlot = "09:00-10:00",
+            Status = AppointmentStatus.Approved
+        };
+
+        var repo = new FakeAppointmentRepository();
+        repo.Store(appt);
+
+        var sut = new AppointmentService(
+            repo,
+            new FakePatients(owner),
+            new FakeTreatments(treatment, schedule),
+            new FakeBookingValidator(),
+            new FakeUnitOfWork(),
+            new FixedClock(),
+            NullPatientEventNotifier.Instance);
+
+        await Assert.ThrowsAsync<UnauthorizedException>(() => sut.RescheduleAsync(
+            appt.Id,
+            new RescheduleAppointmentRequest(new DateOnly(2026, 9, 16), "10:00-11:00", schedule.Id),
+            requestingPatientId: other.Id,
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task StatusChanges_StoreEventsForTheOwningPatientOnly()
+    {
+        var owner = new Patient { Id = Guid.NewGuid(), Uhid = "SAH-2026-00041", FirstName = "Leela", LastName = "Menon" };
+        var other = new Patient { Id = Guid.NewGuid(), Uhid = "SAH-2026-00042", FirstName = "Arun", LastName = "Nair" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "Abhyanga" };
+        var schedule = new TreatmentSchedule
+        {
+            Id = Guid.NewGuid(),
+            TreatmentId = treatment.Id,
+            DayOfWeek = DayOfWeek.Wednesday,
+            TimeSlot = "10:00-11:00",
+            MaxPatients = 5,
+            IsActive = true
+        };
+        var approved = Visit(owner, treatment, AppointmentStatus.Pending);
+        var rejected = Visit(owner, treatment, AppointmentStatus.Pending);
+        var moved = Visit(owner, treatment, AppointmentStatus.Approved);
+        var cancelled = Visit(owner, treatment, AppointmentStatus.Pending);
+        var completed = Visit(owner, treatment, AppointmentStatus.Approved);
+        var repo = new FakeAppointmentRepository();
+        repo.Store(approved);
+        repo.Store(rejected);
+        repo.Store(moved);
+        repo.Store(cancelled);
+        repo.Store(completed);
+
+        var notifications = new InMemoryNotificationRepository();
+        var tokens = new InMemoryDeviceTokenRepository();
+        await tokens.AddAsync(new PatientDeviceToken { PatientId = owner.Id, Token = "owner-phone", Platform = "android" }, CancellationToken.None);
+        await tokens.AddAsync(new PatientDeviceToken { PatientId = other.Id, Token = "other-phone", Platform = "android" }, CancellationToken.None);
+        var push = new RecordingPushSender();
+        var events = new PatientEventNotifier(
+            notifications,
+            tokens,
+            push,
+            new NoopUnitOfWork(),
+            NullLogger<PatientEventNotifier>.Instance);
+        var sut = new AppointmentService(
+            repo,
+            new FakePatients(owner),
+            new FakeTreatments(treatment, schedule),
+            new FakeBookingValidator(),
+            new FakeUnitOfWork(),
+            new FixedClock(),
+            events);
+
+        await sut.UpdateStatusAsync(approved.Id, new UpdateAppointmentStatusRequest(AppointmentStatus.Approved, null), CancellationToken.None);
+        await sut.UpdateStatusAsync(rejected.Id, new UpdateAppointmentStatusRequest(AppointmentStatus.Rejected, null), CancellationToken.None);
+        await sut.RescheduleAsync(
+            moved.Id,
+            new RescheduleAppointmentRequest(new DateOnly(2026, 9, 16), "10:00-11:00", schedule.Id),
+            owner.Id,
+            CancellationToken.None);
+        await sut.CancelAsync(cancelled.Id, owner.Id, CancellationToken.None);
+
+        var beforeComplete = notifications.Items.Count;
+        await sut.UpdateStatusAsync(completed.Id, new UpdateAppointmentStatusRequest(AppointmentStatus.Completed, null), CancellationToken.None);
+        Assert.Equal(beforeComplete, notifications.Items.Count);
+
+        Assert.Equal(4, notifications.Items.Count);
+        Assert.All(notifications.Items, item =>
+        {
+            Assert.Equal(owner.Id, item.PatientId);
+            Assert.Null(item.StaffUserId);
+            Assert.Contains("Abhyanga", item.Message);
+        });
+        Assert.Contains(notifications.Items, item => item.Type == NotificationType.AppointmentApproved);
+        Assert.Contains(notifications.Items, item => item.Type == NotificationType.AppointmentRejected);
+        Assert.Contains(notifications.Items, item => item.Type == NotificationType.AppointmentRescheduled);
+        Assert.Contains(notifications.Items, item => item.Type == NotificationType.AppointmentCancelled);
+        Assert.Equal(4, push.Sent.Count);
+        Assert.All(push.Sent, sent =>
+        {
+            Assert.Equal(owner.Id, sent.PatientId);
+            Assert.Equal(new[] { "owner-phone" }, sent.DeviceTokens);
+        });
+
+        var inbox = new NotificationService(notifications, new ScriptActor(owner), new NoopUnitOfWork());
+        Assert.Equal(4, (await inbox.GetForPatient(owner.Id, CancellationToken.None)).Count);
+        await Assert.ThrowsAsync<ForbiddenException>(() => inbox.GetForPatient(other.Id, CancellationToken.None));
+
+        var stranger = new NotificationService(notifications, new ScriptActor(other), new NoopUnitOfWork());
+        await Assert.ThrowsAsync<ForbiddenException>(() => stranger.GetForPatient(owner.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<ForbiddenException>(() => stranger.MarkReadAsync(notifications.Items[0].Id, CancellationToken.None));
+        Assert.Empty(await stranger.GetForPatient(other.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Approve_StoresTheEvent_WhenPushFails()
+    {
+        var owner = new Patient { Id = Guid.NewGuid(), Uhid = "SAH-2026-00043", FirstName = "Leela", LastName = "Menon" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "Shirodhara" };
+        var appointment = Visit(owner, treatment, AppointmentStatus.Pending);
+        var repo = new FakeAppointmentRepository();
+        repo.Store(appointment);
+        var notifications = new InMemoryNotificationRepository();
+        var tokens = new InMemoryDeviceTokenRepository();
+        await tokens.AddAsync(new PatientDeviceToken { PatientId = owner.Id, Token = "owner-phone", Platform = "ios" }, CancellationToken.None);
+        var events = new PatientEventNotifier(
+            notifications,
+            tokens,
+            new ThrowingPushSender(),
+            new NoopUnitOfWork(),
+            NullLogger<PatientEventNotifier>.Instance);
+        var sut = new AppointmentService(
+            repo,
+            new FakePatients(owner),
+            new FakeTreatments(treatment),
+            new FakeBookingValidator(),
+            new FakeUnitOfWork(),
+            new FixedClock(),
+            events);
+
+        var result = await sut.UpdateStatusAsync(
+            appointment.Id,
+            new UpdateAppointmentStatusRequest(AppointmentStatus.Approved, null),
+            CancellationToken.None);
+
+        Assert.Equal(AppointmentStatus.Approved, result.Status);
+        Assert.Equal(NotificationType.AppointmentApproved, Assert.Single(notifications.Items).Type);
+    }
+
+    private static Appointment Visit(Patient patient, Treatment treatment, AppointmentStatus status) => new()
+    {
+        Id = Guid.NewGuid(),
+        PatientId = patient.Id,
+        Patient = patient,
+        TreatmentId = treatment.Id,
+        Treatment = treatment,
+        RequestedDate = new DateOnly(2026, 9, 15),
+        RequestedTimeSlot = "09:00-10:00",
+        Status = status
+    };
 
     private sealed class FixedClock : IClock
     {
@@ -176,6 +476,21 @@ public sealed class AppointmentServiceTests
 
         public Task<bool> TryAddWithinCapacityAsync(Appointment appointment, int maxPatients, CancellationToken cancellationToken) =>
             Task.FromResult(ActiveCount < maxPatients);
+
+        public Task<bool> TryRescheduleWithinCapacityAsync(
+            Appointment appointment,
+            DateOnly newDate,
+            string newTimeSlot,
+            Guid? newScheduleId,
+            int maxPatients,
+            CancellationToken cancellationToken)
+        {
+            if (ActiveCount >= maxPatients) return Task.FromResult(false);
+            appointment.RequestedDate = newDate;
+            appointment.RequestedTimeSlot = newTimeSlot;
+            appointment.ScheduleId = newScheduleId;
+            return Task.FromResult(true);
+        }
 
         public Task AddAsync(Appointment appointment, CancellationToken cancellationToken) => Task.CompletedTask;
     }
