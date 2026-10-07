@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:patient_app/src/core/network/certificate_bypass.dart';
+import 'package:patient_app/src/core/network/certificate_bypass_io.dart';
 
 void main() {
   test('accepts a dev certificate when the request host is the emulator', () {
