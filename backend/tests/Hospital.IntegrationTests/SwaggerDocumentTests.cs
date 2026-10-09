@@ -1,6 +1,5 @@
 using System.Net;
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Hospital.IntegrationTests;
 
@@ -12,7 +11,7 @@ public sealed class SwaggerDocumentTests
     public SwaggerDocumentTests(HospitalApiFactory factory) => _factory = factory;
 
     [Fact]
-    public async Task SwaggerJson_ReturnsOk()
+    public async Task SwaggerJson_ReturnsOk_WithHttpBearerScheme()
     {
         var client = _factory.CreateClient();
         var response = await client.GetAsync("/swagger/v1/swagger.json");
@@ -21,5 +20,9 @@ public sealed class SwaggerDocumentTests
         body.Should().Contain("\"openapi\"");
         body.Should().Contain("/api/doctors/{id}/photo");
         body.Should().Contain("/api/medical-documents");
+        body.Should().Contain("\"Bearer\"");
+        body.Should().Contain("\"scheme\":\"bearer\"");
+        body.Should().Contain("/api/feedback/mine");
+        body.Should().Contain("/api/feedback/staff");
     }
 }

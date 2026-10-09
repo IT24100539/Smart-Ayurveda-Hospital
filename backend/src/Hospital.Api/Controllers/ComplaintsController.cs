@@ -30,11 +30,17 @@ public sealed class ComplaintsController : ControllerBase
 
     [HttpGet("me")]
     [Authorize(Roles = "Patient")]
+    [ProducesResponseType(typeof(IReadOnlyList<ComplaintSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IReadOnlyList<ComplaintSummaryDto>>> Mine(CancellationToken cancellationToken) =>
         Ok(await _complaints.ListMineAsync(cancellationToken));
 
     [HttpGet("assignees")]
     [Authorize(Roles = StaffRoles)]
+    [ProducesResponseType(typeof(IReadOnlyList<StaffAssigneeDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IReadOnlyList<StaffAssigneeDto>>> Assignees(CancellationToken cancellationToken) =>
         Ok(await _complaints.ListAssigneesAsync(cancellationToken));
 
@@ -44,6 +50,9 @@ public sealed class ComplaintsController : ControllerBase
 
     [HttpGet]
     [Authorize(Roles = StaffRoles)]
+    [ProducesResponseType(typeof(IReadOnlyList<ComplaintSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IReadOnlyList<ComplaintSummaryDto>>> List(
         [FromQuery] bool overdue = false,
         [FromQuery] ComplaintStatus? status = null,

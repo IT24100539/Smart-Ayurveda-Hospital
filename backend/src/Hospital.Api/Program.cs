@@ -180,15 +180,21 @@ try
         options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
         {
             Title = "Smart Ayurveda Hospital API",
-            Version = "v1"
+            Version = "v1",
+            Description =
+                "RBAC demo: POST /api/auth/login -> copy token -> Authorize (paste token only) -> " +
+                "GET /api/feedback/mine (Patient 200) vs GET /api/feedback/staff (Patient 403, staff 200). " +
+                "No token -> 401."
         });
+        // Http bearer: Swagger UI prefixes "Bearer " itself. Paste the raw login token only.
         options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
         {
-            Description = "JWT Authorization header using the Bearer scheme. Enter: Bearer {token}",
+            Description = "Paste only the JWT from POST /api/auth/login (`token` field). Do not type the word Bearer.",
             Name = "Authorization",
             In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-            Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-            Scheme = "Bearer"
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT"
         });
         options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
         {
@@ -399,7 +405,31 @@ try
     if (!app.Environment.IsEnvironment("Testing"))
     {
         app.UseSwagger();
-        app.UseSwaggerUI();
+        app.UseSwaggerUI(options =>
+        {
+            // Accept either a raw JWT or "Bearer <jwt>" so Authorize demos do not fail with 401.
+            options.UseRequestInterceptor(
+                """
+                (req) => {
+                  const headers = req.headers || {};
+                  const raw = headers.Authorization || headers.authorization;
+                  if (typeof raw === 'string' && raw.trim().length > 0) {
+                    let value = raw.trim();
+                    while (/^bearer\s+bearer\s+/i.test(value)) {
+                      value = value.replace(/^bearer\s+/i, '');
+                    }
+                    if (!/^bearer\s+/i.test(value)) {
+                      value = 'Bearer ' + value;
+                    } else {
+                      value = 'Bearer ' + value.replace(/^bearer\s+/i, '');
+                    }
+                    headers.Authorization = value;
+                    req.headers = headers;
+                  }
+                  return req;
+                }
+                """);
+        });
     }
 
     if (app.Environment.IsProduction() && !tlsTerminatedByHost)
