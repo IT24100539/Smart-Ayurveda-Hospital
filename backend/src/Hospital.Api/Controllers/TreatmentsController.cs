@@ -95,6 +95,11 @@ public sealed class TreatmentsController : ControllerBase
     public async Task<ActionResult<TreatmentDetailDto>> Deactivate(Guid id, CancellationToken cancellationToken) =>
         Ok(await _treatments.DeactivateAsync(id, cancellationToken));
 
+    [HttpPatch("{id:guid}/activate")]
+    [Authorize(Roles = StaffRoles)]
+    public async Task<ActionResult<TreatmentDetailDto>> Activate(Guid id, CancellationToken cancellationToken) =>
+        Ok(await _treatments.ActivateAsync(id, cancellationToken));
+
     [HttpPost("{id:guid}/schedule")]
     [Authorize(Roles = StaffRoles)]
     public async Task<ActionResult<ScheduleEntryDto>> AddSchedule(

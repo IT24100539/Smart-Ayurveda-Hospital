@@ -4,6 +4,7 @@ import {
   getTreatmentDetails, 
   createTreatment, 
   deactivateTreatment, 
+  activateTreatment, 
   createScheduleEntry,
   updateScheduleEntry,
   deleteScheduleEntry,
@@ -72,6 +73,19 @@ export function TreatmentsView() {
         await fetchTreatments();
       } catch (err) {
         setLoadError(errorMessage(err, 'Unable to deactivate the treatment.'));
+      }
+    }
+  };
+
+  const handleActivate = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to activate this treatment?')) {
+      try {
+        await activateTreatment(id);
+        setTreatments(prev => prev.map(t => t.id === id ? { ...t, isActive: true } : t));
+        await fetchTreatments();
+      } catch (err) {
+        setLoadError(errorMessage(err, 'Unable to activate the treatment.'));
       }
     }
   };
@@ -194,7 +208,9 @@ export function TreatmentsView() {
                           Deactivate
                         </Button>
                       ) : (
-                        <span className="text-xs font-medium text-muted">Deactivated</span>
+                        <Button variant="secondary" onClick={(e) => handleActivate(t.id, e)}>
+                          Activate
+                        </Button>
                       )}
                     </td>
                   </tr>
@@ -216,7 +232,10 @@ export function TreatmentsView() {
                                   This treatment is soft-deactivated (IsActive = false). Historical appointments and past invoices are protected, but new booking availability is closed.
                                 </p>
                               </div>
-                              <Button variant="secondary" onClick={() => setExpandedRow(null)}>Close</Button>
+                              <div className="flex gap-2">
+                                <Button onClick={(e) => handleActivate(t.id, e)}>Activate Treatment</Button>
+                                <Button variant="secondary" onClick={() => setExpandedRow(null)}>Close</Button>
+                              </div>
                             </div>
                           </div>
                         )}

@@ -11,6 +11,7 @@ vi.mock('../api/treatments', async () => {
     getTreatmentDetails: vi.fn(),
     createTreatment: vi.fn(),
     deactivateTreatment: vi.fn(),
+    activateTreatment: vi.fn(),
     createScheduleEntry: vi.fn(),
     updateScheduleEntry: vi.fn(),
     deleteScheduleEntry: vi.fn()
@@ -155,14 +156,50 @@ describe('TreatmentsView', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Inactive')).toBeInTheDocument();
-      expect(screen.getByText('Deactivated')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Activate' })).toBeInTheDocument();
     });
 
-    // Clicking an inactive treatment displays the scheduling blocked notice
+    // Clicking an inactive treatment displays the scheduling blocked notice with activate button
     fireEvent.click(screen.getByText('Abhyanga'));
     await waitFor(() => {
       expect(screen.getByText('Future scheduling is blocked')).toBeInTheDocument();
       expect(screen.getByText(/soft-deactivated/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Activate Treatment' })).toBeInTheDocument();
+    });
+
+    confirmSpy.mockRestore();
+  });
+
+  it('activates an inactive treatment when Activate button is clicked and confirmed', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const inactiveTreatment = { ...mockTreatments.items[0], isActive: false };
+    (api.getTreatments as any)
+      .mockResolvedValueOnce({
+        items: [inactiveTreatment],
+        totalCount: 1
+      })
+      .mockResolvedValue({
+        items: [{ ...inactiveTreatment, isActive: true }],
+        totalCount: 1
+      });
+    (api.activateTreatment as any).mockResolvedValue({
+      ...inactiveTreatment,
+      isActive: true
+    });
+
+    render(<TreatmentsView />);
+    await waitFor(() => expect(screen.getByText('Abhyanga')).toBeInTheDocument());
+
+    expect(screen.getByText('Inactive')).toBeInTheDocument();
+    const activateBtn = screen.getByRole('button', { name: 'Activate' });
+    fireEvent.click(activateBtn);
+
+    expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to activate this treatment?');
+    expect(api.activateTreatment).toHaveBeenCalledWith('1');
+
+    await waitFor(() => {
+      expect(screen.getByText('Active')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Deactivate' })).toBeInTheDocument();
     });
 
     confirmSpy.mockRestore();

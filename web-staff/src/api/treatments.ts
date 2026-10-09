@@ -138,6 +138,12 @@ export const deactivateTreatment = async (id: string): Promise<TreatmentDetailDt
   });
 };
 
+export const activateTreatment = async (id: string): Promise<TreatmentDetailDto> => {
+  return api.request(`/treatments/${id}/activate`, {
+    method: 'PATCH'
+  });
+};
+
 export const createScheduleEntry = async (treatmentId: string, data: CreateScheduleEntryRequest): Promise<ScheduleEntryDto> => {
   return api.request(`/treatments/${treatmentId}/schedule`, {
     method: 'POST',

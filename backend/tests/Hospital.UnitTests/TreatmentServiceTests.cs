@@ -106,6 +106,22 @@ public sealed class TreatmentServiceTests
     }
 
     [Fact]
+    public async Task ActivateAsync_SetsIsActiveTrue()
+    {
+        var treatment = NewTreatment("Herbal Steam");
+        treatment.IsActive = false;
+        var repo = new FakeTreatmentRepository(treatment);
+        var sut = new TreatmentService(repo, new FakeAppointmentCountProvider(), new FakeUnitOfWork());
+
+        var result = await sut.ActivateAsync(treatment.Id, CancellationToken.None);
+
+        Assert.True(result.IsActive);
+        Assert.True(treatment.IsActive);
+        Assert.Single(repo.Items);
+        Assert.Same(treatment, repo.Items[0]);
+    }
+
+    [Fact]
     public async Task AddScheduleEntryAsync_RejectsDuplicateSlot()
     {
         var treatment = NewTreatment("General Consultation");

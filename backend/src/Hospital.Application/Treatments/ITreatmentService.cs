@@ -10,6 +10,7 @@ public interface ITreatmentService
     Task<TreatmentDetailDto> CreateAsync(CreateTreatmentRequest request, CancellationToken cancellationToken);
     Task<TreatmentDetailDto> UpdateAsync(Guid id, UpdateTreatmentRequest request, CancellationToken cancellationToken);
     Task<TreatmentDetailDto> DeactivateAsync(Guid id, CancellationToken cancellationToken);
+    Task<TreatmentDetailDto> ActivateAsync(Guid id, CancellationToken cancellationToken);
     Task<TreatmentAvailabilityDto> IsAvailableOnAsync(Guid treatmentId, DateOnly date, CancellationToken cancellationToken);
 
     /// <summary>

@@ -113,6 +113,16 @@ public sealed class TreatmentService : ITreatmentService
         return MapDetail(treatment);
     }
 
+    public async Task<TreatmentDetailDto> ActivateAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var treatment = await _treatments.GetByIdWithScheduleAsync(id, cancellationToken)
+            ?? throw new NotFoundException(nameof(Treatment), id);
+
+        treatment.IsActive = true;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return MapDetail(treatment);
+    }
+
     public async Task<TreatmentAvailabilityDto> IsAvailableOnAsync(
         Guid treatmentId,
         DateOnly date,
