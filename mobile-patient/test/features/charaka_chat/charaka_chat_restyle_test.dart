@@ -32,7 +32,10 @@ class _FakeChat implements CharakaChatRepository {
   final Object? error;
 
   @override
-  Future<CharakaAnswer> askTreatment(String question) async {
+  Future<CharakaAnswer> askTreatment(
+    String question, {
+    List<CharakaChatTurn> history = const [],
+  }) async {
     if (error != null) throw error!;
     return answer ??
         const CharakaAnswer(
@@ -223,14 +226,14 @@ void main() {
     expect(find.text('Abhyanga is a warm oil massage.'), findsOneWidget);
   });
 
-  testWidgets('refusal text and badge come from the backend unchanged', (tester) async {
-    const refusal =
-        'I cannot prescribe treatments or diagnose illnesses. Please consult a doctor.';
+  testWidgets('an Ayurveda-chat reply is spoken without a medical-advice badge', (tester) async {
+    const reply =
+        'That sits outside what I talk about. Ask me about doshas, food, or panchakarma.';
     await tester.pumpWidget(
       _app(
         _FakeChat(
           answer: const CharakaAnswer(
-            answer: refusal,
+            answer: reply,
             refused: true,
             workflowId: 'wf-refused',
           ),
@@ -243,8 +246,8 @@ void main() {
     await tester.tap(find.byKey(CharakaChatKeys.sendButton));
     await tester.pumpAndSettle();
 
-    expect(find.text(refusal), findsOneWidget);
-    expect(find.byKey(CharakaChatKeys.refusalBadge), findsOneWidget);
+    expect(find.text(reply), findsOneWidget);
+    expect(find.byKey(CharakaChatKeys.refusalBadge), findsNothing);
   });
 
   testWidgets('a network failure still shows the offline banner above the panel', (tester) async {

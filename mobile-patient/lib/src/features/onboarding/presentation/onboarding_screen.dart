@@ -96,8 +96,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           'චරක රෝහල් සහායක',
         ),
         subtitle: copy.text(
-          'Ask about hospital therapies, session fees, clinic schedules, and your patient identification summary.',
-          'රෝහල් ප්‍රතිකාර, සැසි ගාස්තු, සායන කාලසටහන් සහ ඔබගේ රෝගී වාර්තා සාරාංශය පිළිබඳ තොරතුරු අසන්න.',
+          'Talk with Charaka about any Ayurveda question, hospital therapies, and your patient record.',
+          'ආයුර්වේද ප්‍රශ්න, රෝහල් ප්‍රතිකාර සහ ඔබගේ රෝගී වාර්තාව ගැන චරක සමඟ කතා කරන්න.',
         ),
         icon: Icons.support_agent_rounded,
         imageAsset: 'assets/images/herbal-garden.png',

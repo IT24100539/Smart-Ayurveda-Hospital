@@ -312,6 +312,19 @@ internal sealed class FeedbackHarness
 
             return Task.FromResult(new PatientInfoAgentResponse(Reply, false, Guid.NewGuid().ToString()));
         }
+
+        public Task<CharakaAgentResponse> AskCharakaAsync(
+            CharakaAgentRequest request,
+            CancellationToken cancellationToken)
+        {
+            Calls++;
+            if (Failure is not null)
+            {
+                throw Failure;
+            }
+
+            return Task.FromResult(new CharakaAgentResponse(Reply, false, Guid.NewGuid().ToString()));
+        }
     }
 
     internal sealed class FakeFeedbackRepository : IFeedbackRepository

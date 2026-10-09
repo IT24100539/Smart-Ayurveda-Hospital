@@ -17,19 +17,22 @@ public sealed class AgentWorkflowsController : ControllerBase
     private readonly IValidator<ApproveAgentWorkflowRequest> _approveValidator;
     private readonly IValidator<AskTreatmentInfoRequest> _askValidator;
     private readonly IValidator<AskPatientInfoRequest> _askPatientValidator;
+    private readonly IValidator<AskCharakaRequest> _askCharakaValidator;
 
     public AgentWorkflowsController(
         IAgentWorkflowService workflows,
         IValidator<StartAgentWorkflowRequest> startValidator,
         IValidator<ApproveAgentWorkflowRequest> approveValidator,
         IValidator<AskTreatmentInfoRequest> askValidator,
-        IValidator<AskPatientInfoRequest> askPatientValidator)
+        IValidator<AskPatientInfoRequest> askPatientValidator,
+        IValidator<AskCharakaRequest> askCharakaValidator)
     {
         _workflows = workflows;
         _startValidator = startValidator;
         _approveValidator = approveValidator;
         _askValidator = askValidator;
         _askPatientValidator = askPatientValidator;
+        _askCharakaValidator = askCharakaValidator;
     }
 
     [HttpPost("start")]
@@ -69,6 +72,20 @@ public sealed class AgentWorkflowsController : ControllerBase
     {
         await _askPatientValidator.ValidateAndThrowAsync(request, cancellationToken);
         return Ok(await _workflows.AskPatientInfoAsync(request, cancellationToken));
+    }
+
+    /// <summary>
+    /// Charaka conversation. Answers Ayurveda questions, including ones outside the hospital list.
+    /// The treatment catalogue chat is a different endpoint and is unchanged.
+    /// </summary>
+    [HttpPost("ask-charaka")]
+    [Authorize(Roles = "Patient")]
+    public async Task<ActionResult<AskCharakaResponse>> AskCharaka(
+        AskCharakaRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _askCharakaValidator.ValidateAndThrowAsync(request, cancellationToken);
+        return Ok(await _workflows.AskCharakaAsync(request, cancellationToken));
     }
 
     [HttpGet("{id:guid}")]

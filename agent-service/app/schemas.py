@@ -251,3 +251,25 @@ class PatientInfoAgentResponse(BaseModel):
     answer: str
     refused: bool = False
     workflow_id: str = ""
+
+
+class CharakaTurn(BaseModel):
+    """One earlier line in the Charaka conversation."""
+
+    role: str
+    text: str
+
+
+class CharakaAgentRequest(BaseModel):
+    """A patient message for Charaka, plus the recent chat so replies can follow on."""
+
+    question: str
+    history: list[CharakaTurn] = Field(default_factory=list)
+
+
+class CharakaAgentResponse(BaseModel):
+    """Spoken reply. refused is true only when the message is outside Ayurveda."""
+
+    answer: str
+    refused: bool = False
+    workflow_id: str = ""

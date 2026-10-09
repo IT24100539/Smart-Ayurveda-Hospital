@@ -61,8 +61,8 @@ class CharakaAiCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       copy.text(
-                        'Ask about therapies, fees, schedules or your UHID record.',
-                        'ප්‍රතිකාර, ගාස්තු, කාලසටහන් හෝ ඔබගේ UHID තොරතුරු විමසන්න.',
+                        'Ask Charaka anything about Ayurveda, or look up your own record.',
+                        'ආයුර්වේදය ගැන ඕනෑම දෙයක් චරකගෙන් අහන්න, නැතහොත් ඔබගේ වාර්තාව බලන්න.',
                       ),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,

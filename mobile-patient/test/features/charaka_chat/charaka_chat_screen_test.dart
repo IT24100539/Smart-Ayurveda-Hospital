@@ -43,7 +43,10 @@ class _FakeCharakaChatRepository implements CharakaChatRepository {
   final List<String> patientCalls = [];
 
   @override
-  Future<CharakaAnswer> askTreatment(String question) async {
+  Future<CharakaAnswer> askTreatment(
+    String question, {
+    List<CharakaChatTurn> history = const [],
+  }) async {
     treatmentCalls.add(question);
     if (treatmentCompleter != null) return treatmentCompleter!.future;
     if (error != null) throw error!;
@@ -116,7 +119,7 @@ void main() {
 
     // Verify suggested prompts
     expect(
-      find.text('When is Panchakarma available and what is the fee?'),
+      find.text('What therapies do you offer for stress and relaxation?'),
       findsOneWidget,
     );
 
@@ -168,10 +171,13 @@ void main() {
     );
   });
 
-  testWidgets('medical advice refusal renders refusal badge', (tester) async {
+  testWidgets('an outside-Ayurveda reply stays in the conversation without a medical badge', (
+    tester,
+  ) async {
     final repo = _FakeCharakaChatRepository(
       treatmentAnswer: const CharakaAnswer(
-        answer: 'I cannot prescribe treatments or diagnose illnesses. Please consult a doctor.',
+        answer:
+            'That sits outside Ayurveda. Ask me about doshas, food, herbs, or panchakarma.',
         refused: true,
         workflowId: 'wf-refused',
       ),
@@ -182,15 +188,14 @@ void main() {
 
     await tester.enterText(
       find.byKey(CharakaChatKeys.input),
-      'What medicine should I take for acute fever?',
+      'Who won the world cup?',
     );
     await tester.tap(find.byKey(CharakaChatKeys.sendButton));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(CharakaChatKeys.refusalBadge), findsOneWidget);
-    expect(find.text('Medical advice refused'), findsOneWidget);
+    expect(find.byKey(CharakaChatKeys.refusalBadge), findsNothing);
     expect(
-      find.textContaining('I cannot prescribe treatments or diagnose illnesses.'),
+      find.textContaining('That sits outside Ayurveda.'),
       findsOneWidget,
     );
   });
@@ -280,6 +285,33 @@ void main() {
       );
     },
   );
+
+  testWidgets('patient-record medical refusals still show the safety badge', (
+    tester,
+  ) async {
+    final repo = _FakeCharakaChatRepository(
+      patientAnswer: const CharakaAnswer(
+        answer: 'I cannot give medical advice about your record.',
+        refused: true,
+        workflowId: 'wf-patient-refused',
+      ),
+    );
+
+    await tester.pumpWidget(_buildHarness(repo));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('My Patient Info'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(CharakaChatKeys.input),
+      'Should I take medicine for this pain?',
+    );
+    await tester.tap(find.byKey(CharakaChatKeys.sendButton));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(CharakaChatKeys.refusalBadge), findsOneWidget);
+    expect(find.text('Medical advice refused'), findsOneWidget);
+  });
 
   testWidgets(
     '500 server error displays error bubble with retry and no offline banner',

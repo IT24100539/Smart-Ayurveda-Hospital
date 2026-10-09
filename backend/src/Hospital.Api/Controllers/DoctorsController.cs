@@ -127,7 +127,8 @@ public sealed class DoctorsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DoctorDto>> UploadPhoto(
         Guid id,
-        [FromForm] IFormFile? photo,
+        // IFormFile already binds from the multipart form. [FromForm] makes Swashbuckle fail the whole document.
+        IFormFile? photo,
         CancellationToken cancellationToken)
     {
         if (photo is null || photo.Length == 0)

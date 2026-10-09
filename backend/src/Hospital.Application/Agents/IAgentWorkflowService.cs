@@ -7,6 +7,7 @@ public interface IAgentWorkflowService
     Task<CoordinatorAgentResponse> StartAsync(StartAgentWorkflowRequest request, CancellationToken cancellationToken);
     Task<AskTreatmentInfoResponse> AskTreatmentAsync(AskTreatmentInfoRequest request, CancellationToken cancellationToken);
     Task<AskPatientInfoResponse> AskPatientInfoAsync(AskPatientInfoRequest request, CancellationToken cancellationToken);
+    Task<AskCharakaResponse> AskCharakaAsync(AskCharakaRequest request, CancellationToken cancellationToken);
     Task<Workflows.Dtos.WorkflowExecutionDto> GetAsync(Guid id, CancellationToken cancellationToken);
     Task<Workflows.Dtos.WorkflowExecutionDto> ApproveAsync(Guid id, ApproveAgentWorkflowRequest request, CancellationToken cancellationToken);
 }

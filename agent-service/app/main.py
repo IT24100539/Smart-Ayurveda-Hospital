@@ -3,6 +3,7 @@ import secrets
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
 
+from app.agents.charaka_agent import run_charaka_agent
 from app.agents.feedback_support_agent import (
     FeedbackAgentRequest,
     FeedbackAgentResponse,
@@ -13,6 +14,8 @@ from app.agents.scheduling_bed_agent import run_scheduling_bed_agent
 from app.agents.treatment_info_agent import run_treatment_info_agent
 from app.graph.coordinator import CoordinatorRequest, CoordinatorResponse, coordinate, invoke_graph
 from app.schemas import (
+    CharakaAgentRequest,
+    CharakaAgentResponse,
     PatientInfoAgentRequest,
     PatientInfoAgentResponse,
     SchedulingAgentRequest,
@@ -87,6 +90,12 @@ async def treatment_info(request: TreatmentInfoAgentRequest) -> TreatmentInfoAge
 @app.post("/internal/agents/patient-info", dependencies=[Depends(require_internal_secret)])
 async def patient_info(request: PatientInfoAgentRequest) -> PatientInfoAgentResponse:
     return await run_patient_info_agent(request)
+
+
+@app.post("/internal/agents/charaka", dependencies=[Depends(require_internal_secret)])
+async def charaka(request: CharakaAgentRequest) -> CharakaAgentResponse:
+    """Conversational Ayurveda answers. Not the catalogue-only treatment chat."""
+    return await run_charaka_agent(request)
 
 
 @app.post(

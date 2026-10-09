@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from app.agents.patient_info_agent import (
     REFUSAL_MESSAGE,
+    _answer_from_record,
     is_medical_question,
     run_patient_info_agent,
 )
@@ -55,15 +56,27 @@ def _make_httpx_response(json_data: dict[str, Any], status_code: int = 200):
     return mock_resp
 
 
-def _make_llm_response(content: str):
-    msg = MagicMock()
-    msg.content = content
-    return msg
-
-
 # ---------------------------------------------------------------------------
 # Unit tests: Medical safety guard
 # ---------------------------------------------------------------------------
+
+
+def test_district_question_does_not_dump_the_whole_record():
+    answer = _answer_from_record(
+        "Which district is my profile registered under?",
+        {"address": None, "phone": "0774218586", "prakriti": "None"},
+    )
+    assert "district is not recorded" in answer
+    assert "0774218586" not in answer
+
+
+def test_prakriti_question_reports_only_prakriti():
+    answer = _answer_from_record(
+        "What is my registered Prakriti type?",
+        {"prakriti": "None", "phone": "0774218586", "uhid": "SAH-2026-00010"},
+    )
+    assert "Prakriti is not recorded" in answer
+    assert "SAH-2026-00010" not in answer
 
 
 class TestPatientInfoSafetyGuard:
@@ -91,24 +104,12 @@ class TestPatientInfoSafetyGuard:
 @pytest.mark.asyncio
 async def test_grounded_administrative_question_returns_answer():
     """Administrative inquiry fetches internal record and returns grounded answer."""
-    llm_answer = (
-        "According to your hospital registration record, you are registered at "
-        "45 Galle Road, Colombo 03 in the Western Province."
-    )
-
-    with (
-        patch("app.agents.patient_info_agent.httpx.AsyncClient") as mock_client_cls,
-        patch("app.agents.patient_info_agent.ChatOllama") as mock_llm_cls,
-    ):
+    with patch("app.agents.patient_info_agent.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(return_value=_make_httpx_response(MOCK_PATIENT_RECORD))
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
         mock_client_cls.return_value = mock_client
-
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke = AsyncMock(return_value=_make_llm_response(llm_answer))
-        mock_llm_cls.return_value = mock_llm
 
         request = PatientInfoAgentRequest(
             patient_id=TEST_PATIENT_ID,
@@ -127,10 +128,7 @@ async def test_grounded_administrative_question_returns_answer():
 @pytest.mark.asyncio
 async def test_medical_question_refused_without_calling_tool_or_model():
     """Medical question triggers outright refusal without calling backend endpoint or LLM."""
-    with (
-        patch("app.agents.patient_info_agent.httpx.AsyncClient") as mock_client_cls,
-        patch("app.agents.patient_info_agent.ChatOllama") as mock_llm_cls,
-    ):
+    with patch("app.agents.patient_info_agent.httpx.AsyncClient") as mock_client_cls:
         request = PatientInfoAgentRequest(
             patient_id=TEST_PATIENT_ID,
             question="Can you diagnose my fever and recommend a treatment?",
@@ -139,9 +137,7 @@ async def test_medical_question_refused_without_calling_tool_or_model():
 
         assert response.refused is True
         assert response.answer == REFUSAL_MESSAGE
-        # Neither backend client nor LLM should have been called
         mock_client_cls.assert_not_called()
-        mock_llm_cls.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

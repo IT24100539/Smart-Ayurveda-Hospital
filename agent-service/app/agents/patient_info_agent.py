@@ -19,8 +19,6 @@ from typing import Any, TypedDict
 from uuid import UUID, uuid4
 
 import httpx
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
 from langgraph.graph import END, StateGraph
 
 from app.schemas import (
@@ -192,26 +190,76 @@ def _format_patient_context(record: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-_SYSTEM_PROMPT = """\
-You are an administrative assistant for Smart Ayurveda Hospital. Your role is to answer a patient's questions about their OWN administrative record.
+_BLANK_VALUES = {"", "none", "null", "n/a", "na", "not provided", "not evaluated", "not recorded"}
 
-STRICT GROUNDING RULES:
-1. You may ONLY use the verified patient record provided below.
-2. NEVER invent, extrapolate, or guess any details (such as dates, addresses, phone numbers, UHID, or blood group).
-3. If the requested information is present in the record, quote or state it clearly and accurately.
-4. If the requested information is NOT in the record, state that it is not present in their hospital administrative profile.
-5. NEVER provide medical advice, diagnosis, prognosis, or treatment recommendations.
-6. Keep your answer polite, concise, and helpful.
 
-PATIENT RECORD:
-{patient_record}
-"""
+def _recorded(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if text.lower() in _BLANK_VALUES:
+        return None
+    return text
+
+
+def _patient_name(record: dict[str, Any]) -> str | None:
+    full_name = _recorded(record.get("fullName"))
+    if full_name:
+        return full_name
+    first_name = record.get("firstName") or ""
+    last_name = record.get("lastName") or ""
+    return _recorded(f"{first_name} {last_name}".strip())
+
+
+def _answer_from_record(question: str, record: dict[str, Any]) -> str:
+    """Reply with only the profile field the question names."""
+    text = question.lower()
+    address = _recorded(record.get("address"))
+
+    if "prakriti" in text:
+        value = _recorded(record.get("prakriti"))
+        return f"Your registered Prakriti is {value}." if value else "Your registered Prakriti is not recorded on your profile."
+    if "vikriti" in text:
+        value = _recorded(record.get("vikriti"))
+        return f"Your registered Vikriti is {value}." if value else "Your registered Vikriti is not recorded on your profile."
+    if "blood" in text:
+        value = _recorded(record.get("bloodGroup"))
+        return f"Your recorded blood group is {value}." if value else "Your blood group is not recorded on your profile."
+    if "allerg" in text:
+        value = _recorded(record.get("allergies"))
+        return f"Your recorded allergies are {value}." if value else "No allergies are recorded on your profile."
+    if any(word in text for word in ("phone", "mobile", "contact number")):
+        value = _recorded(record.get("phone"))
+        return f"The phone number on your profile is {value}." if value else "No phone number is recorded on your profile."
+    if "email" in text:
+        value = _recorded(record.get("email"))
+        return f"The email on your profile is {value}." if value else "No email is recorded on your profile."
+    if "uhid" in text or "patient id" in text:
+        value = _recorded(record.get("uhid"))
+        return f"Your UHID is {value}." if value else "Your UHID is not recorded on your profile."
+    if any(word in text for word in ("date of birth", "birthday", "born")):
+        value = _recorded(record.get("dateOfBirth"))
+        return f"Your date of birth on file is {value}." if value else "Your date of birth is not recorded on your profile."
+    if "gender" in text:
+        value = _recorded(record.get("gender"))
+        return f"Your recorded gender is {value}." if value else "Your gender is not recorded on your profile."
+    if re.search(r"\bname\b", text):
+        value = _patient_name(record)
+        return f"The name on your profile is {value}." if value else "Your name is not recorded on your profile."
+    if any(word in text for word in ("district", "address", "where")):
+        if not address:
+            return "Your profile does not have a registered address, so the district is not recorded."
+        return f"Your registered address is {address}."
+    if "regist" in text and "date" in text:
+        value = _recorded(record.get("registeredAt"))
+        return f"Your registration date is {value}." if value else "Your registration date is not recorded on your profile."
+
+    return f"Here is the administrative information from your record:\n\n{_format_patient_context(record)}"
 
 
 async def _answer_node(state: PatientInfoState) -> PatientInfoState:
-    """Generate grounded answer strictly based on the retrieved patient record."""
+    """Answer from the saved administrative record. The phone cannot wait for a model."""
     if state.get("answer"):
-        # Already set (e.g. record not found or error)
         return state
 
     record = state.get("patient_record")
@@ -221,29 +269,7 @@ async def _answer_node(state: PatientInfoState) -> PatientInfoState:
             "answer": "No administrative record available for this patient.",
         }
 
-    formatted_record = _format_patient_context(record)
-    system_msg = _SYSTEM_PROMPT.format(patient_record=formatted_record)
-
-    try:
-        import asyncio
-        llm = ChatOllama(
-            base_url=settings.ollama_base_url,
-            model=settings.ollama_model,
-            temperature=0.1,
-        )
-        response = await asyncio.wait_for(
-            llm.ainvoke([
-                SystemMessage(content=system_msg),
-                HumanMessage(content=state["question"]),
-            ]),
-            timeout=settings.ollama_timeout_seconds,
-        )
-        answer = response.content
-    except Exception:
-        # Fallback: if Ollama is unavailable, answer with a structured summary directly from record
-        answer = f"Here is the administrative information from your record:\n\n{formatted_record}"
-
-    return {**state, "answer": answer}
+    return {**state, "answer": _answer_from_record(state.get("question") or "", record)}
 
 
 # ---------------------------------------------------------------------------

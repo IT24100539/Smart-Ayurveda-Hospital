@@ -20,9 +20,6 @@ from typing import Any, TypedDict
 from uuid import UUID, uuid4
 
 import httpx
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
-from langgraph import graph
 from langgraph.graph import END, StateGraph
 
 from app.schemas import (
@@ -255,49 +252,150 @@ async def _search_node(state: TreatmentInfoState) -> TreatmentInfoState:
     }
 
 
-def _format_treatment_context(treatments: list[dict[str, Any]]) -> str:
-    """Format treatment data into a clear text block for the LLM."""
-    if not treatments:
-        return "No treatments found."
+_WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
-    lines: list[str] = []
-    for t in treatments:
-        days = ", ".join(str(d) for d in t.get("available_days", []))
-        lines.append(
-            f"• {t['name']} ({t.get('name_sinhala', '')})\n"
-            f"  Category: {t.get('category', 'N/A')}\n"
-            f"  Duration: {t.get('duration_minutes', 'N/A')} minutes\n"
-            f"  Fee: Rs. {t.get('unit_price', 'N/A')}\n"
-            f"  Available days: {days or 'Not specified'}\n"
-            f"  Description: {t.get('description', 'N/A')}"
+
+def _weekdays_in(question: str) -> list[str]:
+    text = question.lower()
+    return [day for day in _WEEKDAYS if re.search(rf"\b{day}\b", text)]
+
+
+def _asks_fee(question: str) -> bool:
+    text = question.lower()
+    return any(word in text for word in ("fee", "cost", "price", "charge", "how much", "ගාස්තු", "මිල"))
+
+
+def _asks_duration(question: str) -> bool:
+    text = question.lower()
+    return any(word in text for word in ("how long", "duration", "minutes", "how many days", "last"))
+
+
+def _asks_schedule(question: str) -> bool:
+    text = question.lower()
+    return any(word in text for word in ("when", "which day", "what day", "available", "schedule", "offered"))
+
+
+def _treatment_days(treatment: dict[str, Any]) -> list[str]:
+    raw = treatment.get("available_days")
+    if raw is None:
+        raw = treatment.get("availableDays") or []
+    return [str(day).strip() for day in raw if str(day).strip()]
+
+
+def _named_matches(question: str, treatments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Therapies whose name is actually written in the question."""
+    text = question.lower()
+    matched: list[dict[str, Any]] = []
+    for treatment in treatments:
+        name = str(treatment.get("name") or "").strip().lower()
+        sinhala = str(treatment.get("name_sinhala") or treatment.get("nameSinhala") or "").strip().lower()
+        if (name and name in text) or (sinhala and sinhala in text):
+            matched.append(treatment)
+            continue
+        tokens = [
+            token
+            for token in re.split(r"\s+", name)
+            if len(token) >= 5 and token not in {"general", "initial", "herbal", "therapy", "treatment", "consultation"}
+        ]
+        if any(token in text for token in tokens):
+            matched.append(treatment)
+    return matched
+
+
+def _relevant_treatments(question: str, treatments: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+    """Rows the question is about. None means the question names something that is not in the catalogue."""
+    named = _named_matches(question, treatments)
+    if not named and _extract_search_query(question):
+        return None
+    return _select_treatments(question, named or treatments)
+
+
+def _select_treatments(question: str, treatments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep only therapies offered on a named weekday. Other questions keep the search result."""
+    asked = _weekdays_in(question)
+    if not asked:
+        return treatments
+    selected: list[dict[str, Any]] = []
+    for treatment in treatments:
+        available = {day.lower() for day in _treatment_days(treatment)}
+        if any(day in available for day in asked):
+            selected.append(treatment)
+    return selected
+
+
+def _day_label(days: list[str]) -> str:
+    names = [day.capitalize() for day in days]
+    if len(names) == 1:
+        return names[0]
+    return ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def _join_names(treatments: list[dict[str, Any]]) -> str:
+    names = [str(treatment.get("name") or "This therapy") for treatment in treatments]
+    if len(names) == 1:
+        return names[0]
+    return ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def _money(treatment: dict[str, Any]) -> str:
+    fee = treatment.get("unit_price")
+    if fee is None:
+        fee = treatment.get("unitPrice")
+    return f"Rs. {fee}" if fee is not None else "not listed"
+
+
+def _minutes(treatment: dict[str, Any]) -> str:
+    duration = treatment.get("duration_minutes")
+    if duration is None:
+        duration = treatment.get("durationMinutes")
+    return f"{duration} minutes" if duration is not None else "not listed"
+
+
+def _one_treatment_sentence(question: str, treatment: dict[str, Any]) -> str:
+    name = str(treatment.get("name") or "This therapy")
+    days = ", ".join(_treatment_days(treatment)) or "not listed"
+    if _asks_fee(question) and not _asks_duration(question):
+        return f"The fee for {name} is {_money(treatment)}."
+    if _asks_duration(question) and not _asks_fee(question):
+        return f"A {name} session lasts {_minutes(treatment)}."
+    if _asks_schedule(question) and not _asks_fee(question):
+        return f"{name} is offered on {days}."
+    return (
+        f"{name} is offered on {days}. The fee is {_money(treatment)} "
+        f"and a session lasts {_minutes(treatment)}."
+    )
+
+
+def _catalogue_answer(question: str, treatments: list[dict[str, Any]]) -> str:
+    """Answer only the part of the catalogue the question asks about."""
+    selected = _relevant_treatments(question, treatments)
+    if selected is None:
+        return (
+            "I couldn't find any treatments matching your query in our "
+            "current listings. Please check the treatment name or contact "
+            "our hospital reception for further assistance."
         )
-    return "\n\n".join(lines)
-
-
-_SYSTEM_PROMPT = """\
-You are a helpful Ayurvedic hospital information assistant. Your role is to \
-answer patient questions about available treatments, services, and schedules.
-
-STRICT RULES:
-1. You may ONLY use the treatment data provided below. Do NOT invent, guess, \
-or assume any treatment names, days, fees, durations, or descriptions.
-2. If the data shows specific days, mention exactly those days — do not add or \
-remove any.
-3. If the data shows a specific fee, quote it exactly — do not round or change it.
-4. Keep your answer concise, friendly, and informative.
-5. Do NOT provide any medical advice, diagnosis, or treatment suitability \
-recommendations.
-6. If the user asks in Sinhala, please respond in natural, polite Sinhala.
-
-TREATMENT DATA:
-{treatment_data}
-"""
+    asked = _weekdays_in(question)
+    if asked and not selected:
+        return f"No therapies in the catalogue are offered on {_day_label(asked)}."
+    if not selected:
+        return (
+            "I couldn't find any treatments matching your query in our "
+            "current listings. Please check the treatment name or contact "
+            "our hospital reception for further assistance."
+        )
+    if asked and not _asks_fee(question) and not _asks_duration(question):
+        return f"On {_day_label(asked)}, the hospital offers {_join_names(selected)}."
+    if len(selected) > 1 and not _asks_fee(question) and not _asks_duration(question) and not _asks_schedule(question):
+        return f"The hospital offers {_join_names(selected)}."
+    return " ".join(_one_treatment_sentence(question, treatment) for treatment in selected)
 
 
 async def _answer_node(state: TreatmentInfoState) -> TreatmentInfoState:
-    """Third node — compose a grounded answer using the LLM or a static reply."""
+    """Third node — answer from the catalogue. The phone cannot wait for a model."""
     tool_output = state.get("tool_output") or {}
     treatments = tool_output.get("treatments") or []
+    question = state.get("question") or ""
 
     if not treatments:
         return {
@@ -307,34 +405,15 @@ async def _answer_node(state: TreatmentInfoState) -> TreatmentInfoState:
                 "current listings. Please check the treatment name or contact "
                 "our hospital reception for further assistance."
             ),
+            "matched_treatment_ids": [],
         }
 
-    treatment_context = _format_treatment_context(treatments)
-    system_msg = _SYSTEM_PROMPT.format(treatment_data=treatment_context)
-
-    try:
-        import asyncio
-        llm = ChatOllama(
-            base_url=settings.ollama_base_url,
-            model=settings.ollama_model,
-            temperature=0.1,
-        )
-        response = await asyncio.wait_for(
-            llm.ainvoke([
-                SystemMessage(content=system_msg),
-                HumanMessage(content=state["question"]),
-            ]),
-            timeout=settings.ollama_timeout_seconds,
-        )
-        answer = response.content
-    except Exception:
-        # Fallback: if Ollama is unavailable or times out, produce a structured text answer
-        # directly from the data rather than failing.
-        answer = (
-            f"Here is the information I found:\n\n{treatment_context}"
-        )
-
-    return {**state, "answer": answer}
+    selected = _relevant_treatments(question, treatments) or []
+    return {
+        **state,
+        "answer": _catalogue_answer(question, treatments),
+        "matched_treatment_ids": [str(treatment.get("id")) for treatment in selected if treatment.get("id")],
+    }
 
 
 # ---------------------------------------------------------------------------

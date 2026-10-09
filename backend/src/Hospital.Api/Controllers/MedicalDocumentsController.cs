@@ -117,7 +117,8 @@ public sealed class MedicalDocumentsController : ControllerBase
         [FromForm] string? title,
         [FromForm] DocumentCategory category,
         [FromForm] string? summary,
-        [FromForm] IFormFile? file,
+        // IFormFile already binds from the multipart form. [FromForm] makes Swashbuckle fail the whole document.
+        IFormFile? file,
         CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)

@@ -5,8 +5,7 @@ Three scenarios:
 2. Nonsense / no-match question → "not found" rather than hallucinated answer.
 3. Diagnostic-sounding question → refusal.
 
-All external I/O (httpx to backend, ChatOllama to Ollama) is mocked so the
-tests run without any servers.
+All external I/O (httpx to the hospital API) is mocked so the tests run without any servers.
 """
 
 from __future__ import annotations
@@ -19,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from app.agents.treatment_info_agent import (
     REFUSAL_MESSAGE,
+    _catalogue_answer,
     is_medical_advice_question,
     run_treatment_info_agent,
 )
@@ -71,16 +71,41 @@ def _make_httpx_response(json_data: dict[str, Any], status_code: int = 200):
     return mock_resp
 
 
-def _make_llm_response(content: str):
-    """Create a mock ChatOllama response."""
-    msg = MagicMock()
-    msg.content = content
-    return msg
-
-
 # ---------------------------------------------------------------------------
 # Unit tests for the medical-advice guard
 # ---------------------------------------------------------------------------
+
+
+def test_fee_question_states_only_the_fee():
+    treatments = [
+        {"id": "1", "name": "Panchakarma", "available_days": ["Monday", "Wednesday"], "unit_price": 4500, "duration_minutes": 90},
+        {"id": "2", "name": "Nasya", "available_days": ["Tuesday"], "unit_price": 1200, "duration_minutes": 30},
+    ]
+    answer = _catalogue_answer("what is the cost of panchakarma treatment", treatments)
+    assert answer == "The fee for Panchakarma is Rs. 4500."
+    assert "Nasya" not in answer
+
+
+def test_unknown_topic_does_not_list_the_catalogue():
+    treatments = [
+        {"id": "1", "name": "Panchakarma", "available_days": ["Monday"], "unit_price": 4500, "duration_minutes": 90},
+    ]
+    answer = _catalogue_answer("what therapies do you offer for relaxation", treatments)
+    assert "Panchakarma" not in answer
+    assert "couldn't find" in answer
+
+
+def test_weekday_question_lists_only_therapies_offered_that_day():
+    treatments = [
+        {"id": "1", "name": "Abhyanga", "available_days": ["Monday"], "unit_price": 1800, "duration_minutes": 60},
+        {"id": "2", "name": "Panchakarma", "available_days": ["Monday", "Wednesday", "Friday"], "unit_price": 4500, "duration_minutes": 90},
+        {"id": "3", "name": "Nasya", "available_days": ["Tuesday", "Thursday"], "unit_price": 1200, "duration_minutes": 30},
+    ]
+    answer = _catalogue_answer("what are the treatments available on Wednesday", treatments)
+    assert "Panchakarma" in answer
+    assert "Abhyanga" not in answer
+    assert "Nasya" not in answer
+    assert "Wednesday" in answer
 
 
 class TestMedicalAdviceGuard:
@@ -116,16 +141,7 @@ class TestMedicalAdviceGuard:
 @pytest.mark.asyncio
 async def test_schedule_question_returns_grounded_answer():
     """A question about Panchakarma schedule should return real seeded days."""
-    llm_answer = (
-        "Panchakarma is available on Monday, Wednesday, and Friday from "
-        "08:00 to 12:00. Each session lasts 90 minutes and costs Rs. 4500."
-    )
-
-    with (
-        patch("app.agents.treatment_info_agent.httpx.AsyncClient") as mock_client_cls,
-        patch("app.agents.treatment_info_agent.ChatOllama") as mock_llm_cls,
-    ):
-        # Mock httpx
+    with patch("app.agents.treatment_info_agent.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(
             return_value=_make_httpx_response(SEED_PANCHAKARMA_RESPONSE)
@@ -133,11 +149,6 @@ async def test_schedule_question_returns_grounded_answer():
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
         mock_client_cls.return_value = mock_client
-
-        # Mock ChatOllama
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke = AsyncMock(return_value=_make_llm_response(llm_answer))
-        mock_llm_cls.return_value = mock_llm
 
         request = TreatmentInfoAgentRequest(
             question="When is Panchakarma available?"
@@ -148,7 +159,6 @@ async def test_schedule_question_returns_grounded_answer():
     assert len(response.matched_treatment_ids) > 0
     assert "aaaaaaaa-0000-0000-0000-000000000001" in response.matched_treatment_ids
 
-    # The LLM answer should mention the real days
     answer_lower = response.answer.lower()
     assert "monday" in answer_lower
     assert "wednesday" in answer_lower
@@ -201,10 +211,7 @@ async def test_diagnostic_question_triggers_refusal():
 @pytest.mark.asyncio
 async def test_days_question_and_sinhala_question_returns_grounded_answer():
     """Questions with 'days' or in Sinhala should resolve treatments correctly."""
-    with (
-        patch("app.agents.treatment_info_agent.httpx.AsyncClient") as mock_client_cls,
-        patch("app.agents.treatment_info_agent.ChatOllama") as mock_llm_cls,
-    ):
+    with patch("app.agents.treatment_info_agent.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(
             return_value=_make_httpx_response(SEED_PANCHAKARMA_RESPONSE)
@@ -212,12 +219,6 @@ async def test_days_question_and_sinhala_question_returns_grounded_answer():
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
         mock_client_cls.return_value = mock_client
-
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke = AsyncMock(
-            return_value=_make_llm_response("Panchakarma is available on Monday, Wednesday, Friday.")
-        )
-        mock_llm_cls.return_value = mock_llm
 
         # 1. Multi-word inquiry with 'days'
         req1 = TreatmentInfoAgentRequest(question="What days is Panchakarma available?")

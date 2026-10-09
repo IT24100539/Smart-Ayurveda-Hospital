@@ -61,12 +61,32 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
     super.dispose();
   }
 
+  List<CharakaChatTurn> _historyBefore(CharakaChatMessage current) {
+    final turns = <CharakaChatTurn>[];
+    for (final message in _messages) {
+      if (message.id == current.id) break;
+      if (message.id == 'welcome-initial' ||
+          message.isError ||
+          message.text.trim().isEmpty) {
+        continue;
+      }
+      turns.add(
+        CharakaChatTurn(
+          role: message.isUser ? 'user' : 'assistant',
+          text: message.text,
+        ),
+      );
+    }
+    if (turns.length <= 8) return turns;
+    return turns.sublist(turns.length - 8);
+  }
+
   List<String> _suggestedPromptsFor(CharakaTopic topic) {
     if (topic == CharakaTopic.treatments) {
       return [
-        'When is Panchakarma available and what is the fee?',
         'What therapies do you offer for stress and relaxation?',
-        'How many days does Shirodhara therapy take?',
+        'What helps with poor sleep?',
+        'Which therapies are used when digestion is weak?',
       ];
     } else {
       return [
@@ -138,7 +158,10 @@ class _CharakaChatScreenState extends ConsumerState<CharakaChatScreen> {
     try {
       final CharakaAnswer result;
       if (userMsg.topic == CharakaTopic.treatments) {
-        result = await repo.askTreatment(userMsg.text);
+        result = await repo.askTreatment(
+          userMsg.text,
+          history: _historyBefore(userMsg),
+        );
       } else {
         result = await repo.askPatient(userMsg.text);
       }
@@ -545,7 +568,8 @@ class _MessageBubble extends StatelessWidget {
                   ? CrossAxisAlignment.end
                   : CrossAxisAlignment.start,
               children: [
-                if (message.refused)
+                if (message.refused &&
+                    message.topic == CharakaTopic.patientInfo)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: PillChip(

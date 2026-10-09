@@ -4,6 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 
+class CharakaChatTurn {
+  const CharakaChatTurn({required this.role, required this.text});
+
+  final String role;
+  final String text;
+}
+
 class CharakaAnswer {
   const CharakaAnswer({
     required this.answer,
@@ -19,7 +26,10 @@ class CharakaAnswer {
 }
 
 abstract class CharakaChatRepository {
-  Future<CharakaAnswer> askTreatment(String question);
+  Future<CharakaAnswer> askTreatment(
+    String question, {
+    List<CharakaChatTurn> history = const [],
+  });
   Future<CharakaAnswer> askPatient(String question);
 }
 
@@ -29,12 +39,21 @@ class DioCharakaChatRepository implements CharakaChatRepository {
   final Dio _dio;
 
   @override
-  Future<CharakaAnswer> askTreatment(String question) async {
+  Future<CharakaAnswer> askTreatment(
+    String question, {
+    List<CharakaChatTurn> history = const [],
+  }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/agent-workflows/ask-treatment',
-        data: {'question': question},
-        options: Options(receiveTimeout: const Duration(seconds: 45)),
+        '/agent-workflows/ask-charaka',
+        data: {
+          'question': question,
+          'history': [
+            for (final turn in history)
+              {'role': turn.role, 'text': turn.text},
+          ],
+        },
+        options: Options(receiveTimeout: const Duration(seconds: 90)),
       );
       final data = response.data ?? {};
       final matched = data['matchedTreatmentIds'] as List<dynamic>? ?? const [];
@@ -55,7 +74,7 @@ class DioCharakaChatRepository implements CharakaChatRepository {
       final response = await _dio.post<Map<String, dynamic>>(
         '/agent-workflows/ask-patient',
         data: {'question': question},
-        options: Options(receiveTimeout: const Duration(seconds: 45)),
+        options: Options(receiveTimeout: const Duration(seconds: 90)),
       );
       final data = response.data ?? {};
       return CharakaAnswer(

@@ -90,8 +90,8 @@ class _FaqScreenState extends State<FaqScreen> {
           'චරක AI සහායකයාගෙන් ලබාගත හැකි තොරතුරු මොනවාද?',
         ),
         answer: copy.text(
-          'Charaka can answer questions regarding available hospital therapies, session durations, fees, and general facility schedules. When signed in, Charaka can also look up your registered administrative records such as your UHID and registered province.',
-          'රෝහලේ ඇති ආයුර්වේද ප්‍රතිකාර, ප්‍රතිකාර කාලසීමාවන්, ගාස්තු සහ සායන කාලසටහන් පිළිබඳ තොරතුරු චරක සහායකයාගෙන් ලබාගත හැක. ඔබ ලොග් වී සිටින විට ඔබගේ ලියාපදිංචි UHID අංකය සහ පළාත වැනි පරිපාලන තොරතුරු ද විමසිය හැක.',
+          'Charaka can talk through any Ayurveda question — doshas, herbs, food, daily routine, panchakarma — even when it is not on the hospital list. He can also tell you this hospital\'s therapy days and fees, and, when you are signed in, your registered details such as your UHID. He does not answer questions outside Ayurveda.',
+          'චරකට ආයුර්වේද ප්‍රශ්න ඕනෑම එකක් ගැන කතා කළ හැක — දෝෂ, ඖෂධ, ආහාර, දිනචර්යාව, පංචකර්ම — ඒවා රෝහල් ලැයිස්තුවේ නැතත්. මෙම රෝහලේ ප්‍රතිකාර දින සහ ගාස්තු ද කියයි. ඔබ ලොග් වී සිටින විට UHID වැනි ලියාපදිංචි තොරතුරු ද විමසිය හැක. ආයුර්වේදයෙන් එහා ප්‍රශ්නවලට ඔහු පිළිතුරු නොදෙයි.',
         ),
       ),
       _FaqItem(

@@ -88,6 +88,30 @@ public sealed class AgentWorkflowService : IAgentWorkflowService
             workflowId);
     }
 
+    public async Task<AskCharakaResponse> AskCharakaAsync(
+        AskCharakaRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await _actors.RequireUserAsync(cancellationToken);
+        if (user.Role != UserRole.Patient)
+        {
+            throw new ForbiddenException("Only a patient can perform this action.");
+        }
+
+        var history = (request.History ?? [])
+            .Select(turn => new CharakaAgentTurn(turn.Role.Trim(), turn.Text.Trim()))
+            .ToList();
+        var response = await _agents.AskCharakaAsync(
+            new CharakaAgentRequest(request.Question.Trim(), history),
+            cancellationToken);
+
+        Guid.TryParse(response.WorkflowId, out var workflowId);
+        return new AskCharakaResponse(
+            response.Answer ?? "",
+            response.Refused,
+            workflowId);
+    }
+
     public async Task<WorkflowExecutionDto> GetAsync(Guid id, CancellationToken cancellationToken)
     {
         var execution = await _executions.GetByIdAsync(id, cancellationToken)

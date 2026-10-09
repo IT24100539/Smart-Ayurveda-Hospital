@@ -33,4 +33,11 @@ public interface IAgentClient
     Task<PatientInfoAgentResponse> AskPatientInfoAsync(
         PatientInfoAgentRequest request,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Charaka conversation. Ayurveda questions, including ones outside the hospital catalogue.
+    /// </summary>
+    Task<CharakaAgentResponse> AskCharakaAsync(
+        CharakaAgentRequest request,
+        CancellationToken cancellationToken);
 }

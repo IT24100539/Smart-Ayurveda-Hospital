@@ -65,6 +65,14 @@ public sealed class AgentHttpClient : IAgentClient
             request,
             cancellationToken);
 
+    public Task<CharakaAgentResponse> AskCharakaAsync(
+        CharakaAgentRequest request,
+        CancellationToken cancellationToken) =>
+        PostAsync<CharakaAgentRequest, CharakaAgentResponse>(
+            "/internal/agents/charaka",
+            request,
+            cancellationToken);
+
     public async Task<AgentInvokeResponse> InvokeAsync(AgentInvokeRequest request, CancellationToken cancellationToken)
     {
         var coordinated = await CoordinateAsync(

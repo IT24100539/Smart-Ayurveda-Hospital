@@ -35,6 +35,20 @@ public sealed class AskTreatmentInfoRequestValidator : AbstractValidator<AskTrea
     }
 }
 
+public sealed class AskCharakaRequestValidator : AbstractValidator<AskCharakaRequest>
+{
+    public AskCharakaRequestValidator()
+    {
+        RuleFor(x => x.Question).NotEmpty().MaximumLength(2000);
+        RuleFor(x => x.History).Must(history => history is null || history.Count <= 12);
+        RuleForEach(x => x.History).ChildRules(turn =>
+        {
+            turn.RuleFor(item => item.Role).NotEmpty().MaximumLength(20);
+            turn.RuleFor(item => item.Text).NotEmpty().MaximumLength(2000);
+        });
+    }
+}
+
 public sealed class AgentInvokeRequestValidator : AbstractValidator<AgentInvokeRequest>
 {
     public AgentInvokeRequestValidator()
