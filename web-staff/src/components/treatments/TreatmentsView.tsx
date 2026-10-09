@@ -42,13 +42,14 @@ export function TreatmentsView() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchTreatments = async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await getTreatments({ page: 1, pageSize: 50 });
+      const data = await getTreatments({ page: 1, pageSize: 50, activeOnly: false });
       setTreatments(data.items || []);
     } catch (e: unknown) {
       setTreatments([]);
@@ -65,19 +66,28 @@ export function TreatmentsView() {
   const handleDeactivate = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Are you sure you want to deactivate this treatment?')) {
-      await deactivateTreatment(id);
-      fetchTreatments();
+      try {
+        await deactivateTreatment(id);
+        setTreatments(prev => prev.map(t => t.id === id ? { ...t, isActive: false } : t));
+        await fetchTreatments();
+      } catch (err) {
+        setLoadError(errorMessage(err, 'Unable to deactivate the treatment.'));
+      }
     }
   };
 
   const needle = query.trim().toLowerCase();
-  const visible = needle
-    ? treatments.filter(
-        (item) =>
-          item.name.toLowerCase().includes(needle) ||
-          item.nameSinhala.toLowerCase().includes(needle)
-      )
-    : treatments;
+  const visible = treatments.filter((item) => {
+    const matchesQuery = !needle || (
+      item.name.toLowerCase().includes(needle) ||
+      item.nameSinhala.toLowerCase().includes(needle)
+    );
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && item.isActive) ||
+      (statusFilter === 'inactive' && !item.isActive);
+    return matchesQuery && matchesStatus;
+  });
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -99,8 +109,8 @@ export function TreatmentsView() {
       />
 
       <Card className="overflow-hidden shadow-sm">
-        <div className="flex gap-4 border-b border-surface-border bg-neutral-50 p-4">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap gap-4 border-b border-surface-border bg-neutral-50 p-4">
+          <div className="relative flex-1 min-w-[200px]">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted">
               <IconSearch />
             </div>
@@ -112,6 +122,16 @@ export function TreatmentsView() {
               className="field pl-10 pr-4"
             />
           </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+            className="field w-full sm:w-44"
+            aria-label="Filter by status"
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active only</option>
+            <option value="inactive">Inactive only</option>
+          </select>
         </div>
 
         {loading ? (
@@ -169,21 +189,37 @@ export function TreatmentsView() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-right">
-                      {t.isActive && (
+                      {t.isActive ? (
                         <Button variant="danger" onClick={(e) => handleDeactivate(t.id, e)}>
                           Deactivate
                         </Button>
+                      ) : (
+                        <span className="text-xs font-medium text-muted">Deactivated</span>
                       )}
                     </td>
                   </tr>
                   {expandedRow === t.id && (
                     <tr>
                       <td colSpan={5} className="bg-primary-muted/40 p-0">
-                        <InlineScheduleEditor 
-                          treatmentId={t.id} 
-                          onSave={() => { setExpandedRow(null); fetchTreatments(); }}
-                          onCancel={() => setExpandedRow(null)}
-                        />
+                        {t.isActive ? (
+                          <InlineScheduleEditor 
+                            treatmentId={t.id} 
+                            onSave={() => { setExpandedRow(null); fetchTreatments(); }}
+                            onCancel={() => setExpandedRow(null)}
+                          />
+                        ) : (
+                          <div className="border-y border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-semibold text-sm">Future scheduling is blocked</p>
+                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                  This treatment is soft-deactivated (IsActive = false). Historical appointments and past invoices are protected, but new booking availability is closed.
+                                </p>
+                              </div>
+                              <Button variant="secondary" onClick={() => setExpandedRow(null)}>Close</Button>
+                            </div>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )}

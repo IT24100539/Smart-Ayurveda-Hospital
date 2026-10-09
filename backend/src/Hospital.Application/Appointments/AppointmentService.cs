@@ -43,6 +43,11 @@ public sealed class AppointmentService : IAppointmentService
         var treatment = await _treatments.GetByIdAsync(request.TreatmentId, cancellationToken)
             ?? throw new NotFoundException(nameof(Treatment), request.TreatmentId);
 
+        if (!treatment.IsActive)
+        {
+            throw new DomainException("This treatment is inactive and cannot be scheduled.");
+        }
+
         var slot = request.RequestedTimeSlot.Trim();
         TreatmentSchedule? schedule = null;
         if (request.ScheduleId is { } scheduleId)
@@ -108,6 +113,14 @@ public sealed class AppointmentService : IAppointmentService
         if (appointment.Status is AppointmentStatus.Cancelled or AppointmentStatus.Completed)
         {
             throw new DomainException($"Cannot reschedule an appointment with status {appointment.Status}.");
+        }
+
+        var treatment = await _treatments.GetByIdAsync(appointment.TreatmentId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Treatment), appointment.TreatmentId);
+
+        if (!treatment.IsActive)
+        {
+            throw new DomainException("This treatment is inactive and cannot be scheduled.");
         }
 
         var newSlot = request.RequestedTimeSlot.Trim();

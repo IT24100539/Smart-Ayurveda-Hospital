@@ -33,8 +33,12 @@ public sealed class TreatmentAvailabilityService(
         DateOnly date,
         CancellationToken cancellationToken)
     {
-        _ = await treatments.GetByIdAsync(treatmentId, cancellationToken)
+        var treatment = await treatments.GetByIdAsync(treatmentId, cancellationToken)
             ?? throw new NotFoundException(nameof(Treatment), treatmentId);
+        if (!treatment.IsActive)
+        {
+            return new(treatmentId, date, false, "Treatment is inactive.", Array.Empty<TreatmentSlotAvailabilityDto>());
+        }
         var schedules = await treatments.ListSchedulesAsync(treatmentId, cancellationToken);
         var slots = new List<TreatmentSlotAvailabilityDto>();
         foreach (var schedule in schedules)

@@ -129,4 +129,70 @@ describe('TreatmentsView', () => {
     expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });
+
+  it('soft-deactivates treatment when Deactivate button is clicked and confirmed', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (api.getTreatments as any)
+      .mockResolvedValueOnce(mockTreatments)
+      .mockResolvedValue({
+        items: [{ ...mockTreatments.items[0], isActive: false }],
+        totalCount: 1
+      });
+    (api.deactivateTreatment as any).mockResolvedValue({
+      ...mockTreatments.items[0],
+      isActive: false
+    });
+
+    render(<TreatmentsView />);
+    await waitFor(() => expect(screen.getByText('Abhyanga')).toBeInTheDocument());
+
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    const deactivateBtn = screen.getByRole('button', { name: 'Deactivate' });
+    fireEvent.click(deactivateBtn);
+
+    expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to deactivate this treatment?');
+    expect(api.deactivateTreatment).toHaveBeenCalledWith('1');
+
+    await waitFor(() => {
+      expect(screen.getByText('Inactive')).toBeInTheDocument();
+      expect(screen.getByText('Deactivated')).toBeInTheDocument();
+    });
+
+    // Clicking an inactive treatment displays the scheduling blocked notice
+    fireEvent.click(screen.getByText('Abhyanga'));
+    await waitFor(() => {
+      expect(screen.getByText('Future scheduling is blocked')).toBeInTheDocument();
+      expect(screen.getByText(/soft-deactivated/i)).toBeInTheDocument();
+    });
+
+    confirmSpy.mockRestore();
+  });
+
+  it('filters treatments by status (all, active, inactive)', async () => {
+    (api.getTreatments as any).mockResolvedValue({
+      items: [
+        { ...mockTreatments.items[0], id: '1', name: 'Active Therapy', isActive: true },
+        { ...mockTreatments.items[0], id: '2', name: 'Inactive Therapy', isActive: false }
+      ],
+      totalCount: 2
+    });
+
+    render(<TreatmentsView />);
+    await waitFor(() => {
+      expect(screen.getByText('Active Therapy')).toBeInTheDocument();
+      expect(screen.getByText('Inactive Therapy')).toBeInTheDocument();
+    });
+
+    const statusSelect = screen.getByRole('combobox', { name: /filter by status/i });
+
+    // Filter to active only
+    fireEvent.change(statusSelect, { target: { value: 'active' } });
+    expect(screen.getByText('Active Therapy')).toBeInTheDocument();
+    expect(screen.queryByText('Inactive Therapy')).not.toBeInTheDocument();
+
+    // Filter to inactive only
+    fireEvent.change(statusSelect, { target: { value: 'inactive' } });
+    expect(screen.queryByText('Active Therapy')).not.toBeInTheDocument();
+    expect(screen.getByText('Inactive Therapy')).toBeInTheDocument();
+  });
 });

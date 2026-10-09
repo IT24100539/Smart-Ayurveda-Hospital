@@ -424,6 +424,32 @@ public sealed class AppointmentServiceTests
         Assert.Equal(NotificationType.AppointmentApproved, Assert.Single(notifications.Items).Type);
     }
 
+    [Fact]
+    public async Task CreateAsync_WhenTreatmentIsInactive_ThrowsDomainException()
+    {
+        var patient = new Patient { Id = Guid.NewGuid(), FirstName = "Asha", LastName = "Nair" };
+        var treatment = new Treatment { Id = Guid.NewGuid(), Name = "Abhyanga", IsActive = false };
+        var appointments = new FakeAppointmentRepository();
+        var sut = new AppointmentService(
+            appointments,
+            new FakePatients(patient),
+            new FakeTreatments(treatment),
+            new FakeBookingValidator(),
+            new FakeUnitOfWork(),
+            new FixedClock(),
+            NullPatientEventNotifier.Instance);
+
+        var request = new CreateAppointmentRequest(
+            patient.Id,
+            treatment.Id,
+            null,
+            new DateOnly(2026, 9, 15),
+            "09:00-10:00");
+
+        var ex = await Assert.ThrowsAsync<DomainException>(() => sut.CreateAsync(request, CancellationToken.None));
+        Assert.Contains("inactive", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static Appointment Visit(Patient patient, Treatment treatment, AppointmentStatus status) => new()
     {
         Id = Guid.NewGuid(),

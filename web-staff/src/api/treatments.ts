@@ -132,8 +132,8 @@ export const updateTreatment = async (id: string, data: UpdateTreatmentRequest):
   });
 };
 
-export const deactivateTreatment = async (id: string): Promise<void> => {
-  await api.request(`/treatments/${id}/deactivate`, {
+export const deactivateTreatment = async (id: string): Promise<TreatmentDetailDto> => {
+  return api.request(`/treatments/${id}/deactivate`, {
     method: 'PATCH'
   });
 };
